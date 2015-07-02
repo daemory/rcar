@@ -20,6 +20,7 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/version.h>
 #include <linux/videodev2.h>
 #include <linux/export.h>
 
@@ -186,6 +187,22 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 #endif
 
 	switch (cmd) {
+	case VIDIOC_QUERYCAP: {
+		struct v4l2_subdev_capability *cap = arg;
+
+		cap->version = LINUX_VERSION_CODE;
+		cap->device_caps = 0;
+		cap->entity_id = 0;
+#if defined(CONFIG_MEDIA_CONTROLLER)
+		if (sd->entity.graph_obj.mdev) {
+			cap->device_caps = V4L2_SUBDEV_CAP_ENTITY;
+			cap->entity_id = sd->entity.graph_obj.id;
+		}
+#endif
+		memset(cap->reserved, 0, sizeof(cap->reserved));
+		break;
+	}
+
 	case VIDIOC_QUERYCTRL:
 		return v4l2_queryctrl(vfh->ctrl_handler, arg);
 
