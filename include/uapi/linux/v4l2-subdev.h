@@ -154,9 +154,27 @@ struct v4l2_subdev_selection {
 	__u32 reserved[8];
 };
 
+/**
+ * struct v4l2_subdev_capability - subdev capabilities
+ * @version: the kernel version
+ * @device_caps: the subdev capabilities
+ * @entity_id: the entity ID if V4L2_SUBDEV_CAP_ENTITY is set
+ * @reserved: for future use, set to zero for now
+ */
+struct v4l2_subdev_capability {
+	__u32 version;
+	__u32 device_caps;
+	__u32 entity_id;
+	__u32 reserved[29];
+};
+
+/* This v4l2_subdev is also a media entity and the entity_id field is valid */
+#define V4L2_SUBDEV_CAP_ENTITY		(1 << 0)
+
 /* Backwards compatibility define --- to be removed */
 #define v4l2_subdev_edid v4l2_edid
 
+#define VIDIOC_SUBDEV_QUERYCAP			 _IOR('V',  0, struct v4l2_subdev_capability)
 #define VIDIOC_SUBDEV_G_FMT			_IOWR('V',  4, struct v4l2_subdev_format)
 #define VIDIOC_SUBDEV_S_FMT			_IOWR('V',  5, struct v4l2_subdev_format)
 #define VIDIOC_SUBDEV_G_FRAME_INTERVAL		_IOWR('V', 21, struct v4l2_subdev_frame_interval)
