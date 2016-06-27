@@ -1,0 +1,599 @@
+/*
+ * Driver for Analog Devices ADV748X 8 channel analog front end (AFE) receiver
+ * with standard definition processor (SDP)
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ *
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ */
+
+#include <linux/delay.h>
+#include <linux/module.h>
+#include <linux/mutex.h>
+#include <linux/v4l2-dv-timings.h>
+
+#include <media/v4l2-ctrls.h>
+#include <media/v4l2-device.h>
+#include <media/v4l2-dv-timings.h>
+#include <media/v4l2-ioctl.h>
+
+#include "adv748x.h"
+
+/* -----------------------------------------------------------------------------
+ * SDP
+ */
+
+#define ADV748X_AFE_INPUT_CVBS_AIN1			0x00
+#define ADV748X_AFE_INPUT_CVBS_AIN2			0x01
+#define ADV748X_AFE_INPUT_CVBS_AIN3			0x02
+#define ADV748X_AFE_INPUT_CVBS_AIN4			0x03
+#define ADV748X_AFE_INPUT_CVBS_AIN5			0x04
+#define ADV748X_AFE_INPUT_CVBS_AIN6			0x05
+#define ADV748X_AFE_INPUT_CVBS_AIN7			0x06
+#define ADV748X_AFE_INPUT_CVBS_AIN8			0x07
+
+#define ADV748X_AFE_STD_AD_PAL_BG_NTSC_J_SECAM		0x0
+#define ADV748X_AFE_STD_AD_PAL_BG_NTSC_J_SECAM_PED	0x1
+#define ADV748X_AFE_STD_AD_PAL_N_NTSC_J_SECAM		0x2
+#define ADV748X_AFE_STD_AD_PAL_N_NTSC_M_SECAM		0x3
+#define ADV748X_AFE_STD_NTSC_J				0x4
+#define ADV748X_AFE_STD_NTSC_M				0x5
+#define ADV748X_AFE_STD_PAL60				0x6
+#define ADV748X_AFE_STD_NTSC_443			0x7
+#define ADV748X_AFE_STD_PAL_BG				0x8
+#define ADV748X_AFE_STD_PAL_N				0x9
+#define ADV748X_AFE_STD_PAL_M				0xa
+#define ADV748X_AFE_STD_PAL_M_PED			0xb
+#define ADV748X_AFE_STD_PAL_COMB_N			0xc
+#define ADV748X_AFE_STD_PAL_COMB_N_PED			0xd
+#define ADV748X_AFE_STD_PAL_SECAM			0xe
+#define ADV748X_AFE_STD_PAL_SECAM_PED			0xf
+
+static int adv748x_afe_read_ro_map(struct adv748x_state *state, u8 reg)
+{
+	int ret;
+
+	/* Select SDP Read-Only Main Map */
+	ret = sdp_write(state, 0x0e, 0x01);
+	if (ret < 0)
+		return ret;
+
+	return sdp_read(state, reg);
+}
+
+static int adv748x_afe_status(struct adv748x_state *state, u32 *signal,
+			      v4l2_std_id *std)
+{
+	int info;
+
+	/* Read status from reg 0x10 of SDP RO Map */
+	info = adv748x_afe_read_ro_map(state, 0x10);
+	if (info < 0)
+		return info;
+
+	if (signal)
+		*signal = info & BIT(0) ? 0 : V4L2_IN_ST_NO_SIGNAL;
+
+	if (std) {
+		*std = V4L2_STD_UNKNOWN;
+
+		/* Standard not valid if there is no signal */
+		if (info & BIT(0)) {
+			switch (info & 0x70) {
+			case 0x00:
+				*std = V4L2_STD_NTSC;
+				break;
+			case 0x10:
+				*std = V4L2_STD_NTSC_443;
+				break;
+			case 0x20:
+				*std = V4L2_STD_PAL_M;
+				break;
+			case 0x30:
+				*std = V4L2_STD_PAL_60;
+				break;
+			case 0x40:
+				*std = V4L2_STD_PAL;
+				break;
+			case 0x50:
+				*std = V4L2_STD_SECAM;
+				break;
+			case 0x60:
+				*std = V4L2_STD_PAL_Nc | V4L2_STD_PAL_N;
+				break;
+			case 0x70:
+				*std = V4L2_STD_SECAM;
+				break;
+			default:
+				*std = V4L2_STD_UNKNOWN;
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void adv748x_afe_fill_format(struct adv748x_state *state,
+				    struct v4l2_mbus_framefmt *fmt)
+{
+	v4l2_std_id std;
+
+	memset(fmt, 0, sizeof(*fmt));
+
+	fmt->code = MEDIA_BUS_FMT_UYVY8_2X8;
+	fmt->colorspace = V4L2_COLORSPACE_SMPTE170M;
+	fmt->field = V4L2_FIELD_INTERLACED;
+
+	fmt->width = 720;
+
+	if (state->afe.curr_norm == V4L2_STD_ALL)
+		adv748x_afe_status(state, NULL,  &std);
+	else
+		std = state->afe.curr_norm;
+
+	fmt->height = std & V4L2_STD_525_60 ? 480 : 576;
+}
+
+static int adv748x_afe_std(v4l2_std_id std)
+{
+	if (std == V4L2_STD_ALL)
+		return ADV748X_AFE_STD_AD_PAL_BG_NTSC_J_SECAM;
+	if (std == V4L2_STD_PAL_60)
+		return ADV748X_AFE_STD_PAL60;
+	if (std == V4L2_STD_NTSC_443)
+		return ADV748X_AFE_STD_NTSC_443;
+	if (std == V4L2_STD_PAL_N)
+		return ADV748X_AFE_STD_PAL_N;
+	if (std == V4L2_STD_PAL_M)
+		return ADV748X_AFE_STD_PAL_M;
+	if (std == V4L2_STD_PAL_Nc)
+		return ADV748X_AFE_STD_PAL_COMB_N;
+	if (std & V4L2_STD_PAL)
+		return ADV748X_AFE_STD_PAL_BG;
+	if (std & V4L2_STD_NTSC)
+		return ADV748X_AFE_STD_NTSC_M;
+	if (std & V4L2_STD_SECAM)
+		return ADV748X_AFE_STD_PAL_SECAM;
+
+	return -EINVAL;
+}
+
+static int adv748x_afe_set_video_standard(struct adv748x_state *state,
+					  v4l2_std_id std)
+{
+	int sdpstd;
+
+	sdpstd = adv748x_afe_std(std);
+	if (sdpstd < 0)
+		return sdpstd;
+
+	sdp_clrset(state, 0x02, 0xf0, (sdpstd & 0xf) << 4);
+
+	return 0;
+}
+
+static int adv748x_afe_g_pixelaspect(struct v4l2_subdev *sd,
+				     struct v4l2_fract *aspect)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+	v4l2_std_id std;
+
+	if (state->afe.curr_norm == V4L2_STD_ALL)
+		adv748x_afe_status(state, NULL,  &std);
+	else
+		std = state->afe.curr_norm;
+
+	if (std & V4L2_STD_525_60) {
+		aspect->numerator = 11;
+		aspect->denominator = 10;
+	} else {
+		aspect->numerator = 54;
+		aspect->denominator = 59;
+	}
+
+	return 0;
+}
+
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_video_ops
+ */
+
+static int adv748x_afe_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+
+	if (state->afe.curr_norm == V4L2_STD_ALL)
+		adv748x_afe_status(state, NULL,  norm);
+	else
+		*norm = state->afe.curr_norm;
+
+	return 0;
+}
+
+
+static int adv748x_afe_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+	int ret;
+
+	ret = mutex_lock_interruptible(&state->mutex);
+	if (ret)
+		return ret;
+
+	ret = adv748x_afe_set_video_standard(state, std);
+	if (ret < 0)
+		goto out;
+
+	state->afe.curr_norm = std;
+
+out:
+	mutex_unlock(&state->mutex);
+	return ret;
+}
+
+static int adv748x_afe_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+	int ret;
+
+	ret = mutex_lock_interruptible(&state->mutex);
+	if (ret)
+		return ret;
+
+	if (state->afe.streaming) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	/* Set auto detect mode */
+	ret = adv748x_afe_set_video_standard(state, V4L2_STD_ALL);
+	if (ret)
+		goto unlock;
+
+	msleep(100);
+
+	/* Read detected standard */
+	ret = adv748x_afe_status(state, NULL, std);
+unlock:
+	mutex_unlock(&state->mutex);
+
+	return ret;
+}
+
+static int adv748x_afe_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *norm)
+{
+	*norm = V4L2_STD_ALL;
+
+	return 0;
+}
+
+static int adv748x_afe_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+	int ret;
+
+	ret = mutex_lock_interruptible(&state->mutex);
+	if (ret)
+		return ret;
+
+	ret = adv748x_afe_status(state, status, NULL);
+
+	mutex_unlock(&state->mutex);
+	return ret;
+}
+
+static int adv748x_afe_s_stream(struct v4l2_subdev *sd, int enable)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+	int ret, signal = V4L2_IN_ST_NO_SIGNAL;
+
+	ret = mutex_lock_interruptible(&state->mutex);
+	if (ret)
+		return ret;
+
+	ret = adv748x_txb_power(state, enable);
+	if (ret)
+		goto error;
+
+	state->afe.streaming = enable;
+
+	adv748x_afe_status(state, &signal, NULL);
+	if (signal != V4L2_IN_ST_NO_SIGNAL)
+		adv_dbg(state, "Detected SDP signal\n");
+	else
+		adv_info(state, "Couldn't detect SDP video signal\n");
+
+error:
+	mutex_unlock(&state->mutex);
+	return ret;
+}
+
+static const struct v4l2_subdev_video_ops adv748x_afe_video_ops = {
+	.g_std = adv748x_afe_g_std,
+	.s_std = adv748x_afe_s_std,
+	.querystd = adv748x_afe_querystd,
+	.g_tvnorms = adv748x_afe_g_tvnorms,
+	.g_input_status = adv748x_afe_g_input_status,
+	.s_stream = adv748x_afe_s_stream,
+	.g_pixelaspect = adv748x_afe_g_pixelaspect,
+};
+
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_pad_ops
+ */
+
+static int adv748x_afe_enum_mbus_code(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_mbus_code_enum *code)
+{
+	if (code->index != 0)
+		return -EINVAL;
+
+	if (code->pad >= ADV748X_AFE_NR_PADS)
+		return -EINVAL;
+
+	code->code = MEDIA_BUS_FMT_UYVY8_2X8;
+
+	return 0;
+}
+
+
+static int adv748x_afe_get_pad_format(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_format *format)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+
+	if (format->pad >= ADV748X_AFE_NR_PADS)
+		return -EINVAL;
+
+	adv748x_afe_fill_format(state, &format->format);
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
+		struct v4l2_mbus_framefmt *fmt;
+
+		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
+		format->format.code = fmt->code;
+	}
+
+	return 0;
+}
+
+static int adv748x_afe_set_pad_format(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_format *format)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(sd);
+
+	if (format->pad >= ADV748X_AFE_NR_PADS)
+		return -EINVAL;
+
+	adv748x_afe_fill_format(state, &format->format);
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
+		struct v4l2_mbus_framefmt *fmt;
+
+		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
+		fmt->code = format->format.code;
+	}
+
+	return 0;
+}
+
+static const struct v4l2_subdev_pad_ops adv748x_afe_pad_ops = {
+	.enum_mbus_code = adv748x_afe_enum_mbus_code,
+	.set_fmt = adv748x_afe_set_pad_format,
+	.get_fmt = adv748x_afe_get_pad_format,
+};
+
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_ops
+ */
+
+static const struct v4l2_subdev_ops adv748x_afe_ops = {
+	.video = &adv748x_afe_video_ops,
+	.pad = &adv748x_afe_pad_ops,
+};
+
+/* -----------------------------------------------------------------------------
+ * Controls
+ */
+
+/* Contrast */
+#define ADV748X_AFE_REG_CON		0x08	/*Unsigned */
+#define ADV748X_AFE_CON_MIN		0
+#define ADV748X_AFE_CON_DEF		128
+#define ADV748X_AFE_CON_MAX		255
+/* Brightness*/
+#define ADV748X_AFE_REG_BRI		0x0a	/*Signed */
+#define ADV748X_AFE_BRI_MIN		-128
+#define ADV748X_AFE_BRI_DEF		0
+#define ADV748X_AFE_BRI_MAX		127
+/* Hue */
+#define ADV748X_AFE_REG_HUE		0x0b	/*Signed, inverted */
+#define ADV748X_AFE_HUE_MIN		-127
+#define ADV748X_AFE_HUE_DEF		0
+#define ADV748X_AFE_HUE_MAX		128
+
+/* Saturation */
+#define ADV748X_AFE_REG_SD_SAT_CB	0xe3
+#define ADV748X_AFE_REG_SD_SAT_CR	0xe4
+#define ADV748X_AFE_SAT_MIN		0
+#define ADV748X_AFE_SAT_DEF		128
+#define ADV748X_AFE_SAT_MAX		255
+
+static int __adv748x_afe_s_ctrl(struct v4l2_ctrl *ctrl,
+				struct adv748x_state *state)
+{
+	int ret;
+
+	ret = sdp_write(state, 0x0e, 0x00);
+	if (ret < 0)
+		return ret;
+
+	switch (ctrl->id) {
+	case V4L2_CID_BRIGHTNESS:
+		if (ctrl->val < ADV748X_AFE_BRI_MIN ||
+		    ctrl->val > ADV748X_AFE_BRI_MAX)
+			return -ERANGE;
+
+		ret = sdp_write(state, ADV748X_AFE_REG_BRI, ctrl->val);
+		break;
+	case V4L2_CID_HUE:
+		if (ctrl->val < ADV748X_AFE_HUE_MIN ||
+		    ctrl->val > ADV748X_AFE_HUE_MAX)
+			return -ERANGE;
+
+		/* Hue is inverted according to HSL chart */
+		ret = sdp_write(state, ADV748X_AFE_REG_HUE, -ctrl->val);
+		break;
+	case V4L2_CID_CONTRAST:
+		if (ctrl->val < ADV748X_AFE_CON_MIN ||
+		    ctrl->val > ADV748X_AFE_CON_MAX)
+			return -ERANGE;
+
+		ret = sdp_write(state, ADV748X_AFE_REG_CON, ctrl->val);
+		break;
+	case V4L2_CID_SATURATION:
+		if (ctrl->val < ADV748X_AFE_SAT_MIN ||
+		    ctrl->val > ADV748X_AFE_SAT_MAX)
+			return -ERANGE;
+		/*
+		 * This could be V4L2_CID_BLUE_BALANCE/V4L2_CID_RED_BALANCE
+		 * Let's not confuse the user, everybody understands saturation
+		 */
+		ret = sdp_write(state, ADV748X_AFE_REG_SD_SAT_CB, ctrl->val);
+		if (ret)
+			break;
+		ret = sdp_write(state, ADV748X_AFE_REG_SD_SAT_CR, ctrl->val);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int adv748x_afe_s_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct adv748x_state *state =
+		container_of(ctrl->handler, struct adv748x_state, afe.ctrl_hdl);
+	int ret;
+
+	ret = mutex_lock_interruptible(&state->mutex);
+	if (ret)
+		return ret;
+
+	ret = __adv748x_afe_s_ctrl(ctrl, state);
+
+	mutex_unlock(&state->mutex);
+
+	return ret;
+}
+
+static int adv748x_afe_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct adv748x_state *state =
+		container_of(ctrl->handler, struct adv748x_state, afe.ctrl_hdl);
+	unsigned int width, height, fps;
+	v4l2_std_id std;
+
+	switch (ctrl->id) {
+	case V4L2_CID_PIXEL_RATE:
+		width = 720;
+		if (state->afe.curr_norm == V4L2_STD_ALL)
+			adv748x_afe_status(state, NULL,  &std);
+		else
+			std = state->afe.curr_norm;
+
+		height = std & V4L2_STD_525_60 ? 480 : 576;
+		fps = std & V4L2_STD_525_60 ? 30 : 25;
+
+		*ctrl->p_new.p_s64 = width * height * fps;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static const struct v4l2_ctrl_ops adv748x_afe_ctrl_ops = {
+	.s_ctrl = adv748x_afe_s_ctrl,
+	.g_volatile_ctrl = adv748x_afe_g_volatile_ctrl,
+};
+
+static int adv748x_afe_init_controls(struct adv748x_state *state)
+{
+	struct v4l2_ctrl *ctrl;
+
+	v4l2_ctrl_handler_init(&state->afe.ctrl_hdl, 5);
+
+	v4l2_ctrl_new_std(&state->afe.ctrl_hdl, &adv748x_afe_ctrl_ops,
+			  V4L2_CID_BRIGHTNESS, ADV748X_AFE_BRI_MIN,
+			  ADV748X_AFE_BRI_MAX, 1, ADV748X_AFE_BRI_DEF);
+	v4l2_ctrl_new_std(&state->afe.ctrl_hdl, &adv748x_afe_ctrl_ops,
+			  V4L2_CID_CONTRAST, ADV748X_AFE_CON_MIN,
+			  ADV748X_AFE_CON_MAX, 1, ADV748X_AFE_CON_DEF);
+	v4l2_ctrl_new_std(&state->afe.ctrl_hdl, &adv748x_afe_ctrl_ops,
+			  V4L2_CID_SATURATION, ADV748X_AFE_SAT_MIN,
+			  ADV748X_AFE_SAT_MAX, 1, ADV748X_AFE_SAT_DEF);
+	v4l2_ctrl_new_std(&state->afe.ctrl_hdl, &adv748x_afe_ctrl_ops,
+			  V4L2_CID_HUE, ADV748X_AFE_HUE_MIN,
+			  ADV748X_AFE_HUE_MAX, 1, ADV748X_AFE_HUE_DEF);
+	ctrl = v4l2_ctrl_new_std(&state->afe.ctrl_hdl, &adv748x_afe_ctrl_ops,
+				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
+	if (ctrl)
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
+
+	state->afe.sd.ctrl_handler = &state->afe.ctrl_hdl;
+	if (state->afe.ctrl_hdl.error) {
+		v4l2_ctrl_handler_free(&state->afe.ctrl_hdl);
+		return state->afe.ctrl_hdl.error;
+	}
+
+	return v4l2_ctrl_handler_setup(&state->afe.ctrl_hdl);
+}
+
+int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep)
+{
+	int ret;
+	unsigned int i;
+
+	state->afe.streaming = false;
+	state->afe.curr_norm = V4L2_STD_ALL;
+
+	adv748x_subdev_init(&state->afe.sd, state, &adv748x_afe_ops, "afe");
+
+	/* Ensure that matching is based upon the endpoint fwnodes */
+	state->afe.sd.fwnode = &ep->fwnode;
+
+	for (i = ADV748X_AFE_SINK_AIN0; i <= ADV748X_AFE_SINK_AIN7; i++)
+		state->afe.pads[i].flags = MEDIA_PAD_FL_SINK;
+
+	state->afe.pads[ADV748X_AFE_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+
+	ret = media_entity_pads_init(&state->afe.sd.entity, ADV748X_AFE_NR_PADS,
+			state->afe.pads);
+
+	ret = adv748x_afe_init_controls(state);
+	if (ret)
+		return ret;
+
+	ret = v4l2_async_register_subdev(&state->afe.sd);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+void adv748x_afe_remove(struct adv748x_state *state)
+{
+	v4l2_async_unregister_subdev(&state->afe.sd);
+	media_entity_cleanup(&state->afe.sd.entity);
+	v4l2_ctrl_handler_free(&state->afe.ctrl_hdl);
+}
