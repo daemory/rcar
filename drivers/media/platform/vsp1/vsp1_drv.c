@@ -42,6 +42,10 @@
 #include "vsp1_uds.h"
 #include "vsp1_video.h"
 
+
+int vsp1_debug = DEBUG_DISABLED;
+module_param(vsp1_debug, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
  */
