@@ -40,6 +40,10 @@
 #include "vsp1_uds.h"
 #include "vsp1_video.h"
 
+
+int vsp1_debug = DEBUG_INFO;
+module_param(vsp1_debug, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Debugfs management
  */
