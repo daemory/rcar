@@ -7,3 +7,5 @@ vsp1-y					+= vsp1_lif.o
 vsp1-$(CONFIG_DEBUG_FS)			+= vsp1_debugfs.o
 
 obj-$(CONFIG_VIDEO_RENESAS_VSP1)	+= vsp1.o
+
+UBSAN_SANITIZE := y
