@@ -208,6 +208,64 @@ vsp1_video_calculate_parititions(struct vsp1_pipeline *pipe, unsigned int div_si
 	return partitions;
 }
 
+/*
+ * vsp1_video_partition - Calculate the active partition output window
+ *
+ * @div_size: pre-determined maximum partition division size
+ * @p_idx: partition index
+ *
+ * Returns a v4l2_rect describing the partition window
+ */
+static struct v4l2_rect
+vsp1_video_partition(struct vsp1_pipeline *pipe, unsigned int div_size,
+					 unsigned int p_idx)
+{
+	const struct v4l2_rect *crop = vsp1_rwpf_get_crop(pipe->output,
+			pipe->output->entity.config);
+	struct v4l2_rect partition;
+	unsigned int modulus;
+
+	/* A single partition simply processes the output crop in full */
+	if (pipe->partitions <= 1)
+		return *crop;
+
+	/* Initialise the partition with some sane starting conditions */
+	partition.left = p_idx * div_size;
+	partition.top = crop->top;
+	partition.width = div_size;
+	partition.height = crop->height;
+
+	modulus = crop->width % div_size;
+
+	/* We need to prevent the last partition from being smaller
+	 * than the *minimum* width of the hardware capabilities.
+	 *
+	 * If the modulus is less than half of the partition size,
+	 * the penultimate partition is reduced to half, which is added
+	 * to the final partition:  |1234|1234|1234|12|341|
+	 * To prevents this:        |1234|1234|1234|1234|1|
+	 */
+	if (modulus) {
+		/* pipe->partitions is 1 based, whilst p_idx
+		 * is a 0 based index. Normalise this locally */
+		unsigned int partitions = pipe->partitions - 1;
+
+		if (modulus < ( div_size / 2) ) {
+			if (p_idx == (partitions - 1)) {
+				/* Halve the penultimate partition */
+				partition.width = div_size / 2;
+			} else if (p_idx == partitions) {
+				/* Increase the final partition */
+				partition.width = (div_size / 2) + modulus;
+				partition.left -= div_size / 2;
+			}
+		} else if (p_idx == partitions)
+			partition.width = modulus;
+	}
+
+	return partition;
+}
+
 /* -----------------------------------------------------------------------------
  * Pipeline Management
  */
@@ -288,6 +346,9 @@ static void vsp1_video_pipeline_run_partition(struct vsp1_pipeline *pipe)
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
 	struct vsp1_entity *entity;
 	unsigned int i;
+
+	pipe->partition = vsp1_video_partition(pipe, pipe->div_size,
+									pipe->current_partition);
 
 	list_for_each_entry(entity, &pipe->entities, list_pipe) {
 		if (entity->ops->configure)
