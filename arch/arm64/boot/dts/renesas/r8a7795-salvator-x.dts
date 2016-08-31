@@ -62,7 +62,7 @@
 		clock-frequency = <24576000>;
 	};
 
-	vcc_sdhi0: regulator-vcc-sdhi0 {
+	vcc_sdhi0: regulator@1 {
 		compatible = "regulator-fixed";
 
 		regulator-name = "SDHI0 Vcc";
@@ -73,7 +73,7 @@
 		enable-active-high;
 	};
 
-	vccq_sdhi0: regulator-vccq-sdhi0 {
+	vccq_sdhi0: regulator@2 {
 		compatible = "regulator-gpio";
 
 		regulator-name = "SDHI0 VccQ";
@@ -86,7 +86,7 @@
 			  1800000 0>;
 	};
 
-	vcc_sdhi3: regulator-vcc-sdhi3 {
+	vcc_sdhi3: regulator@3 {
 		compatible = "regulator-fixed";
 
 		regulator-name = "SDHI3 Vcc";
@@ -97,7 +97,7 @@
 		enable-active-high;
 	};
 
-	vccq_sdhi3: regulator-vccq-sdhi3 {
+	vccq_sdhi3: regulator@4 {
 		compatible = "regulator-gpio";
 
 		regulator-name = "SDHI3 VccQ";
@@ -133,6 +133,50 @@
 
 		sndcodec: simple-audio-card,codec {
 			sound-dai = <&ak4613>;
+		};
+	};
+
+	vga-encoder {
+		compatible = "adi,adv7123";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				adv7123_in: endpoint {
+					remote-endpoint = <&du_out_rgb>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				adv7123_out: endpoint {
+					remote-endpoint = <&vga_in>;
+				};
+			};
+		};
+	};
+
+	vga {
+		compatible = "vga-connector";
+
+		port {
+			vga_in: endpoint {
+				remote-endpoint = <&adv7123_out>;
+			};
+		};
+	};
+};
+
+&du {
+	status = "okay";
+
+	ports {
+		port@0 {
+			endpoint {
+				remote-endpoint = <&adv7123_in>;
+			};
 		};
 	};
 };
@@ -208,7 +252,6 @@
 	pinctrl-0 = <&scif1_pins>;
 	pinctrl-names = "default";
 
-	uart-has-rtscts;
 	status = "okay";
 };
 
@@ -328,11 +371,6 @@
 
 &ssi1 {
 	shared-pin;
-};
-
-&wdt0 {
-	timeout-sec = <60>;
-	status = "okay";
 };
 
 &audio_clk_a {
