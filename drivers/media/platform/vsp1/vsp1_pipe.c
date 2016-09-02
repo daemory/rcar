@@ -211,16 +211,28 @@ void vsp1_pipeline_init(struct vsp1_pipeline *pipe)
 	pipe->configured = false;
 }
 
+static char * pipeline_state[] = {
+		"VSP1_PIPELINE_STOPPED",
+		"VSP1_PIPELINE_RUNNING",
+		"VSP1_PIPELINE_STOPPING",
+		"ERROR",
+		"BIGGER ERROR",
+};
+
 /* Must be called with the pipe irqlock held. */
 void vsp1_pipeline_run(struct vsp1_pipeline *pipe)
 {
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
 
+	dprintk(DEBUG_INFO, "State = %d:%s\n", pipe->state, pipeline_state[pipe->state]);
 	if (pipe->state == VSP1_PIPELINE_STOPPED) {
 		vsp1_write(vsp1, VI6_CMD(pipe->output->entity.index),
 			   VI6_CMD_STRCMD);
 		pipe->state = VSP1_PIPELINE_RUNNING;
 	}
+
+	dprintk(DEBUG_INFO, "Setting buffers ready = 0 - State = %d:%s\n",
+			pipe->state, pipeline_state[pipe->state]);
 
 	pipe->buffers_ready = 0;
 }
@@ -242,6 +254,8 @@ int vsp1_pipeline_stop(struct vsp1_pipeline *pipe)
 	struct vsp1_entity *entity;
 	unsigned long flags;
 	int ret;
+
+	dprintk(DEBUG_INFO, "State = %d:%s\n", pipe->state, pipeline_state[pipe->state]);
 
 	if (pipe->lif) {
 		/* When using display lists in continuous frame mode the only
@@ -273,6 +287,8 @@ int vsp1_pipeline_stop(struct vsp1_pipeline *pipe)
 	}
 
 	v4l2_subdev_call(&pipe->output->entity.subdev, video, s_stream, 0);
+
+	dprintk(DEBUG_INFO, "State = %d:%s (ret=%d)\n", pipe->state, pipeline_state[pipe->state], ret);
 
 	return ret;
 }
