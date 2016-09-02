@@ -382,6 +382,7 @@ void vsp1_pipelines_suspend(struct vsp1_device *vsp1)
 void vsp1_pipelines_resume(struct vsp1_device *vsp1)
 {
 	unsigned int i;
+	unsigned long flags;
 
 	/* Resume all running pipelines. */
 	for (i = 0; i < vsp1->info->wpf_count; ++i) {
@@ -395,7 +396,10 @@ void vsp1_pipelines_resume(struct vsp1_device *vsp1)
 		if (pipe == NULL)
 			continue;
 
-		if (vsp1_pipeline_ready(pipe))
+		if (vsp1_pipeline_ready(pipe)) {
+			spin_lock_irqsave(&pipe->irqlock, flags);
 			vsp1_pipeline_run(pipe);
+			spin_unlock_irqrestore(&pipe->irqlock, flags);
+		}
 	}
 }
