@@ -28,6 +28,7 @@
 #include "vsp1.h"
 #include "vsp1_bru.h"
 #include "vsp1_clu.h"
+#include "vsp1_debugfs.h"
 #include "vsp1_dl.h"
 #include "vsp1_drm.h"
 #include "vsp1_hgo.h"
@@ -215,6 +216,8 @@ static void vsp1_destroy_entities(struct vsp1_device *vsp1)
 {
 	struct vsp1_entity *entity, *_entity;
 	struct vsp1_video *video, *_video;
+
+	vsp1_debugfs_remove(vsp1);
 
 	list_for_each_entry_safe(entity, _entity, &vsp1->entities, list_dev) {
 		list_del(&entity->list_dev);
@@ -449,6 +452,9 @@ static int vsp1_create_entities(struct vsp1_device *vsp1)
 	} else {
 		ret = vsp1_drm_init(vsp1);
 	}
+
+	/* Register Debug File System */
+	vsp1_debugfs_init(vsp1);
 
 done:
 	if (ret < 0)
