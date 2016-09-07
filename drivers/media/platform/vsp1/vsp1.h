@@ -13,6 +13,7 @@
 #ifndef __VSP1_H__
 #define __VSP1_H__
 
+#include <linux/debugfs.h>
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
@@ -93,6 +94,8 @@ struct vsp1_device {
 	struct media_entity_operations media_ops;
 
 	struct vsp1_drm *drm;
+
+	struct dentry *dbgroot;
 };
 
 int vsp1_device_get(struct vsp1_device *vsp1);

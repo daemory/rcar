@@ -41,6 +41,91 @@
 #include "vsp1_video.h"
 
 /* -----------------------------------------------------------------------------
+ * Debugfs management
+ */
+
+static ssize_t debugfs_read(struct file *filp, char __user *ubuf,
+			    size_t count, loff_t *offp)
+{
+	struct vsp1_device *vsp1;
+	char *buf;
+	ssize_t ret, out_offset, out_count;
+	int i;
+	u32 status;
+
+	out_count = 1024;
+	buf = kmalloc(out_count, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	vsp1 = filp->private_data;
+
+	/* Make sure all reads are with 'powered' device */
+	vsp1_device_get(vsp1);
+	status = vsp1_read(vsp1, VI6_STATUS);
+
+	out_offset = 0;
+
+	out_offset += snprintf(buf + out_offset, out_count,
+		"name: %s\n", vsp1->info->model ? vsp1->info->model : "");
+
+	out_offset += snprintf(buf + out_offset, out_count,
+		"VI6_STATUS = 0x%08x WPF0 = %s : WPF1 = %s\n", status,
+		status & VI6_STATUS_SYS_ACT(0) ? "active" : "inactive",
+		status & VI6_STATUS_SYS_ACT(1) ? "active" : "inactive");
+
+	for (i = 0; i < vsp1->info->wpf_count; ++i) {
+		struct vsp1_rwpf *wpf = vsp1->wpf[i];
+
+		if (wpf == NULL)
+			continue;
+
+		status = vsp1_read(vsp1, VI6_WPF_IRQ_STA(i));
+
+		out_offset += snprintf(buf + out_offset, out_count,
+			"VI6_WPF_IRQ_STA(%d) = 0x%08x %s%s%s\n", i, status,
+			status & VI6_WFP_IRQ_STA_UND ? " UND" : "",
+			status & VI6_WFP_IRQ_STA_DFE ? " DFE" : "",
+			status & VI6_WFP_IRQ_STA_FRE ? " FRE" : "");
+	}
+
+	vsp1_device_put(vsp1);
+
+	ret = simple_read_from_buffer(ubuf, count, offp, buf, out_offset);
+	kfree(buf);
+	return ret;
+}
+
+static const struct file_operations vsp1_debugfs_ops = {
+	.owner = THIS_MODULE,
+	.open  = simple_open,
+	.read  = debugfs_read,
+};
+
+/* Debugfs initialised after entities are created */
+static int vsp1_debugfs_init(struct vsp1_device *vsp1)
+{
+	struct dentry * info_file;
+
+	vsp1->dbgroot = debugfs_create_dir(vsp1->v4l2_dev.name, NULL);
+	if (!vsp1->dbgroot)
+		return -ENOMEM;
+
+	/* dentry pointer discarded */
+	info_file = debugfs_create_file("info", 0444,
+						 vsp1->dbgroot,
+						 vsp1,
+						 &vsp1_debugfs_ops);
+
+	return 0;
+}
+
+static void vsp1_debugfs_remove(struct vsp1_device *vsp1)
+{
+	debugfs_remove_recursive(vsp1->dbgroot);
+}
+
+/* -----------------------------------------------------------------------------
  * Interrupt Handling
  */
 
@@ -203,6 +288,8 @@ static void vsp1_destroy_entities(struct vsp1_device *vsp1)
 {
 	struct vsp1_entity *entity, *_entity;
 	struct vsp1_video *video, *_video;
+
+	vsp1_debugfs_remove(vsp1);
 
 	list_for_each_entry_safe(entity, _entity, &vsp1->entities, list_dev) {
 		list_del(&entity->list_dev);
@@ -425,6 +512,9 @@ static int vsp1_create_entities(struct vsp1_device *vsp1)
 	} else {
 		ret = vsp1_drm_init(vsp1);
 	}
+
+	/* Register Debug File System */
+	vsp1_debugfs_init(vsp1);
 
 done:
 	if (ret < 0)
