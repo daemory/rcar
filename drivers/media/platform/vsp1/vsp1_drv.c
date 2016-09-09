@@ -45,7 +45,8 @@
 
 static irqreturn_t vsp1_irq_handler(int irq, void *data)
 {
-	u32 mask = VI6_WFP_IRQ_STA_DFE | VI6_WFP_IRQ_STA_FRE;
+	u32 mask = VI6_WFP_IRQ_STA_UND | VI6_WFP_IRQ_STA_DFE |
+			VI6_WFP_IRQ_STA_FRE;
 	struct vsp1_device *vsp1 = data;
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int i;
@@ -62,6 +63,11 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 
 		if (status & VI6_WFP_IRQ_STA_DFE) {
 			vsp1_pipeline_frame_end(wpf->pipe);
+			ret = IRQ_HANDLED;
+		}
+
+		if (status & VI6_WFP_IRQ_STA_UND) {
+			dev_err(vsp1->dev, "WPF[%d] Underflow error\n", i);
 			ret = IRQ_HANDLED;
 		}
 	}
