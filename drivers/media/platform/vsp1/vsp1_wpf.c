@@ -460,7 +460,7 @@ static void wpf_configure(struct vsp1_entity *entity,
 	/* Enable interrupts */
 	vsp1_dl_list_write(dl, VI6_WPF_IRQ_STA(wpf->entity.index), 0);
 	vsp1_dl_list_write(dl, VI6_WPF_IRQ_ENB(wpf->entity.index),
-			   VI6_WFP_IRQ_ENB_DFEE);
+			   VI6_WFP_IRQ_ENB_DFEE | VI6_WFP_IRQ_ENB_UNDE);
 }
 
 static unsigned int wpf_max_width(struct vsp1_entity *entity,
