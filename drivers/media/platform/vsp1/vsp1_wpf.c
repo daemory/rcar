@@ -243,12 +243,16 @@ static void wpf_configure(struct vsp1_entity *entity,
 	if (pipe->partitions > 1) {
 		/* Left position is adjusted using the offsets to adjust DSTM_ADDR */
 		partition.width = pipe->partition.width;
-		partition.left = 0;
 
 		/* Configure can be (/is) called before fmtinfo is set,
 		 * Dereferencing after pipe->partitions is set lets us be sure
 		 * that the fmt has been configured. */
 		wpf->offsets[0] = pipe->partition.left * fmtinfo->bpp[0] / 8;
+
+		/* THIS JOINS UP THE SLICES, AND EVEN IN THE CORRECT PLACE (for the first half)
+		 * BUT WHY ... WHY ARE WE A FACTOR 2 OUT???
+		 */
+		wpf->offsets[0] /= 2;
 
 		if (format->num_planes > 1)
 			wpf->offsets[1] = pipe->partition.left * fmtinfo->bpp[1] / 8;
