@@ -206,6 +206,51 @@ void vsp1_dl_fragment_free(struct vsp1_dl_body *dlb)
 	kfree(dlb);
 }
 
+/* DebugFS Regsets */
+#define VSP1_DBFS_REG(reg) { #reg, reg }
+
+static struct debugfs_reg32 vsp1_regset[] = {
+		VSP1_DBFS_REG(VI6_RPF_SRC_BSIZE),
+		VSP1_DBFS_REG(VI6_RPF_SRC_ESIZE),
+
+		VSP1_DBFS_REG(VI6_RPF_SRCM_PSTRIDE),
+		VSP1_DBFS_REG(VI6_RPF_VRTCOL_SET),
+		VSP1_DBFS_REG(VI6_RPF_MULT_ALPHA),
+
+		VSP1_DBFS_REG(VI6_RPF_SRCM_ADDR_Y),
+		VSP1_DBFS_REG(VI6_RPF_SRCM_ADDR_C0),
+		VSP1_DBFS_REG(VI6_RPF_SRCM_ADDR_C1),
+		VSP1_DBFS_REG(VI6_RPF_SRCM_ADDR_AI),
+
+		VSP1_DBFS_REG(VI6_WPF_HSZCLIP),
+		VSP1_DBFS_REG(VI6_WPF_VSZCLIP),
+
+		VSP1_DBFS_REG(VI6_WPF_ROT_CTRL),
+		VSP1_DBFS_REG(VI6_WPF_DSTM_ADDR_Y),
+		VSP1_DBFS_REG(VI6_WPF_DSTM_ADDR_C0),
+		VSP1_DBFS_REG(VI6_WPF_DSTM_ADDR_C1),
+		VSP1_DBFS_REG(VI6_WPF_OUTFMT),
+
+		VSP1_DBFS_REG(VI6_UDS_HPHASE),
+		VSP1_DBFS_REG(VI6_UDS_HSZCLIP),
+		VSP1_DBFS_REG(VI6_UDS_CTRL),
+		VSP1_DBFS_REG(VI6_UDS_SCALE),
+		VSP1_DBFS_REG(VI6_UDS_ALPVAL),
+
+		VSP1_DBFS_REG(VI6_SRU_CTRL0),
+};
+
+static char *vsp1_reg_to_name(u32 offset)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(vsp1_regset); i++)
+		if (vsp1_regset[i].offset == offset)
+			return vsp1_regset[i].name;
+
+	return "<     >";
+}
+
 /**
  * vsp1_dl_fragment_write - Write a register to a display list fragment
  * @dlb: The fragment
@@ -220,6 +265,10 @@ void vsp1_dl_fragment_write(struct vsp1_dl_body *dlb, u32 reg, u32 data)
 {
 	dlb->entries[dlb->num_entries].addr = reg;
 	dlb->entries[dlb->num_entries].data = data;
+
+	dprintk(DEBUG_DL_LIST, "dlb:%5d: [0x%08x]:[0x%08x][%7s]\n",
+			dlb->num_entries, reg, data, vsp1_reg_to_name(reg));
+
 	dlb->num_entries++;
 }
 

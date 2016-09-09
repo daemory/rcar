@@ -371,6 +371,8 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
 	struct vsp1_dl_list *dl_head;
 
+	unsigned int debug = vsp1_debug;
+
 	if (!pipe->dl)
 		pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
 
@@ -379,6 +381,9 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	vsp1_video_pipeline_run_partition(pipe);
 
 	dl_head = pipe->dl;
+
+	/* Debug extra partitions */
+	vsp1_debug = DEBUG_DL_LIST;
 
 	/* Process consecutive partitions as necessary */
 	for (pipe->current_partition = 1;
@@ -408,6 +413,9 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	/* Complete, and commit the head display list */
 	pipe->dl = NULL;
 	vsp1_dl_list_commit(dl_head);
+
+	/* Restore debug level */
+	vsp1_debug = debug;
 
 	vsp1_pipeline_run(pipe);
 }
