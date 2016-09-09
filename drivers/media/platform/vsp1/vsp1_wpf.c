@@ -229,28 +229,29 @@ static void wpf_configure(struct vsp1_entity *entity,
 	const struct v4l2_pix_format_mplane *format = &wpf->format;
 	const struct v4l2_mbus_framefmt *source_format;
 	const struct v4l2_mbus_framefmt *sink_format;
-	const struct v4l2_rect *crop;
 	struct v4l2_rect partition;
+	struct v4l2_rect *crop;
 	unsigned int i;
 	u32 outfmt = 0;
 	u32 srcrpf = 0;
 
 	/* Cropping */
 	crop = vsp1_rwpf_get_crop(wpf, wpf->entity.config);
-	partition = *crop;
+	partition = *vsp1_rwpf_get_crop(wpf, wpf->entity.config);
 
 	/* The partition algorithm can split this into multiple slices */
 	if (pipe->partitions > 1) {
-		partition.width = min(partition.width, pipe->div_size);
-		partition.left += pipe->current_partition * pipe->div_size;
+		/* Left position is adjusted using the offsets to adjust DSTM_ADDR */
+		partition.width = pipe->partition.width;
+		partition.left = 0;
 
 		/* Configure can be (/is) called before fmtinfo is set,
 		 * Dereferencing after pipe->partitions is set lets us be sure
 		 * that the fmt has been configured. */
-		wpf->offsets[0] = partition.left * fmtinfo->bpp[0] / 8;
+		wpf->offsets[0] = pipe->partition.left * fmtinfo->bpp[0] / 8;
 
 		if (format->num_planes > 1)
-			wpf->offsets[1] = partition.left * fmtinfo->bpp[1] / 8;
+			wpf->offsets[1] = pipe->partition.left * fmtinfo->bpp[1] / 8;
 		else
 			wpf->offsets[1] = 0;
 	} else
@@ -262,6 +263,14 @@ static void wpf_configure(struct vsp1_entity *entity,
 	vsp1_wpf_write(wpf, dl, VI6_WPF_VSZCLIP, VI6_WPF_SZCLIP_EN |
 		       (partition.top << VI6_WPF_SZCLIP_OFST_SHIFT) |
 		       (partition.height << VI6_WPF_SZCLIP_SIZE_SHIFT));
+
+
+	dprintk(DEBUG_ERROR, "P[%d/%d] Crop[%dx%d@%d,%d] Partition[%dx%d@%d,%d]\n",
+				pipe->current_partition, pipe->partitions,
+				crop->width, crop->height, crop->left, crop->top,
+				pipe->partition.width, pipe->partition.height,
+				pipe->partition.left, pipe->partition.top);
+
 
 	if (!full) {
 		const unsigned int mask = BIT(WPF_CTRL_VFLIP)
