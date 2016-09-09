@@ -37,6 +37,7 @@
 #define VI6_WFP_IRQ_ENB_FREE		(1 << 0)
 
 #define VI6_WPF_IRQ_STA(n)		(0x004c + (n) * 12)
+#define VI6_WFP_IRQ_STA_UND		(1 << 16)
 #define VI6_WFP_IRQ_STA_DFE		(1 << 1)
 #define VI6_WFP_IRQ_STA_FRE		(1 << 0)
 
