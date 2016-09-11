@@ -58,7 +58,6 @@ MODULE_PARM_DESC(debug, "activate debug info");
 
 /* Number of Job's to have available on the processing queue */
 #define FDP1_NUMBER_JOBS 8
-#define FDP1_NUMBER_BUFFERS ((FDP1_NUMBER_JOBS*2)+1)
 
 #define dprintk(fdp1, fmt, arg...) \
 	v4l2_dbg(1, debug, &fdp1->v4l2_dev, "%s: " fmt, __func__, ## arg)
