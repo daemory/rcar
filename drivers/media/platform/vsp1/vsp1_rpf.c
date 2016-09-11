@@ -66,6 +66,8 @@ static void rpf_set_memory(struct vsp1_entity *entity, struct vsp1_dl_list *dl)
 		       rpf->mem.addr[1] + rpf->offsets[1]);
 	vsp1_rpf_write(rpf, dl, VI6_RPF_SRCM_ADDR_C1,
 		       rpf->mem.addr[2] + rpf->offsets[1]);
+
+	dprintk(DEBUG_ERROR, "Offset[0] %d offset[1] %d\n", rpf->offsets[0], rpf->offsets[1]);
 }
 
 static void rpf_configure(struct vsp1_entity *entity,
@@ -93,15 +95,61 @@ static void rpf_configure(struct vsp1_entity *entity,
 	crop = vsp1_rwpf_get_crop(rpf, rpf->entity.config);
 	partition = *crop;
 
-	/* The partition algorithm can split this into multiple slices */
+	/* Partition Algorithm Control
+	 *
+	 * The partition algorithm can split this frame into multiple slices
+	 * We must scale our partition window based on the pipe configuration
+	 * to match the destination partition window
+	 * To achieve this, we adjust our crop to provide a 'sub-crop' matching
+	 * the expected partition window. Only 'left' and 'width' need to be
+	 * adjusted.
+	 */
 	if (pipe->partitions > 1)
 	{
-		/* TODO: RPF needs to be reverse scaled for the partition size
-		 * based on the configuration of any scaling pipeline .. ????
+		unsigned int target_width;
+
+		/* First we need to scale our partition window based on the
+		 * configuration of the pipeline
 		 */
-		partition.width = min(partition.width, pipe->div_size);
-		partition.left += pipe->current_partition * pipe->div_size;
+		if (pipe->bru) {
+			const struct v4l2_rect *compose;
+
+			compose = vsp1_entity_get_pad_selection(pipe->bru,
+								pipe->bru->config,
+								rpf->bru_input,
+								V4L2_SEL_TGT_COMPOSE);
+
+			target_width = compose->width;
+			dprintk(DEBUG_ERROR, "BRU Target: Width = %d\n", target_width);
+		} else if (pipe->output) {
+			const struct v4l2_mbus_framefmt *output;
+			output = vsp1_entity_get_pad_format(&pipe->output->entity, pipe->output->entity.config,
+						RWPF_PAD_SOURCE);
+
+			target_width = output->width;
+			dprintk(DEBUG_ERROR, "WPF Entity: Width = %d\n", target_width);
+		} else {
+			target_width = crop->width;
+			dprintk(DEBUG_ERROR, "RPF Crop: Width = %d\n", target_width);
+		}
+
+		/* Finally, we map the adjusted sizes against our current crop
+		 * parameters
+		 */
+		/* This is at risk from overflows
+		 *  Change this to be a scale calculating function
+		 */
+		partition.width = pipe->partition.width * target_width / crop->width;
+		partition.left += pipe->partition.left * target_width / crop->width;
+
+		/* Can't be larger than the crop width */
+		partition.width = min(partition.width, crop->width);
 	}
+
+	dprintk(DEBUG_ERROR, "P[%d/%d] Crop[%dx%d@%d,%d] Partition[%dx%d@%d,%d]\n",
+			pipe->current_partition, pipe->partitions,
+			crop->width, crop->height, crop->left, crop->top,
+			partition.width, partition.height, partition.left, partition.top);
 
 	vsp1_rpf_write(rpf, dl, VI6_RPF_SRC_BSIZE,
 		       (partition.width << VI6_RPF_SRC_BSIZE_BHSIZE_SHIFT) |
