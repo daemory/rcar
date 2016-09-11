@@ -720,8 +720,7 @@ static struct fdp1_job *get_hw_queued_job(struct fdp1_dev *fdp1)
 /*
  * Buffer lists handling
  */
-static void fdp1_field_complete(struct fdp1_ctx *ctx,
-				struct fdp1_field_buffer *fbuf)
+static void fdp1_field_complete(struct fdp1_field_buffer *fbuf)
 {
 	/* job->previous may be on the first field */
 	if (!fbuf)
@@ -1330,9 +1329,9 @@ static void device_frame_end(struct fdp1_dev *fdp1,
 	 * reference is complete
 	 */
 	if (FDP1_DEINT_MODE_USES_PREV(ctx->deint_mode))
-		fdp1_field_complete(ctx, job->previous);
+		fdp1_field_complete(job->previous);
 	else
-		fdp1_field_complete(ctx, job->active);
+		fdp1_field_complete(job->active);
 
 	spin_lock_irqsave(&fdp1->irqlock, flags);
 	v4l2_m2m_buf_done(job->dst->vb, state);
@@ -2000,7 +1999,7 @@ static void fdp1_stop_streaming(struct vb2_queue *q)
 		/* Free any queued buffers */
 		fbuf = fdp1_dequeue_field(ctx);
 		while (fbuf != NULL) {
-			fdp1_field_complete(ctx, fbuf);
+			fdp1_field_complete(fbuf);
 			fbuf = fdp1_dequeue_field(ctx);
 		}
 
@@ -2021,9 +2020,9 @@ static void fdp1_stop_streaming(struct vb2_queue *q)
 		job = get_queued_job(ctx->fdp1);
 		while (job) {
 			if (FDP1_DEINT_MODE_USES_PREV(ctx->deint_mode))
-				fdp1_field_complete(ctx, job->previous);
+				fdp1_field_complete(job->previous);
 			else
-				fdp1_field_complete(ctx, job->active);
+				fdp1_field_complete(job->active);
 
 			v4l2_m2m_buf_done(job->dst->vb, VB2_BUF_STATE_ERROR);
 			job->dst = NULL;
@@ -2032,7 +2031,7 @@ static void fdp1_stop_streaming(struct vb2_queue *q)
 		}
 
 		/* Free any held buffer in the ctx */
-		fdp1_field_complete(ctx, ctx->previous);
+		fdp1_field_complete(ctx->previous);
 
 		WARN(!list_empty(&ctx->fdp1->queued_job_list),
 				"Queued Job List not empty");
