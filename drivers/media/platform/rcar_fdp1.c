@@ -545,7 +545,6 @@ static inline struct fdp1_buffer *to_fdp1_buffer(struct vb2_v4l2_buffer *vb)
 }
 
 struct fdp1_job {
-	/* These could be pointers to save 'memory' and copying */
 	struct fdp1_field_buffer	*previous;
 	struct fdp1_field_buffer	*active;
 	struct fdp1_field_buffer	*next;
