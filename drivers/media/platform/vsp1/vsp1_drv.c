@@ -44,6 +44,12 @@
 int vsp1_debug = DEBUG_INFO;
 module_param(vsp1_debug, int, 0644);
 
+int vsp1_partition = -1;
+module_param(vsp1_partition, int, 0644);
+
+int div_size_override = 0;
+module_param(div_size_override, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Debugfs management
  */

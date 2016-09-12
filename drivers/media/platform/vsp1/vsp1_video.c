@@ -171,7 +171,7 @@ static int __vsp1_video_try_format(struct vsp1_video *video,
 /* -----------------------------------------------------------------------------
  * VSP1 Partition Algorithm support
  */
-
+extern int div_size_override;
 static void vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 {
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
@@ -203,6 +203,9 @@ static void vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 				div_size = min(div_size, entity_max);
 		}
 	}
+
+	if (div_size_override)
+		div_size = div_size_override;
 
 	pipe->div_size = div_size;
 	pipe->partitions = DIV_ROUND_UP(format->width, div_size);
@@ -377,6 +380,8 @@ static void vsp1_video_pipeline_run_partition(struct vsp1_pipeline *pipe,
 	}
 }
 
+extern int vsp1_partition;
+
 static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 {
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
@@ -402,8 +407,14 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 
 	/* Run the first partition */
 	pipe->current_partition = 0;
+
+	if (vsp1_partition >= 0)
+		pipe->current_partition = vsp1_partition;
+
 	vsp1_video_pipeline_run_partition(pipe, pipe->dl);
 
+	/* If our override is disabled, process the rest of the partitions */
+	if (vsp1_partition < 0)
 	/* Process consecutive partitions as necessary */
 	for (pipe->current_partition = 1;
 	     pipe->current_partition < pipe->partitions;
