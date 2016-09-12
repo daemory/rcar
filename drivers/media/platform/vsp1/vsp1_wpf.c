@@ -290,6 +290,13 @@ static void wpf_configure(struct vsp1_entity *entity,
 		if (pipe->partitions > 1)
 			width = pipe->partition.width;
 
+		dprintk(DEBUG_ERROR,
+			"P[%d/%d] Crop[%dx%d@0,0] Partition[%dx%d@%d,%d]\n",
+			pipe->current_partition, pipe->partitions,
+			width, height,
+			pipe->partition.width, pipe->partition.height,
+			pipe->partition.left, pipe->partition.top);
+
 		vsp1_wpf_write(wpf, dl, VI6_WPF_HSZCLIP, VI6_WPF_SZCLIP_EN |
 			       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
 			       (width << VI6_WPF_SZCLIP_SIZE_SHIFT));
@@ -322,6 +329,8 @@ static void wpf_configure(struct vsp1_entity *entity,
 				- pipe->partition.width;
 		else
 			offset = pipe->partition.left;
+
+		dprintk(DEBUG_ERROR, "Offset %u\n", offset);
 
 		for (i = 0; i < format->num_planes; ++i) {
 			unsigned int hsub = i > 0 ? fmtinfo->hsub : 1;
