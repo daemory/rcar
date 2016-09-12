@@ -108,6 +108,12 @@ static void rpf_configure(struct vsp1_entity *entity,
 				   / output->width;
 			crop.left += pipe->partition.left * input_width
 				   / output->width;
+
+			dprintk(DEBUG_ERROR, "P[%d/%d] Input width %u WPF width %u Partition[%dx%d@%d,%d]\n",
+					pipe->current_partition, pipe->partitions,
+					input_width, output->width,
+					crop.width, crop.height, crop.left, crop.top);
+
 		}
 
 		vsp1_rpf_write(rpf, dl, VI6_RPF_SRC_BSIZE,
@@ -126,6 +132,9 @@ static void rpf_configure(struct vsp1_entity *entity,
 				   * fmtinfo->bpp[1] / 8;
 		else
 			offsets[1] = 0;
+
+		dprintk(DEBUG_ERROR, "Offset[0] %d offset[1] %d\n",
+			offsets[0], offsets[1]);
 
 		vsp1_rpf_write(rpf, dl, VI6_RPF_SRCM_ADDR_Y,
 			       rpf->mem.addr[0] + offsets[0]);
