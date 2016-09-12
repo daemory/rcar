@@ -246,6 +246,12 @@ static struct v4l2_rect vsp1_video_partition(struct vsp1_pipeline *pipe,
 		}
 	}
 
+	dprintk(DEBUG_INFO,
+		"P[%d/%d] Partition[%dx%d@%d,%d]\n",
+			index, pipe->partitions,
+			partition.width, partition.height,
+			partition.left, partition.top);
+
 	return partition;
 }
 
@@ -284,6 +290,9 @@ static void vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 	}
 
 	pipe->partitions = DIV_ROUND_UP(format->width, div_size);
+
+	dprintk(DEBUG_INFO, "Div-size %d, for %d partitions\n", div_size,
+			pipe->partitions);
 
 	for (i = 0; i < pipe->partitions; i++)
 		pipe->part_table[i] = vsp1_video_partition(pipe, div_size, i);
