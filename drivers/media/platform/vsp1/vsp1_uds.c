@@ -271,11 +271,6 @@ static void uds_configure(struct vsp1_entity *entity,
 	unsigned int vscale;
 	bool multitap;
 
-	input = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
-					   UDS_PAD_SINK);
-	output = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
-					    UDS_PAD_SOURCE);
-
 	if (params == VSP1_ENTITY_PARAMS_PARTITION) {
 		const struct v4l2_rect *clip = &pipe->partition;
 
@@ -286,6 +281,11 @@ static void uds_configure(struct vsp1_entity *entity,
 
 	if (params != VSP1_ENTITY_PARAMS_INIT)
 		return;
+
+	input = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
+					   UDS_PAD_SINK);
+	output = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
+					    UDS_PAD_SOURCE);
 
 	hscale = uds_compute_ratio(input->width, output->width);
 	vscale = uds_compute_ratio(input->height, output->height);
