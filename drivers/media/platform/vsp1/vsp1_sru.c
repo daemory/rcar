@@ -321,7 +321,7 @@ static unsigned int sru_max_width(struct vsp1_entity *entity,
 	if (input->width != output->width)
 		return 512;
 	else
-		return SRU_MAX_SIZE;
+		return 256;
 }
 
 static const struct vsp1_entity_operations sru_entity_ops = {
