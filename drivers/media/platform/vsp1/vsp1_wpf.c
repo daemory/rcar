@@ -248,6 +248,8 @@ static void wpf_configure(struct vsp1_entity *entity,
 	u32 outfmt = 0;
 	u32 srcrpf = 0;
 
+	bool writeback = pipe->lif && wpf->mem.addr[0];
+
 	if (params == VSP1_ENTITY_PARAMS_RUNTIME) {
 		const unsigned int mask = BIT(WPF_CTRL_VFLIP)
 					| BIT(WPF_CTRL_HFLIP);
@@ -298,7 +300,14 @@ static void wpf_configure(struct vsp1_entity *entity,
 			       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
 			       (height << VI6_WPF_SZCLIP_SIZE_SHIFT));
 
-		if (pipe->lif)
+		vsp1_dl_list_write(dl, VI6_WPF_WRBCK_CTRL, writeback ?
+						VI6_WPF_WRBCK_CTRL_WBMD : 0);
+
+		/*
+		 * Display pipelines with no writeback memory do not configure
+		 * the write out address
+		 */
+		if (pipe->lif && !writeback)
 			return;
 
 		/* Update the memory offsets based on flipping configuration.
@@ -379,7 +388,7 @@ static void wpf_configure(struct vsp1_entity *entity,
 	}
 
 	/* Format */
-	if (!pipe->lif) {
+	if (!pipe->lif || writeback) {
 		const struct v4l2_pix_format_mplane *format = &wpf->format;
 		const struct vsp1_format_info *fmtinfo = wpf->fmtinfo;
 
@@ -418,8 +427,6 @@ static void wpf_configure(struct vsp1_entity *entity,
 
 	vsp1_dl_list_write(dl, VI6_DPR_WPF_FPORCH(wpf->entity.index),
 			   VI6_DPR_WPF_FPORCH_FP_WPFN);
-
-	vsp1_dl_list_write(dl, VI6_WPF_WRBCK_CTRL, 0);
 
 	/* Sources. If the pipeline has a single input and BRU is not used,
 	 * configure it as the master layer. Otherwise configure all
@@ -470,6 +477,7 @@ struct vsp1_rwpf *vsp1_wpf_create(struct vsp1_device *vsp1, unsigned int index)
 {
 	struct vsp1_rwpf *wpf;
 	char name[6];
+	int sink_pads;
 	int ret;
 
 	wpf = devm_kzalloc(vsp1->dev, sizeof(*wpf), GFP_KERNEL);
@@ -488,8 +496,13 @@ struct vsp1_rwpf *vsp1_wpf_create(struct vsp1_device *vsp1, unsigned int index)
 	wpf->entity.type = VSP1_ENTITY_WPF;
 	wpf->entity.index = index;
 
+	/* WPF's with Write back support can output to the LIF and Memory */
+	wpf->has_writeback = (vsp1->info->features & VSP1_HAS_WPF_WRITEBACK)
+			   && index == 0;
+	sink_pads = wpf->has_writeback ? 2 : 1;
+
 	sprintf(name, "wpf.%u", index);
-	ret = vsp1_entity_init(vsp1, &wpf->entity, name, 1, 1, &wpf_ops,
+	ret = vsp1_entity_init(vsp1, &wpf->entity, name, 1, sink_pads, &wpf_ops,
 			       MEDIA_ENT_F_PROC_VIDEO_PIXEL_FORMATTER);
 	if (ret < 0)
 		return ERR_PTR(ret);

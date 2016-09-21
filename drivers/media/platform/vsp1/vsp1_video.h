@@ -45,9 +45,13 @@ struct vsp1_video {
 
 	unsigned int pipe_index;
 
+	void (*frame_end)(struct vsp1_pipeline *pipe);
+	bool is_writeback;
+
 	struct vb2_queue queue;
 	spinlock_t irqlock;
 	struct list_head irqqueue;
+	struct list_head wbqueue;
 };
 
 static inline struct vsp1_video *to_vsp1_video(struct video_device *vdev)

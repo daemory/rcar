@@ -25,6 +25,7 @@
 #include "vsp1_lif.h"
 #include "vsp1_pipe.h"
 #include "vsp1_rwpf.h"
+#include "vsp1_video.h"
 
 
 /* -----------------------------------------------------------------------------
@@ -48,6 +49,29 @@ static void vsp1_drm_pipe_frame_end(struct vsp1_pipeline *pipe)
 	 * final commit is handled at the appropriate time.
 	 */
 
+	/*
+	 * If we have a writeback node attached, we use this opportunity to
+	 * update the video buffers.
+	 */
+	if (pipe->output->video && pipe->output->video->frame_end) {
+		pipe->output->video->frame_end(pipe);
+
+		/*
+		 * When writeback mode is enabled, we must reconfigure the pipe
+		 * on every frame, regardless of whether DRM has performed a
+		 * flush operation. In such instance, we obtain a DL ourselves
+		 */
+
+		spin_lock_irqsave(&pipe->irqlock, flags);
+		if (!pipe->dl)
+			pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
+		spin_unlock_irqrestore(&pipe->irqlock, flags);
+	}
+
+	/*
+	 * In either event, if we have a flush, or a video writeback device, we
+	 * must reconfigure the pipeline partition information before commit
+	 */
 	if (pipe->dl) {
 		struct vsp1_entity *entity;
 
@@ -611,6 +635,17 @@ int vsp1_drm_create_links(struct vsp1_device *vsp1)
 				    RWPF_PAD_SOURCE,
 				    &vsp1->lif->entity.subdev.entity,
 				    LIF_PAD_SINK, flags);
+	if (ret < 0)
+		return ret;
+
+	if (!(vsp1->info->features & VSP1_HAS_WPF_WRITEBACK))
+		return 0;
+
+	/* Connect the video device to the WPF for Writeback support */
+	ret = media_create_pad_link(&vsp1->wpf[0]->entity.subdev.entity,
+				    RWPF_PAD_SOURCE_WB,
+				    &vsp1->wpf[0]->video->video.entity,
+				    0, flags);
 	if (ret < 0)
 		return ret;
 
