@@ -23,6 +23,7 @@
 #include "vsp1_pipe.h"
 #include "vsp1_rwpf.h"
 #include "vsp1_uif.h"
+#include "vsp1_video.h"
 
 #define BRX_NAME(e)	(e)->type == VSP1_ENTITY_BRU ? "BRU" : "BRS"
 
@@ -844,6 +845,13 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index,
 	struct vsp1_pipeline *pipe = &drm_pipe->pipe;
 
 	drm_pipe->crc = cfg->crc;
+
+	/*
+	 * If we have a writeback node attached, we use this opportunity to
+	 * update the video buffers.
+	 */
+	if (pipe->output->video && pipe->output->video->frame_end)
+		pipe->output->video->frame_end(pipe);
 
 	mutex_lock(&vsp1->drm->lock);
 	vsp1_du_pipeline_setup_inputs(vsp1, pipe);

@@ -244,14 +244,17 @@ static void wpf_configure_stream(struct vsp1_entity *entity,
 	u32 outfmt = 0;
 	u32 srcrpf = 0;
 
+	bool writeback = pipe->lif && wpf->mem.addr[0];
+
 	sink_format = vsp1_entity_get_pad_format(&wpf->entity,
 						 wpf->entity.config,
 						 RWPF_PAD_SINK);
 	source_format = vsp1_entity_get_pad_format(&wpf->entity,
 						   wpf->entity.config,
 						   RWPF_PAD_SOURCE);
+
 	/* Format */
-	if (!pipe->lif) {
+	if (!pipe->lif || writeback) {
 		const struct v4l2_pix_format_mplane *format = &wpf->format;
 		const struct vsp1_format_info *fmtinfo = wpf->fmtinfo;
 
@@ -290,8 +293,6 @@ static void wpf_configure_stream(struct vsp1_entity *entity,
 
 	vsp1_dl_body_write(dlb, VI6_DPR_WPF_FPORCH(wpf->entity.index),
 			   VI6_DPR_WPF_FPORCH_FP_WPFN);
-
-	vsp1_dl_body_write(dlb, VI6_WPF_WRBCK_CTRL, 0);
 
 	/*
 	 * Sources. If the pipeline has a single input and BRx is not used,
@@ -334,6 +335,8 @@ static void wpf_configure_frame(struct vsp1_entity *entity,
 	unsigned long flags;
 	u32 outfmt;
 
+	bool writeback = pipe->lif && wpf->mem.addr[0];
+
 	spin_lock_irqsave(&wpf->flip.lock, flags);
 	wpf->flip.active = (wpf->flip.active & ~mask)
 			 | (wpf->flip.pending & mask);
@@ -347,6 +350,8 @@ static void wpf_configure_frame(struct vsp1_entity *entity,
 		outfmt |= VI6_WPF_OUTFMT_HFLP;
 
 	vsp1_wpf_write(wpf, dlb, VI6_WPF_OUTFMT, outfmt);
+	vsp1_dl_body_write(dlb, VI6_WPF_WRBCK_CTRL,
+		       writeback ? VI6_WPF_WRBCK_CTRL_WBMD : 0);
 }
 
 static void wpf_configure_partition(struct vsp1_entity *entity,
@@ -365,6 +370,8 @@ static void wpf_configure_partition(struct vsp1_entity *entity,
 	unsigned int offset;
 	unsigned int flip;
 	unsigned int i;
+
+	bool writeback = pipe->lif && wpf->mem.addr[0];
 
 	sink_format = vsp1_entity_get_pad_format(&wpf->entity,
 						 wpf->entity.config,
@@ -386,7 +393,7 @@ static void wpf_configure_partition(struct vsp1_entity *entity,
 		       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
 		       (height << VI6_WPF_SZCLIP_SIZE_SHIFT));
 
-	if (pipe->lif)
+	if (pipe->lif && !writeback)
 		return;
 
 	/*
@@ -530,6 +537,10 @@ struct vsp1_rwpf *vsp1_wpf_create(struct vsp1_device *vsp1, unsigned int index)
 	wpf->entity.ops = &wpf_entity_ops;
 	wpf->entity.type = VSP1_ENTITY_WPF;
 	wpf->entity.index = index;
+
+	/* WPFs with writeback support can output to the LIF and memory */
+	wpf->has_writeback = vsp1_feature(vsp1, VSP1_HAS_WPF_WRITEBACK)
+			   && index == 0;
 
 	sprintf(name, "wpf.%u", index);
 	ret = vsp1_entity_init(vsp1, &wpf->entity, name, 2, &wpf_ops,
