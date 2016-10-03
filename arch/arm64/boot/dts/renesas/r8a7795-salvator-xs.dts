@@ -107,3 +107,10 @@
 
 	status = "okay";
 };
+
+#define lvds_connector du_out_lvds0
+#include "../../../../arm/boot/dts/r8a77xx-aa104xd12-panel.dtsi"
+
+&{/panel/} {
+	backlight = <&backlight>;
+};
