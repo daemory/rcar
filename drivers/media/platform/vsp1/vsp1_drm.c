@@ -36,6 +36,42 @@ void vsp1_drm_display_start(struct vsp1_device *vsp1)
 	vsp1_dlm_irq_display_start(vsp1->drm->pipe.output->dlm);
 }
 
+static void vsp1_drm_pipe_frame_end(struct vsp1_pipeline *pipe)
+{
+	unsigned long flags;
+
+	/*
+	 * Write-back support for the VSP DU pipeline requires the WPF must be
+	 * reconfigured on each frame where a new buffer has been provided.
+	 * This necessitates synchronising the DL commits between the frame-end
+	 * interrupt handler, and the atomic_flush() calls, by ensuring that the
+	 * final commit is handled at the appropriate time.
+	 */
+
+	if (pipe->dl) {
+		struct vsp1_entity *entity;
+
+		list_for_each_entry(entity, &pipe->entities, list_pipe) {
+			/* Do not configure disconnected RPF entities */
+			if (entity->type == VSP1_ENTITY_RPF) {
+				struct vsp1_rwpf *rpf = to_rwpf(&entity->subdev);
+
+				if (!pipe->inputs[rpf->entity.index])
+					continue;
+			}
+
+			if (entity->ops->configure)
+				entity->ops->configure(entity, pipe, pipe->dl,
+				       VSP1_ENTITY_PARAMS_PARTITION);
+		}
+
+		spin_lock_irqsave(&pipe->irqlock, flags);
+		vsp1_dl_list_commit(pipe->dl);
+		pipe->dl = NULL;
+		spin_unlock_irqrestore(&pipe->irqlock, flags);
+	}
+}
+
 /* -----------------------------------------------------------------------------
  * DU Driver API
  */
@@ -497,15 +533,28 @@ void vsp1_du_atomic_flush(struct device *dev)
 					       VSP1_ENTITY_PARAMS_INIT);
 			entity->ops->configure(entity, pipe, dl,
 					       VSP1_ENTITY_PARAMS_RUNTIME);
-			entity->ops->configure(entity, pipe, dl,
-					       VSP1_ENTITY_PARAMS_PARTITION);
+			/*
+			 * VSP1_ENTITY_PARAMS_PARTITION parameters are handled
+			 * at the frame end completion handler
+			 */
 		}
 	}
 
-	vsp1_dl_list_commit(dl);
+	spin_lock_irqsave(&pipe->irqlock, flags);
+	if (!pipe->dl)
+		pipe->dl = dl;
+	else
+		/* I really dislike this, and I'm looking for alternatives
+		 * Suggestions welcome, perhaps moving to using multiple bodies
+		 * and use the display lists in header mode */
+		vsp1_dl_list_put(dl);
+	spin_unlock_irqrestore(&pipe->irqlock, flags);
 
 	/* Start or stop the pipeline if needed. */
 	if (!vsp1->drm->num_inputs && pipe->num_inputs) {
+		/* The first frame needs to be started manually */
+		vsp1_drm_pipe_frame_end(pipe);
+
 		vsp1_write(vsp1, VI6_DISP_IRQ_STA, 0);
 		vsp1_write(vsp1, VI6_DISP_IRQ_ENB, VI6_DISP_IRQ_ENB_DSTE);
 		spin_lock_irqsave(&pipe->irqlock, flags);
@@ -595,6 +644,8 @@ int vsp1_drm_init(struct vsp1_device *vsp1)
 	pipe->bru = &vsp1->bru->entity;
 	pipe->lif = &vsp1->lif->entity;
 	pipe->output = vsp1->wpf[0];
+	pipe->output->pipe = pipe;
+	pipe->frame_end = vsp1_drm_pipe_frame_end;
 
 	return 0;
 }
