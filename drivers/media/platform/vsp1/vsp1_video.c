@@ -329,6 +329,11 @@ vsp1_video_complete_buffer(struct vsp1_video *video)
 	for (i = 0; i < done->buf.vb2_buf.num_planes; ++i)
 		vb2_set_plane_payload(&done->buf.vb2_buf, i,
 				      vb2_plane_size(&done->buf.vb2_buf, i));
+
+	trace_printk("Completing buffer %d (0x%08llx)",
+			done->buf.vb2_buf.index,
+			done->mem.addr[0]);
+
 	vb2_buffer_done(&done->buf.vb2_buf, VB2_BUF_STATE_DONE);
 
 	return next;
@@ -343,6 +348,10 @@ static void vsp1_video_frame_end(struct vsp1_pipeline *pipe,
 	buf = vsp1_video_complete_buffer(video);
 	if (buf == NULL)
 		return;
+
+	trace_printk("Configuring video for buffer %d (0x%08llx)",
+			buf->buf.vb2_buf.index,
+			buf->mem.addr[0]);
 
 	video->rwpf->mem = buf->mem;
 	pipe->buffers_ready |= 1 << video->pipe_index;
@@ -874,12 +883,18 @@ static void vsp1_video_wb_process_buffer(struct vsp1_video *video)
 					queue);
 
 	if (buf) {
+		trace_printk("Configuring video for buffer %d (0x%08llx)",
+				buf->buf.vb2_buf.index,
+				buf->mem.addr[0]);
+
 		video->rwpf->mem = buf->mem;
 
 		/* Move this buffer to the IRQ queue */
 		list_del(&buf->queue);
 		list_add_tail(&buf->queue, &video->irqqueue);
 	} else {
+		trace_printk("Setting writeback disabled (no buffer)");
+
 		/* Disable writeback with no buffer */
 		video->rwpf->mem = (struct vsp1_rwpf_memory) { 0 };
 	}
@@ -912,6 +927,9 @@ static void vsp1_video_wb_buffer_queue(struct vb2_buffer *vb)
 
 	spin_lock_irqsave(&video->irqlock, flags);
 	list_add_tail(&buf->queue, &video->wbqueue);
+	trace_printk("Queueing buffer buffer %d (0x%08llx)",
+			buf->buf.vb2_buf.index,
+			buf->mem.addr[0]);
 	spin_unlock_irqrestore(&video->irqlock, flags);
 
 	return;

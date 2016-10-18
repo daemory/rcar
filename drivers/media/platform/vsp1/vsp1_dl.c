@@ -19,6 +19,7 @@
 
 #include "vsp1.h"
 #include "vsp1_dl.h"
+#include "vsp1_debugfs.h"
 
 #define VSP1_DL_NUM_ENTRIES		256
 
@@ -431,6 +432,17 @@ int vsp1_dl_list_add_chain(struct vsp1_dl_list *head,
 	return 0;
 }
 
+static void trace_list_entries(struct vsp1_dl_list *dl)
+{
+	int i;
+
+	for (i = 0; i < dl->body0.num_entries; i++) {
+		struct vsp1_dl_entry *e = &dl->body0.entries[i];
+		trace_printk("0x%08x -> %s\n", e->data,
+				vsp1_reg_to_name(e->addr));
+	}
+}
+
 static void vsp1_dl_list_fill_header(struct vsp1_dl_list *dl, bool is_last)
 {
 	struct vsp1_dl_header_list *hdr = dl->header->lists;
@@ -476,6 +488,8 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl)
 	struct vsp1_device *vsp1 = dlm->vsp1;
 	unsigned long flags;
 	bool update;
+
+	trace_list_entries(dl);
 
 	spin_lock_irqsave(&dlm->lock, flags);
 

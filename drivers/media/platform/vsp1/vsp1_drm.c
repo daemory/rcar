@@ -41,6 +41,8 @@ static void vsp1_drm_pipe_frame_end(struct vsp1_pipeline *pipe)
 {
 	unsigned long flags;
 
+	trace_printk("Handling Frame End");
+
 	/*
 	 * Write-back support for the VSP DU pipeline requires the WPF must be
 	 * reconfigured on each frame where a new buffer has been provided.

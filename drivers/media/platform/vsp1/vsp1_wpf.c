@@ -250,6 +250,8 @@ static void wpf_configure(struct vsp1_entity *entity,
 
 	bool writeback = pipe->lif && wpf->mem.addr[0];
 
+	trace_printk("Writeback %s", writeback ? "enabled" : "disabled");
+
 	if (params == VSP1_ENTITY_PARAMS_RUNTIME) {
 		const unsigned int mask = BIT(WPF_CTRL_VFLIP)
 					| BIT(WPF_CTRL_HFLIP);
