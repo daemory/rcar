@@ -302,7 +302,7 @@ static void wpf_configure(struct vsp1_entity *entity,
 			       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
 			       (height << VI6_WPF_SZCLIP_SIZE_SHIFT));
 
-		vsp1_dl_list_write(dl, VI6_WPF_WRBCK_CTRL, 0 /*writeback*/ ?
+		vsp1_dl_list_write(dl, VI6_WPF_WRBCK_CTRL, writeback ?
 						VI6_WPF_WRBCK_CTRL_WBMD : 0);
 
 		/*
