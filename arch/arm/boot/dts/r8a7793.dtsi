@@ -30,6 +30,8 @@
 		i2c7 = &i2c7;
 		i2c8 = &i2c8;
 		spi0 = &qspi;
+		vin0 = &vin0;
+		vin1 = &vin1;
 	};
 
 	cpus {
