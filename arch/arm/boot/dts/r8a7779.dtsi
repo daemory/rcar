@@ -595,4 +595,9 @@
 		reg = <0xffd85000 0x0200>;
 		#power-domain-cells = <1>;
 	};
+
+	rst: reset-controller@ffcc0000 {
+		compatible = "renesas,r8a7779-reset-wdt";
+		reg = <0xffcc0000 0x48>;
+	};
 };
