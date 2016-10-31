@@ -196,6 +196,22 @@
 			};
 		};
 	};
+
+	hdmi {
+		port {
+			hdmi_in: endpoint {
+				remote-endpoint = <&adv7482_hdmi>;
+			};
+		};
+	};
+
+	cvbs {
+		port {
+			cvbs_in: endpoint {
+				remote-endpoint = <&adv7482_ain8>;
+			};
+		};
+	};
 };
 
 &du {
@@ -384,6 +400,73 @@
 
 		assigned-clocks = <&cs2000>;
 		assigned-clock-rates = <24576000>; /* 1/1 divide */
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	clock-frequency = <100000>;
+
+	video-receiver@70 {
+		compatible = "adi,adv7482";
+		reg = <0x70>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		interrupt-parent = <&gpio6>;
+		interrupt-names = "intrq1", "intrq2";
+		interrupts = <30 IRQ_TYPE_LEVEL_LOW>,
+		             <31 IRQ_TYPE_LEVEL_LOW>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			adv7482_hdmi: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&hdmi_in>;
+			};
+		};
+
+		port@8 {
+			reg = <8>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			adv7482_ain8: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&cvbs_in>;
+			};
+		};
+
+		port@10 {
+			reg = <10>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			adv7482_txa: endpoint@1 {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csi40_in>;
+			};
+		};
+
+		port@11 {
+			reg = <11>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			adv7482_txb: endpoint@1 {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1>;
+				remote-endpoint = <&csi20_in>;
+			};
+		};
 	};
 };
 
@@ -576,4 +659,73 @@
 
 &pciec1 {
 	status = "okay";
+};
+
+&vin0 {
+	status = "okay";
+};
+
+&vin1 {
+	status = "okay";
+};
+
+&vin2 {
+	status = "okay";
+};
+
+&vin3 {
+	status = "okay";
+};
+
+&vin4 {
+	status = "okay";
+};
+
+&vin5 {
+	status = "okay";
+};
+
+&vin6 {
+	status = "okay";
+};
+
+&vin7 {
+	status = "okay";
+};
+
+&csi20 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			csi20_in: endpoint@0 {
+				clock-lanes = <0>;
+				data-lanes = <1>;
+				remote-endpoint = <&adv7482_txb>;
+			};
+		};
+	};
+};
+
+&csi40 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			csi40_in: endpoint@0 {
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&adv7482_txa>;
+			};
+		};
+	};
 };
