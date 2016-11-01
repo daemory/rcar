@@ -76,6 +76,7 @@ enum vsp1_pipeline_state {
  * @hgo: HGO entity, if present
  * @hgt: HGT entity, if present
  * @lif: LIF entity, if present
+ * @sru: SRU entity, if present
  * @uds: UDS entity, if present
  * @uds_input: entity at the input of the UDS, if the UDS is present
  * @entities: list of entities in the pipeline
@@ -106,6 +107,7 @@ struct vsp1_pipeline {
 	struct vsp1_entity *hgo;
 	struct vsp1_entity *hgt;
 	struct vsp1_entity *lif;
+	struct vsp1_entity *sru;
 	struct vsp1_entity *uds;
 	struct vsp1_entity *uds_input;
 
