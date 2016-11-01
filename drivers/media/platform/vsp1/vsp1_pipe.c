@@ -207,6 +207,7 @@ void vsp1_pipeline_reset(struct vsp1_pipeline *pipe)
 	pipe->hgo = NULL;
 	pipe->hgt = NULL;
 	pipe->lif = NULL;
+	pipe->sru = NULL;
 	pipe->uds = NULL;
 }
 
