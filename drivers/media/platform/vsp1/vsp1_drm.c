@@ -602,6 +602,9 @@ int vsp1_drm_init(struct vsp1_device *vsp1)
 	if (!vsp1->drm)
 		return -ENOMEM;
 
+	/* Disable DRM Pipelines for debug/testing */
+	return -ENOMEM;
+
 	pipe = &vsp1->drm->pipe;
 
 	vsp1_pipeline_init(pipe);
