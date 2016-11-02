@@ -34,6 +34,7 @@ bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm);
 struct vsp1_dl_list *vsp1_dl_list_get(struct vsp1_dl_manager *dlm);
 void vsp1_dl_list_put(struct vsp1_dl_list *dl);
 void vsp1_dl_list_write(struct vsp1_dl_list *dl, u32 reg, u32 data);
+void vsp1_dl_list_rewrite(struct vsp1_dl_list *dl, u32 reg, u32 data);
 void vsp1_dl_list_commit(struct vsp1_dl_list *dl);
 
 struct vsp1_dl_fragment_pool *
@@ -47,6 +48,7 @@ struct vsp1_dl_body *vsp1_dl_fragment_alloc(struct vsp1_device *vsp1,
 					    unsigned int num_entries);
 void vsp1_dl_fragment_free(struct vsp1_dl_body *dlb);
 void vsp1_dl_fragment_write(struct vsp1_dl_body *dlb, u32 reg, u32 data);
+void vsp1_dl_fragment_rewrite(struct vsp1_dl_body *dlb, u32 reg, u32 data);
 int vsp1_dl_list_add_fragment(struct vsp1_dl_list *dl,
 			      struct vsp1_dl_body *dlb);
 int vsp1_dl_list_add_chain(struct vsp1_dl_list *head, struct vsp1_dl_list *dl);
