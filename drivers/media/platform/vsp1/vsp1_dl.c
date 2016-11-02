@@ -269,6 +269,30 @@ void vsp1_dl_fragment_write(struct vsp1_dl_body *dlb, u32 reg, u32 data)
 	dlb->num_entries++;
 }
 
+/**
+ * vsp1_dl_fragment_rewrite - Rewrite a register in a display list fragment
+ * @dlb: The fragment
+ * @reg: The register address
+ * @data: The register value
+ *
+ * Identify a register already entered into a display list fragment. Rewrite the
+ * value that register specifies in the display list. If the register is not
+ * already in the list, add as normally expected by vsp1_dl_fragment_write()
+ */
+void vsp1_dl_fragment_rewrite(struct vsp1_dl_body *dlb, u32 reg, u32 data)
+{
+	int i;
+
+	for (i = 0; i < dlb->num_entries; i++)
+		if (dlb->entries[i].addr == reg)
+			break;
+
+	if (i < dlb->num_entries)
+		dlb->entries[i].data = data;
+	else
+		vsp1_dl_fragment_write(dlb, reg, data);
+}
+
 /* -----------------------------------------------------------------------------
  * Display List Transaction Management
  */
@@ -412,6 +436,20 @@ void vsp1_dl_list_put(struct vsp1_dl_list *dl)
 void vsp1_dl_list_write(struct vsp1_dl_list *dl, u32 reg, u32 data)
 {
 	vsp1_dl_fragment_write(dl->body0, reg, data);
+}
+
+/**
+ * vsp1_dl_list_rewrite - Update a register in the display list
+ * @dl: The display list
+ * @reg: The register address
+ * @data: The register value
+ *
+ * Update the given register and value to the display list. If the register does
+ * not already exist in the list it will be added
+ */
+void vsp1_dl_list_rewrite(struct vsp1_dl_list *dl, u32 reg, u32 data)
+{
+	vsp1_dl_fragment_rewrite(&dl->body0, reg, data);
 }
 
 /**
