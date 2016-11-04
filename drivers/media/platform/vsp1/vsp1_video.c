@@ -386,7 +386,7 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	unsigned int current_partition = 0;
 
 	if (!pipe->dl)
-		pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
+		pipe->dl = vsp1_dl_list_get_reusable(pipe->output->dlm);
 
 	/*
 	 * Start with the runtime parameters as the configure operation can
@@ -805,7 +805,7 @@ static int vsp1_video_setup_pipeline(struct vsp1_pipeline *pipe)
 	vsp1_video_pipeline_setup_partitions(pipe);
 
 	/* Prepare the display list. */
-	pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
+	pipe->dl = vsp1_dl_list_get_reusable(pipe->output->dlm);
 	if (!pipe->dl)
 		return -ENOMEM;
 
