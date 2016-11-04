@@ -472,7 +472,10 @@ void vsp1_dl_list_put(struct vsp1_dl_list *dl)
  */
 void vsp1_dl_list_write(struct vsp1_dl_list *dl, u32 reg, u32 data)
 {
-	vsp1_dl_fragment_write(&dl->body0, reg, data);
+	if (dl->reusable)
+		vsp1_dl_fragment_rewrite(&dl->body0, reg, data);
+	else
+		vsp1_dl_fragment_write(&dl->body0, reg, data);
 }
 
 /**
