@@ -291,7 +291,6 @@ static int vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 		}
 	}
 
-	pipe->div_size = div_size;
 	pipe->partitions = DIV_ROUND_UP(format->width, div_size);
 	pipe->part_table = kcalloc(pipe->partitions, sizeof(*pipe->part_table),
 				   GFP_KERNEL);
@@ -380,11 +379,12 @@ static void vsp1_video_frame_end(struct vsp1_pipeline *pipe,
 }
 
 static void vsp1_video_pipeline_run_partition(struct vsp1_pipeline *pipe,
-					      struct vsp1_dl_list *dl)
+					      struct vsp1_dl_list *dl,
+					      unsigned int partition)
 {
 	struct vsp1_entity *entity;
 
-	pipe->partition = pipe->part_table[pipe->current_partition];
+	pipe->partition = pipe->part_table[partition];
 
 	list_for_each_entry(entity, &pipe->entities, list_pipe) {
 		if (entity->ops->configure)
@@ -397,6 +397,7 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 {
 	struct vsp1_device *vsp1 = pipe->output->entity.vsp1;
 	struct vsp1_entity *entity;
+	unsigned int partition;
 
 	if (!pipe->dl)
 		pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
@@ -413,20 +414,12 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	}
 
 	/* Run the first partition */
-	pipe->current_partition = 0;
-	vsp1_video_pipeline_run_partition(pipe, pipe->dl);
+	vsp1_video_pipeline_run_partition(pipe, pipe->dl, 0);
 
 	/* Process consecutive partitions as necessary */
-	for (pipe->current_partition = 1;
-	     pipe->current_partition < pipe->partitions;
-	     pipe->current_partition++) {
+	for (partition = 1; partition < pipe->partitions; ++partition) {
 		struct vsp1_dl_list *dl;
 
-		/*
-		 * Partition configuration operations will utilise
-		 * the pipe->current_partition variable to determine
-		 * the work they should complete.
-		 */
 		dl = vsp1_dl_list_get(pipe->output->dlm);
 
 		/*
@@ -439,7 +432,7 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 			break;
 		}
 
-		vsp1_video_pipeline_run_partition(pipe, dl);
+		vsp1_video_pipeline_run_partition(pipe, dl, partition);
 		vsp1_dl_list_add_chain(pipe->dl, dl);
 	}
 
