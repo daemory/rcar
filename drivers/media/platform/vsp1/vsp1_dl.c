@@ -84,6 +84,9 @@ struct vsp1_dl_list {
 
 	bool has_chain;
 	struct list_head chain;
+
+	bool reusable;
+	struct list_head reusable_list;
 };
 
 enum vsp1_dl_mode {
@@ -98,6 +101,7 @@ enum vsp1_dl_mode {
  * @vsp1: the VSP1 device
  * @lock: protects the free, active, queued, pending and gc_fragments lists
  * @free: array of all free display lists
+ * @reusable_free: array of free display lists which can be reused
  * @active: list currently being processed (loaded) by hardware
  * @queued: list queued to the hardware (written to the DL registers)
  * @pending: list waiting to be queued to the hardware
@@ -111,6 +115,8 @@ struct vsp1_dl_manager {
 
 	spinlock_t lock;
 	struct list_head free;
+	struct list_head reusable_free;
+
 	struct vsp1_dl_list *active;
 	struct vsp1_dl_list *queued;
 	struct vsp1_dl_list *pending;
@@ -332,6 +338,46 @@ struct vsp1_dl_list *vsp1_dl_list_get(struct vsp1_dl_manager *dlm)
 	return dl;
 }
 
+/**
+ * vsp1_dl_list_get_reusable - Get a reusable display list
+ * @dlm: The display list manager
+ *
+ * Get a display list from the pool of reusable lists and return it.
+ *
+ * This function must be called without the display list manager lock held.
+ */
+struct vsp1_dl_list *vsp1_dl_list_get_reusable(struct vsp1_dl_manager *dlm)
+{
+	struct vsp1_dl_list *dl = NULL;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dlm->lock, flags);
+
+	if (!list_empty(&dlm->reusable_free)) {
+		dl = list_first_entry(&dlm->reusable_free, struct vsp1_dl_list,
+				reusable_list);
+		list_del(&dl->reusable_list);
+	}
+
+	spin_unlock_irqrestore(&dlm->lock, flags);
+
+	return dl;
+}
+
+/**
+ * vsp1_dl_list_get_reusable - Get a reusable display list
+ * @dl: The display list manager
+ * @flag: boolean value for the reusability of this DL.
+ *
+ * Mark a display lists reusable flag. This will effect the actions taken when
+ * the display list is 'put' back to the DLM
+ *
+ */
+void vsp1_dl_list_set_reusable(struct vsp1_dl_list *dl, bool flag)
+{
+	dl->reusable = flag;
+}
+
 /* This function must be called with the display list manager lock held.*/
 static void __vsp1_dl_list_put(struct vsp1_dl_list *dl)
 {
@@ -363,8 +409,32 @@ static void __vsp1_dl_list_put(struct vsp1_dl_list *dl)
 	}
 
 	dl->body0.num_entries = 0;
+	dl->reusable = false;
 
 	list_add_tail(&dl->list, &dl->dlm->free);
+}
+
+/* This function must be called with the display list manager lock held.*/
+static void __vsp1_dl_list_put_reusable(struct vsp1_dl_list *dl)
+{
+	if (!dl)
+		return;
+
+	/*
+	 * Fragments on a display list are not considered re-usable, as their
+	 * main use case is setting controls as one-off writes
+	 *
+	 * We can't free fragments here as DMA memory can only be freed in
+	 * interruptible context. Move all fragments to the display list
+	 * manager's list of fragments to be freed, they will be
+	 * garbage-collected by the work queue.
+	 */
+	if (!list_empty(&dl->fragments)) {
+		list_splice_init(&dl->fragments, &dl->dlm->gc_fragments);
+		schedule_work(&dl->dlm->gc_work);
+	}
+
+	list_add_tail(&dl->list, &dl->dlm->reusable_free);
 }
 
 /**
@@ -384,7 +454,10 @@ void vsp1_dl_list_put(struct vsp1_dl_list *dl)
 		return;
 
 	spin_lock_irqsave(&dl->dlm->lock, flags);
-	__vsp1_dl_list_put(dl);
+	if (dl->reusable)
+		__vsp1_dl_list_put_reusable(dl);
+	else
+		__vsp1_dl_list_put(dl);
 	spin_unlock_irqrestore(&dl->dlm->lock, flags);
 }
 
@@ -732,6 +805,7 @@ struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 
 	spin_lock_init(&dlm->lock);
 	INIT_LIST_HEAD(&dlm->free);
+	INIT_LIST_HEAD(&dlm->reusable_free);
 	INIT_LIST_HEAD(&dlm->gc_fragments);
 	INIT_WORK(&dlm->gc_work, vsp1_dlm_garbage_collect);
 
@@ -756,6 +830,11 @@ void vsp1_dlm_destroy(struct vsp1_dl_manager *dlm)
 		return;
 
 	cancel_work_sync(&dlm->gc_work);
+
+	/* Clean up the reusable pool before freeing */
+	list_for_each_entry_safe(dl, next, &dlm->reusable_free, reusable_list) {
+		__vsp1_dl_list_put(dl);
+	}
 
 	list_for_each_entry_safe(dl, next, &dlm->free, list) {
 		list_del(&dl->list);

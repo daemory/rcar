@@ -31,6 +31,8 @@ void vsp1_dlm_irq_display_start(struct vsp1_dl_manager *dlm);
 void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm);
 
 struct vsp1_dl_list *vsp1_dl_list_get(struct vsp1_dl_manager *dlm);
+struct vsp1_dl_list *vsp1_dl_list_get_reusable(struct vsp1_dl_manager *dlm);
+void vsp1_dl_list_set_reusable(struct vsp1_dl_list *dl, bool flag);
 void vsp1_dl_list_put(struct vsp1_dl_list *dl);
 void vsp1_dl_list_write(struct vsp1_dl_list *dl, u32 reg, u32 data);
 void vsp1_dl_list_rewrite(struct vsp1_dl_list *dl, u32 reg, u32 data);
