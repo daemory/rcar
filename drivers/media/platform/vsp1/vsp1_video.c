@@ -395,7 +395,7 @@ static void vsp1_video_pipeline_run(struct vsp1_pipeline *pipe)
 	unsigned int current_partition = 0;
 
 	if (!pipe->dl)
-		pipe->dl = vsp1_dl_list_get_reusable(pipe->output->dlm);
+		pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
 
 	/*
 	 * Start with the runtime parameters as the configure operation can
@@ -814,7 +814,7 @@ static int vsp1_video_setup_pipeline(struct vsp1_pipeline *pipe)
 	vsp1_video_pipeline_setup_partitions(pipe);
 
 	/* Prepare the display list. */
-	pipe->dl = vsp1_dl_list_get_reusable(pipe->output->dlm);
+	pipe->dl = vsp1_dl_list_get(pipe->output->dlm);
 	if (!pipe->dl)
 		return -ENOMEM;
 
@@ -843,6 +843,15 @@ static int vsp1_video_setup_pipeline(struct vsp1_pipeline *pipe)
 			entity->ops->configure(entity, pipe, pipe->dl,
 					       VSP1_ENTITY_PARAMS_INIT);
 	}
+
+	/*
+	 * We take ownership of this DL, and we promise not to modify it while
+	 * it is in use by the hardware.
+	 *
+	 * As we already assert that we will not commit lists while the hardware
+	 * is active in header mode - we already meet this obligation (for now)
+	 */
+	vsp1_dl_list_set_reusable(pipe->dl, true);
 
 	return 0;
 }
