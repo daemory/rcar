@@ -617,7 +617,7 @@ static int __maybe_unused vsp1_pm_runtime_suspend(struct device *dev)
 {
 	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
 
-	rcar_fcp_disable(vsp1->fcp);
+	//rcar_fcp_disable(vsp1->fcp);
 
 	return 0;
 }

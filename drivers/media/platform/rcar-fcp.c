@@ -121,6 +121,8 @@ EXPORT_SYMBOL_GPL(rcar_fcp_enable);
  */
 void rcar_fcp_disable(struct rcar_fcp_device *fcp)
 {
+	return;
+
 	if (fcp)
 		pm_runtime_put(fcp->dev);
 }
@@ -141,6 +143,9 @@ static int rcar_fcp_probe(struct platform_device *pdev)
 	fcp->dev = &pdev->dev;
 
 	pm_runtime_enable(&pdev->dev);
+
+	/* Force always on FCP's */
+	rcar_fcp_enable(fcp);
 
 	mutex_lock(&fcp_lock);
 	list_add_tail(&fcp->list, &fcp_devices);
