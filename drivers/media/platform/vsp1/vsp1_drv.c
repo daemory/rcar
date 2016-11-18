@@ -411,6 +411,33 @@ done:
 	return ret;
 }
 
+void vsp1_dynamic_clock_stop_enable(struct vsp1_device *vsp1)
+{
+	vsp1_write(vsp1, VI6_CLK_DCSWT, (8 << VI6_CLK_DCSWT_CSTPW_SHIFT) |
+		   (8 << VI6_CLK_DCSWT_CSTRW_SHIFT));
+
+	if (vsp1->info->gen < 3)
+		return;
+
+	vsp1_write(vsp1, VI6_CLK_CTRL0, 0x0);
+	vsp1_write(vsp1, VI6_CLK_CTRL1, 0x0);
+	vsp1_write(vsp1, VI6_CLK_DCSM0, 0x0);
+	vsp1_write(vsp1, VI6_CLK_DCSM1, 0x0);
+}
+
+void vsp1_dynamic_clock_stop_disable(struct vsp1_device *vsp1)
+{
+	vsp1_write(vsp1, VI6_CLK_DCSWT, 0x00130808);
+
+	if (vsp1->info->gen < 3)
+		return;
+
+	vsp1_write(vsp1, VI6_CLK_CTRL0, 0x10010F1F);
+	vsp1_write(vsp1, VI6_CLK_CTRL1, 0xFF00FFFF);
+	vsp1_write(vsp1, VI6_CLK_DCSM0, 0x1FFF0F1F);
+	vsp1_write(vsp1, VI6_CLK_DCSM1, 0xFF00FFFF);
+}
+
 int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 {
 	unsigned int timeout;
@@ -420,6 +447,8 @@ int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 	if (!(status & VI6_STATUS_SYS_ACT(index)))
 		return 0;
 
+	vsp1_dynamic_clock_stop_disable(vsp1);
+
 	vsp1_write(vsp1, VI6_SRESET, VI6_SRESET_SRTS(index));
 	for (timeout = 10; timeout > 0; --timeout) {
 		status = vsp1_read(vsp1, VI6_STATUS);
@@ -428,6 +457,8 @@ int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 
 		usleep_range(1000, 2000);
 	}
+
+	vsp1_dynamic_clock_stop_enable(vsp1);
 
 	if (!timeout) {
 		dev_err(vsp1->dev, "failed to reset wpf.%u\n", index);
@@ -452,8 +483,7 @@ static int vsp1_device_init(struct vsp1_device *vsp1)
 			vsp1->wpf[i]->pipe->configured = false;
 	}
 
-	vsp1_write(vsp1, VI6_CLK_DCSWT, (8 << VI6_CLK_DCSWT_CSTPW_SHIFT) |
-		   (8 << VI6_CLK_DCSWT_CSTRW_SHIFT));
+	vsp1_dynamic_clock_stop_enable(vsp1);
 
 	for (i = 0; i < vsp1->info->rpf_count; ++i)
 		vsp1_write(vsp1, VI6_DPR_RPF_ROUTE(i), VI6_DPR_NODE_UNUSED);
