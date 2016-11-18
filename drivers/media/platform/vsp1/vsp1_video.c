@@ -332,6 +332,13 @@ vsp1_video_complete_buffer(struct vsp1_video *video)
 	for (i = 0; i < done->buf.vb2_buf.num_planes; ++i)
 		vb2_set_plane_payload(&done->buf.vb2_buf, i,
 				      vb2_plane_size(&done->buf.vb2_buf, i));
+
+	trace_printk("PI: %d - Completing buffer %d (0x%08llx) - Sequence %d\n",
+			video->pipe_index,
+			done->buf.vb2_buf.index,
+			done->mem.addr[0],
+			done->buf.sequence);
+
 	vb2_buffer_done(&done->buf.vb2_buf, VB2_BUF_STATE_DONE);
 	video->statistics.buffer_done++;
 
@@ -347,6 +354,10 @@ static void vsp1_video_frame_end(struct vsp1_pipeline *pipe,
 	buf = vsp1_video_complete_buffer(video);
 	if (buf == NULL)
 		return;
+
+	trace_printk("Configuring video for buffer %d (0x%08llx)",
+			buf->buf.vb2_buf.index,
+			buf->mem.addr[0]);
 
 	video->rwpf->mem = buf->mem;
 	pipe->buffers_ready |= 1 << video->pipe_index;
