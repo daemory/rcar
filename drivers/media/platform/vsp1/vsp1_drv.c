@@ -67,6 +67,7 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 		vsp1_write(vsp1, VI6_WPF_IRQ_STA(i), ~status & mask);
 
 		if (status & VI6_WFP_IRQ_STA_DFE) {
+			trace_printk("Frame End Interrupt WPF[%d]\n", i);
 			vsp1_pipeline_frame_end(wpf->pipe);
 			ret = IRQ_HANDLED;
 		}
@@ -81,6 +82,7 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 	vsp1_write(vsp1, VI6_DISP_IRQ_STA, ~status & VI6_DISP_IRQ_STA_DST);
 
 	if (status & VI6_DISP_IRQ_STA_DST) {
+		trace_printk("Display Start Interrupt\n");
 		vsp1_drm_display_start(vsp1);
 		ret = IRQ_HANDLED;
 	}
