@@ -105,8 +105,10 @@ int rcar_fcp_enable(struct rcar_fcp_device *fcp)
 		return 0;
 
 	ret = pm_runtime_get_sync(fcp->dev);
-	if (ret < 0)
+	if (ret < 0) {
+		printk("FCP call to pm_runtime_get_sync returned %d\n", ret);
 		return ret;
+	}
 
 	return 0;
 }

@@ -346,6 +346,8 @@ void vsp1_pipelines_suspend(struct vsp1_device *vsp1)
 	unsigned int i;
 	int ret;
 
+	dprintk(DEBUG_ERROR, "Suspending %s\n", vsp1->info->model);
+
 	/* To avoid increasing the system suspend time needlessly, loop over the
 	 * pipelines twice, first to set them all to the stopping state, and
 	 * then to wait for the stop to complete.
@@ -380,9 +382,12 @@ void vsp1_pipelines_suspend(struct vsp1_device *vsp1)
 
 		ret = wait_event_timeout(pipe->wq, vsp1_pipeline_stopped(pipe),
 					 msecs_to_jiffies(500));
-		if (ret == 0)
+		if (ret == 0) {
 			dev_warn(vsp1->dev, "pipeline %u stop timeout\n",
 				 wpf->entity.index);
+
+			dprintk(DEBUG_ERROR, "Pipeline stop timed out\n");
+		}
 	}
 }
 

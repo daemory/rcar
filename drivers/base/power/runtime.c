@@ -609,13 +609,16 @@ static int rpm_resume(struct device *dev, int rpmflags)
 	else if (dev->power.disable_depth == 1 && dev->power.is_suspended
 	    && dev->power.runtime_status == RPM_ACTIVE)
 		retval = 1;
-	else if (dev->power.disable_depth > 0)
+	else if (dev->power.disable_depth > 0) {
 		retval = -EACCES;
+		printk("%s:%d: -EACCES: disable depth = %d\n",
+			__FUNCTION__, __LINE__, dev->power.disable_depth);
+	}
 	if (retval)
 		goto out;
 
 	/*
-	 * Other scheduled or pending requests need to be canceled.  Small
+	 * Other scheduled or pending requests need to be cancelled.  Small
 	 * optimization: If an autosuspend timer is running, leave it running
 	 * rather than cancelling it now only to restart it again in the near
 	 * future.

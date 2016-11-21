@@ -627,13 +627,25 @@ static int __maybe_unused vsp1_pm_runtime_resume(struct device *dev)
 	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
 	int ret;
 
+	dprintk(DEBUG_ERROR, "%s\n", vsp1->info ? vsp1->info->model : "VSPxxx");
+
 	if (vsp1->info) {
 		ret = vsp1_device_init(vsp1);
-		if (ret < 0)
+		if (ret < 0) {
+			dprintk(DEBUG_ERROR,
+				"vsp1_device_init call failed (%d)\n", ret);
 			return ret;
+		}
 	}
 
-	return rcar_fcp_enable(vsp1->fcp);
+	ret = rcar_fcp_enable(vsp1->fcp);
+
+	if (ret < 0) {
+		dprintk(DEBUG_ERROR,
+			"rcar_fcp_enable call failed (%d)\n", ret);
+	}
+
+	return ret;
 }
 
 static const struct dev_pm_ops vsp1_pm_ops = {
