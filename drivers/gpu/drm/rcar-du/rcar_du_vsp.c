@@ -66,11 +66,17 @@ void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 	 */
 	crtc->group->need_restart = true;
 
+	crtc->vsp->enable_count++;
+	printk("Enabling LIF - Enable Count = %d\n", crtc->vsp->enable_count);
+
 	vsp1_du_setup_lif(crtc->vsp->vsp, mode->hdisplay, mode->vdisplay);
 }
 
 void rcar_du_vsp_disable(struct rcar_du_crtc *crtc)
 {
+	crtc->vsp->enable_count--;
+	printk("Disabling LIF - Enable Count = %d\n", crtc->vsp->enable_count);
+
 	vsp1_du_setup_lif(crtc->vsp->vsp, 0, 0);
 }
 
