@@ -396,6 +396,8 @@ __must_check int __media_entity_pipeline_start(struct media_entity *entity,
 			goto error;
 		}
 
+
+		printk("**** SETTING ENTITY(%p)->PIPE as new value %p\n", entity, pipe);
 		entity->pipe = pipe;
 
 		/* Already streaming --- no need to check. */
@@ -470,8 +472,10 @@ error:
 		/* don't let the stream_count go negative */
 		if (entity->stream_count > 0) {
 			entity_err->stream_count--;
-			if (entity_err->stream_count == 0)
+			if (entity_err->stream_count == 0) {
+				printk(" ******************* fail path setting pipe(%p)->null\n", entity_err);
 				entity_err->pipe = NULL;
+			}
 		}
 
 		/*
@@ -508,18 +512,26 @@ void __media_entity_pipeline_stop(struct media_entity *entity)
 	struct media_entity_graph *graph = &entity->pipe->graph;
 	struct media_pipeline *pipe = entity->pipe;
 
-	if (!pipe)
+	if (!pipe) {
+		printk("****************************************************\n");
+		printk("FATAL ERROR : Entity %p ->pipe is NULL\n", entity);
+		printk("****************************************************\n");
+		trace_printk("FATAL ERROR : Entity %p ->pipe is NULL\n", entity);
 		return;
+	}
 
 	WARN_ON(!pipe->streaming_count);
+
 	media_entity_graph_walk_start(graph, entity);
 
 	while ((entity = media_entity_graph_walk_next(graph))) {
 		/* don't let the stream_count go negative */
 		if (entity->stream_count > 0) {
 			entity->stream_count--;
-			if (entity->stream_count == 0)
+			if (entity->stream_count == 0) {
+				printk("**** SETTING ENTITY(%p)->PIPE as NULL\n", entity);
 				entity->pipe = NULL;
+			}
 		}
 	}
 
