@@ -39,6 +39,7 @@ struct vsp1_lut;
 struct vsp1_rwpf;
 struct vsp1_sru;
 struct vsp1_uds;
+struct vsp1_video;
 
 #define VSP1_MAX_RPF		5
 #define VSP1_MAX_UDS		3

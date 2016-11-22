@@ -16,6 +16,7 @@
 
 #include "vsp1.h"
 #include "vsp1_rwpf.h"
+#include "vsp1_video.h"
 
 
 /* -----------------------------------------------------------------------------
@@ -484,4 +485,63 @@ void vsp1_debugfs_remove(struct vsp1_device *vsp1)
 {
 	debugfs_remove_recursive(vsp1->dbgroot);
 	vsp1_device_put(vsp1);
+}
+
+
+/*
+ * VSP1 Video Debugfs nodes
+ */
+static ssize_t vsp1_video_stats_read(struct file *filp, char __user *ubuf,
+			    size_t count, loff_t *offp)
+{
+	struct vsp1_video *video;
+	char *buf;
+	ssize_t ret, out_offset, out_count;
+
+	video = filp->private_data;
+
+	out_count = 4096;
+	buf = kmalloc(out_count, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	out_offset = 0;
+
+	out_offset += snprintf(buf + out_offset, out_count - out_offset,
+			"Reading from a struct vsp1_video node\n");
+
+	out_offset += snprintf(buf + out_offset, out_count - out_offset,
+				" buffer_queued %d\n"
+				" buffer_done %d\n"
+				" buffer_failed %d\n",
+				video->statistics.buffer_queued,
+				video->statistics.buffer_done,
+				video->statistics.buffer_failed);
+
+
+	ret = simple_read_from_buffer(ubuf, count, offp, buf, out_offset);
+	kfree(buf);
+	return ret;
+}
+
+static const struct file_operations vsp1_video_stats_ops = {
+	.owner = THIS_MODULE,
+	.open  = simple_open,
+	.read  = vsp1_video_stats_read,
+};
+
+void vsp1_debugfs_create_video_stats(struct vsp1_video *video, const char *name)
+{
+	struct vsp1_device *vsp1 = video->vsp1;
+
+	/* dentry pointer discarded */
+	video->debugfs_file = debugfs_create_file(name,
+					0444, vsp1->dbgroot, video,
+					&vsp1_video_stats_ops);
+}
+
+void vsp1_debugfs_cleanup_video_stats(struct vsp1_video *video)
+{
+	debugfs_remove(video->debugfs_file);
+	video->debugfs_file = NULL;
 }
