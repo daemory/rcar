@@ -1333,6 +1333,7 @@
 			power-domains = <&sysc R8A7795_PD_A3VP>;
 		};
 
+#if 0
 		vspbd: vsp@fe960000 {
 			compatible = "renesas,vsp2";
 			reg = <0 0xfe960000 0 0x8000>;
@@ -1468,6 +1469,7 @@
 			clocks = <&cpg CPG_MOD 600>;
 			power-domains = <&sysc R8A7795_PD_ALWAYS_ON>;
 		};
+#endif
 
 		fdp1@fe940000 {
 			compatible = "renesas,fdp1";
@@ -1513,7 +1515,7 @@
 			clock-names = "du.0", "du.1", "du.2", "du.3", "lvds.0";
 			status = "disabled";
 
-			vsps = <&vspd0 &vspd1 &vspd2 &vspd3>;
+//			vsps = <&vspd0 &vspd1 &vspd2 &vspd3>;
 
 			ports {
 				#address-cells = <1>;
