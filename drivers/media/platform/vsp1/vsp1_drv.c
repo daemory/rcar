@@ -73,6 +73,10 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 		}
 
 		if (status & VI6_WFP_IRQ_STA_UND) {
+			dprintk(DEBUG_ERROR, "WPF[%d] Underflow error\n", i);
+			/* Could perform a reset ? */
+			//vsp1_reset_wpf(vsp1, i);
+			// Check register states ... What is active, etc...
 			dev_err(vsp1->dev, "WPF[%d] Underflow error\n", i);
 			ret = IRQ_HANDLED;
 		}
@@ -494,6 +498,9 @@ int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 	status = vsp1_read(vsp1, VI6_STATUS);
 	if (!(status & VI6_STATUS_SYS_ACT(index)))
 		return 0;
+
+	dprintk(DEBUG_INFO, "%s: Attempting Reset of WPF\n",
+			vsp1->v4l2_dev.name);
 
 	vsp1_dynamic_clock_stop_disable(vsp1);
 
