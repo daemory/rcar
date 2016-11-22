@@ -95,6 +95,7 @@ struct vsp1_device {
 int vsp1_device_get(struct vsp1_device *vsp1);
 void vsp1_device_put(struct vsp1_device *vsp1);
 
+int vsp1_reset_vsp1(struct vsp1_device *vsp1);
 int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index);
 
 static inline u32 vsp1_read(struct vsp1_device *vsp1, u32 reg)

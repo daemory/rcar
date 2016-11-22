@@ -438,6 +438,41 @@ void vsp1_dynamic_clock_stop_disable(struct vsp1_device *vsp1)
 	vsp1_write(vsp1, VI6_CLK_DCSM1, 0xFF00FFFF);
 }
 
+/*
+ * Perform a module reset on G3 VSP1 hardware
+ */
+int vsp1_reset_vsp1(struct vsp1_device *vsp1)
+{
+	unsigned int timeout;
+	u32 status;
+
+	if (vsp1->info->gen < 3)
+		return 0;
+
+	vsp1_dynamic_clock_stop_disable(vsp1);
+
+	vsp1_write(vsp1, VI6_MRESET_ENB0, VI6_MRESET_ENB0_RESET);
+	vsp1_write(vsp1, VI6_MRESET_ENB1, VI6_MRESET_ENB1_RESET);
+	vsp1_write(vsp1, VI6_MRESET, VI6_MRESET_MRST);
+
+	for (timeout = 10; timeout > 0; --timeout) {
+		status = vsp1_read(vsp1, VI6_STATUS);
+		if ((!(status & VI6_STATUS_SYS_ACT(0))) &&
+		    (!(status & VI6_STATUS_SYS_ACT(1))))
+			break;
+
+		usleep_range(1000, 2000);
+	}
+	if (!timeout) {
+		dev_err(vsp1->dev, "failed to reset vsp1 %s\n",
+				vsp1->info->model);
+	}
+
+	vsp1_dynamic_clock_stop_enable(vsp1);
+
+	return 0;
+}
+
 int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 {
 	unsigned int timeout;
