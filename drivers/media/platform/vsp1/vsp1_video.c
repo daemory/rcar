@@ -797,6 +797,7 @@ static int vsp1_video_start_streaming(struct vb2_queue *vq, unsigned int count)
 {
 	struct vsp1_video *video = vb2_get_drv_priv(vq);
 	struct vsp1_pipeline *pipe = video->rwpf->pipe;
+	bool start_pipeline = false;
 	unsigned long flags;
 	int ret;
 
@@ -807,10 +808,21 @@ static int vsp1_video_start_streaming(struct vb2_queue *vq, unsigned int count)
 			mutex_unlock(&pipe->lock);
 			return ret;
 		}
+
+		start_pipeline = true;
 	}
 
 	pipe->stream_count++;
 	mutex_unlock(&pipe->lock);
+
+	/*
+	 * Don't attempt to start the pipeline until we have configured it
+	 * explicitly, as otherwise multiple streamon calls could race each
+	 * other here and one of them will try to start the pipeline before it
+	 * is ready.
+	 */
+	if (!start_pipeline)
+		return 0;
 
 	spin_lock_irqsave(&pipe->irqlock, flags);
 	if (vsp1_pipeline_ready(pipe))
