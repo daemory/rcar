@@ -1671,6 +1671,25 @@ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = 
 	.best_encoder = drm_atomic_helper_best_encoder,
 };
 
+static int dw_hdmi_bridge_attach(struct drm_bridge *bridge)
+{
+	struct dw_hdmi *hdmi = bridge->driver_private;
+	struct drm_encoder *encoder = bridge->encoder;
+	struct drm_connector *connector = &hdmi->connector;
+
+	connector->interlace_allowed = 1;
+	connector->polled = DRM_CONNECTOR_POLL_HPD;
+
+	drm_connector_helper_add(connector, &dw_hdmi_connector_helper_funcs);
+
+	drm_connector_init(bridge->dev, connector, &dw_hdmi_connector_funcs,
+			   DRM_MODE_CONNECTOR_HDMIA);
+
+	drm_mode_connector_attach_encoder(connector, encoder);
+
+	return 0;
+}
+
 static void dw_hdmi_bridge_mode_set(struct drm_bridge *bridge,
 				    struct drm_display_mode *orig_mode,
 				    struct drm_display_mode *mode)
@@ -1708,6 +1727,7 @@ static void dw_hdmi_bridge_enable(struct drm_bridge *bridge)
 }
 
 static const struct drm_bridge_funcs dw_hdmi_bridge_funcs = {
+	.attach = dw_hdmi_bridge_attach,
 	.enable = dw_hdmi_bridge_enable,
 	.disable = dw_hdmi_bridge_disable,
 	.mode_set = dw_hdmi_bridge_mode_set,
@@ -1833,17 +1853,6 @@ static int dw_hdmi_register(struct drm_device *drm, struct dw_hdmi *hdmi)
 		return -EINVAL;
 	}
 
-	hdmi->connector.polled = DRM_CONNECTOR_POLL_HPD;
-
-	drm_connector_helper_add(&hdmi->connector,
-				 &dw_hdmi_connector_helper_funcs);
-
-	drm_connector_init(drm, &hdmi->connector,
-			   &dw_hdmi_connector_funcs,
-			   DRM_MODE_CONNECTOR_HDMIA);
-
-	drm_mode_connector_attach_encoder(&hdmi->connector, encoder);
-
 	return 0;
 }
 
@@ -1862,8 +1871,6 @@ int dw_hdmi_bind(struct device *dev, struct drm_encoder *encoder,
 	hdmi = devm_kzalloc(dev, sizeof(*hdmi), GFP_KERNEL);
 	if (!hdmi)
 		return -ENOMEM;
-
-	hdmi->connector.interlace_allowed = 1;
 
 	hdmi->plat_data = plat_data;
 	hdmi->dev = dev;
