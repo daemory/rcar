@@ -79,6 +79,9 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int width,
 	unsigned int i;
 	int ret;
 
+	dprintk(DEBUG_ERROR, "%s: configuring LIF with format %ux%u\n",
+		__func__, width, height);
+
 	dev_dbg(vsp1->dev, "%s: configuring LIF with format %ux%u\n",
 		__func__, width, height);
 
@@ -89,6 +92,10 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int width,
 		ret = vsp1_pipeline_stop(pipe);
 		if (ret == -ETIMEDOUT)
 			dev_err(vsp1->dev, "DRM pipeline stop timeout\n");
+
+		dprintk(DEBUG_ERROR, "Pipeline stopped - about to stop ME\n");
+		dprintk(DEBUG_ERROR, "pipe=%p, pipe->output=%p\n",
+				pipe, pipe ? pipe->output : NULL);
 
 		media_entity_pipeline_stop(&pipe->output->entity.subdev.entity);
 
