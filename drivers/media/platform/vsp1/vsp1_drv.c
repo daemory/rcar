@@ -447,6 +447,9 @@ static int vsp1_device_init(struct vsp1_device *vsp1)
 		ret = vsp1_reset_wpf(vsp1, i);
 		if (ret < 0)
 			return ret;
+
+		if (vsp1->wpf[i] && vsp1->wpf[i]->pipe)
+			vsp1->wpf[i]->pipe->configured = false;
 	}
 
 	vsp1_write(vsp1, VI6_CLK_DCSWT, (8 << VI6_CLK_DCSWT_CSTPW_SHIFT) |
