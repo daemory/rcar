@@ -931,29 +931,13 @@ static void dw_hdmi_phy_sel_interface_control(struct dw_hdmi *hdmi, u8 enable)
 }
 
 static int hdmi_phy_configure(struct dw_hdmi *hdmi,
-			      unsigned char res, int cscon)
+			      enum dw_hdmi_resolution res_idx, int cscon)
 {
-	unsigned res_idx;
 	u8 val, msec;
 	const struct dw_hdmi_plat_data *pdata = hdmi->plat_data;
 	const struct dw_hdmi_mpll_config *mpll_config = pdata->mpll_cfg;
 	const struct dw_hdmi_curr_ctrl *curr_ctrl = pdata->cur_ctr;
 	const struct dw_hdmi_phy_config *phy_config = pdata->phy_config;
-
-	switch (res) {
-	case 0:	/* color resolution 0 is 8 bit colour depth */
-	case 8:
-		res_idx = DW_HDMI_RES_8;
-		break;
-	case 10:
-		res_idx = DW_HDMI_RES_10;
-		break;
-	case 12:
-		res_idx = DW_HDMI_RES_12;
-		break;
-	default:
-		return -EINVAL;
-	}
 
 	/* PLL/MPLL Cfg - always match on final entry */
 	for (; mpll_config->mpixelclock != ~0UL; mpll_config++)
@@ -1068,7 +1052,7 @@ static int dw_hdmi_phy_init(struct dw_hdmi *hdmi)
 		dw_hdmi_phy_enable_powerdown(hdmi, true);
 
 		/* Enable CSC */
-		ret = hdmi_phy_configure(hdmi, 8, cscon);
+		ret = hdmi_phy_configure(hdmi, DW_HDMI_RES_8, cscon);
 		if (ret)
 			return ret;
 	}

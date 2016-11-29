@@ -14,7 +14,7 @@
 
 struct dw_hdmi;
 
-enum {
+enum dw_hdmi_resolution {
 	DW_HDMI_RES_8,
 	DW_HDMI_RES_10,
 	DW_HDMI_RES_12,
