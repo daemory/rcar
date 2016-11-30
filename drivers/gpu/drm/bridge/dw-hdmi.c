@@ -19,6 +19,7 @@
 #include <linux/hdmi.h>
 #include <linux/mutex.h>
 #include <linux/of_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/spinlock.h>
 
 #include <drm/drm_of.h>
@@ -1750,11 +1751,15 @@ static void dw_hdmi_bridge_disable(struct drm_bridge *bridge)
 	dw_hdmi_update_power(hdmi);
 	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
+
+	pm_runtime_put_sync(hdmi->dev);
 }
 
 static void dw_hdmi_bridge_enable(struct drm_bridge *bridge)
 {
 	struct dw_hdmi *hdmi = bridge->driver_private;
+
+	pm_runtime_get_sync(hdmi);
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->disabled = false;
@@ -1944,6 +1949,63 @@ static int dw_hdmi_detect_phy(struct dw_hdmi *hdmi)
 	return 0;
 }
 
+/* -----------------------------------------------------------------------------
+ * Power Management
+ */
+
+static int dw_hdmi_clocks_enable(struct dw_hdmi *hdmi)
+{
+	int ret;
+
+	ret = clk_prepare_enable(hdmi->isfr_clk);
+	if (ret) {
+		dev_err(hdmi->dev, "Cannot enable HDMI isfr clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_prepare_enable(hdmi->iahb_clk);
+	if (ret) {
+		clk_disable_unprepare(hdmi->isfr_clk);
+		dev_err(hdmi->dev, "Cannot enable HDMI iahb clock: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void dw_hdmi_clocks_disable(struct dw_hdmi *hdmi)
+{
+	clk_disable_unprepare(hdmi->iahb_clk);
+	clk_disable_unprepare(hdmi->isfr_clk);
+}
+
+#ifdef CONFIG_PM
+static int dw_hdmi_pm_runtime_suspend(struct device *dev)
+{
+	struct dw_hdmi *hdmi = dev_get_drvdata(dev);
+
+	dw_hdmi_clocks_disable(hdmi);
+
+	return 0;
+}
+
+static int dw_hdmi_pm_runtime_resume(struct device *dev)
+{
+	struct dw_hdmi *hdmi = dev_get_drvdata(dev);
+
+	return dw_hdmi_clocks_enable(hdmi);
+}
+#endif
+
+const struct dev_pm_ops dw_hdmi_pm_ops = {
+	SET_RUNTIME_PM_OPS(dw_hdmi_pm_runtime_suspend,
+			   dw_hdmi_pm_runtime_resume,
+			   NULL)
+};
+EXPORT_SYMBOL_GPL(dw_hdmi_pm_ops);
+
+
+
 static struct dw_hdmi *
 __dw_hdmi_probe(struct platform_device *pdev,
 		const struct dw_hdmi_plat_data *plat_data)
@@ -2020,24 +2082,14 @@ __dw_hdmi_probe(struct platform_device *pdev,
 		goto err_res;
 	}
 
-	ret = clk_prepare_enable(hdmi->isfr_clk);
-	if (ret) {
-		dev_err(hdmi->dev, "Cannot enable HDMI isfr clock: %d\n", ret);
-		goto err_res;
-	}
-
 	hdmi->iahb_clk = devm_clk_get(hdmi->dev, "iahb");
 	if (IS_ERR(hdmi->iahb_clk)) {
 		ret = PTR_ERR(hdmi->iahb_clk);
 		dev_err(hdmi->dev, "Unable to get HDMI iahb clk: %d\n", ret);
-		goto err_isfr;
+		goto err_res;
 	}
 
-	ret = clk_prepare_enable(hdmi->iahb_clk);
-	if (ret) {
-		dev_err(hdmi->dev, "Cannot enable HDMI iahb clock: %d\n", ret);
-		goto err_isfr;
-	}
+	pm_runtime_enable(hdmi->dev);
 
 	/* Product and revision IDs */
 	hdmi->version = (hdmi_readb(hdmi, HDMI_DESIGN_ID) << 8)
@@ -2160,9 +2212,8 @@ err_iahb:
 		hdmi->ddc = NULL;
 	}
 
-	clk_disable_unprepare(hdmi->iahb_clk);
-err_isfr:
-	clk_disable_unprepare(hdmi->isfr_clk);
+	pm_runtime_disable(hdmi->dev);
+
 err_res:
 	i2c_put_adapter(hdmi->ddc);
 
@@ -2177,8 +2228,7 @@ static void __dw_hdmi_remove(struct dw_hdmi *hdmi)
 	/* Disable all interrupts */
 	hdmi_writeb(hdmi, ~0, HDMI_IH_MUTE_PHY_STAT0);
 
-	clk_disable_unprepare(hdmi->iahb_clk);
-	clk_disable_unprepare(hdmi->isfr_clk);
+	pm_runtime_disable(hdmi->dev);
 
 	if (hdmi->i2c)
 		i2c_del_adapter(&hdmi->i2c->adap);

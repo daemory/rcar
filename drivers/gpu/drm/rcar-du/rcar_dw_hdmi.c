@@ -90,6 +90,7 @@ static struct platform_driver rcar_dw_hdmi_platform_driver = {
 	.driver		= {
 		.name	= "rcar-dw-hdmi",
 		.of_match_table = rcar_dw_hdmi_of_table,
+		.pm	= dw_hdmi_pm_ops, /* Provided by dw-hdmi.c */
 	},
 };
 
