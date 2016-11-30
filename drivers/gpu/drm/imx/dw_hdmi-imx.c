@@ -177,6 +177,7 @@ static struct dw_hdmi_plat_data imx6q_hdmi_drv_data = {
 	.phy_config = imx_phy_config,
 	.dev_type   = IMX6Q_HDMI,
 	.mode_valid = imx6q_hdmi_mode_valid,
+	.configure_phy = dw_hdmi_phy_configure_synopsys,
 };
 
 static struct dw_hdmi_plat_data imx6dl_hdmi_drv_data = {
@@ -185,6 +186,7 @@ static struct dw_hdmi_plat_data imx6dl_hdmi_drv_data = {
 	.phy_config = imx_phy_config,
 	.dev_type = IMX6DL_HDMI,
 	.mode_valid = imx6dl_hdmi_mode_valid,
+	.configure_phy = dw_hdmi_phy_configure_synopsys,
 };
 
 static const struct of_device_id dw_hdmi_imx_dt_ids[] = {

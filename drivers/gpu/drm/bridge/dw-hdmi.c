@@ -867,8 +867,8 @@ static bool hdmi_phy_wait_i2c_done(struct dw_hdmi *hdmi, int msec)
 	return true;
 }
 
-static void hdmi_phy_i2c_write(struct dw_hdmi *hdmi, unsigned short data,
-				 unsigned char addr)
+void dw_hdmi_phy_i2c_write(struct dw_hdmi *hdmi, unsigned short data,
+			   unsigned char addr)
 {
 	hdmi_writeb(hdmi, 0xFF, HDMI_IH_I2CMPHY_STAT0);
 	hdmi_writeb(hdmi, addr, HDMI_PHY_I2CM_ADDRESS_ADDR);
@@ -880,6 +880,7 @@ static void hdmi_phy_i2c_write(struct dw_hdmi *hdmi, unsigned short data,
 		    HDMI_PHY_I2CM_OPERATION_ADDR);
 	hdmi_phy_wait_i2c_done(hdmi, 1000);
 }
+EXPORT_SYMBOL_GPL(dw_hdmi_phy_i2c_write);
 
 static void dw_hdmi_phy_enable_powerdown(struct dw_hdmi *hdmi, bool enable)
 {
@@ -930,38 +931,61 @@ static void dw_hdmi_phy_sel_interface_control(struct dw_hdmi *hdmi, u8 enable)
 			 HDMI_PHY_CONF0_SELDIPIF_MASK);
 }
 
-static int hdmi_phy_configure(struct dw_hdmi *hdmi,
-			      enum dw_hdmi_resolution res_idx, int cscon)
+int dw_hdmi_phy_configure_synopsys(struct dw_hdmi *hdmi,
+				   const struct dw_hdmi_plat_data *pdata,
+				   unsigned long mpixelclock,
+				   enum dw_hdmi_resolution resolution)
+
 {
-	u8 val, msec;
-	const struct dw_hdmi_plat_data *pdata = hdmi->plat_data;
 	const struct dw_hdmi_mpll_config *mpll_config = pdata->mpll_cfg;
 	const struct dw_hdmi_curr_ctrl *curr_ctrl = pdata->cur_ctr;
 	const struct dw_hdmi_phy_config *phy_config = pdata->phy_config;
 
 	/* PLL/MPLL Cfg - always match on final entry */
 	for (; mpll_config->mpixelclock != ~0UL; mpll_config++)
-		if (hdmi->hdmi_data.video_mode.mpixelclock <=
-		    mpll_config->mpixelclock)
+		if (mpixelclock <= mpll_config->mpixelclock)
 			break;
 
 	for (; curr_ctrl->mpixelclock != ~0UL; curr_ctrl++)
-		if (hdmi->hdmi_data.video_mode.mpixelclock <=
-		    curr_ctrl->mpixelclock)
+		if (mpixelclock <= curr_ctrl->mpixelclock)
 			break;
 
 	for (; phy_config->mpixelclock != ~0UL; phy_config++)
-		if (hdmi->hdmi_data.video_mode.mpixelclock <=
-		    phy_config->mpixelclock)
+		if (mpixelclock <= phy_config->mpixelclock)
 			break;
 
 	if (mpll_config->mpixelclock == ~0UL ||
 	    curr_ctrl->mpixelclock == ~0UL ||
-	    phy_config->mpixelclock == ~0UL) {
-		dev_err(hdmi->dev, "Pixel clock %d - unsupported by HDMI\n",
-			hdmi->hdmi_data.video_mode.mpixelclock);
+	    phy_config->mpixelclock == ~0UL)
 		return -EINVAL;
-	}
+
+	dw_hdmi_phy_i2c_write(hdmi, mpll_config->res[resolution].cpce, 0x06);
+	dw_hdmi_phy_i2c_write(hdmi, mpll_config->res[resolution].gmp, 0x15);
+
+	/* CURRCTRL */
+	dw_hdmi_phy_i2c_write(hdmi, curr_ctrl->curr[resolution], 0x10);
+
+	dw_hdmi_phy_i2c_write(hdmi, 0x0000, 0x13); /* PLLPHBYCTRL */
+	dw_hdmi_phy_i2c_write(hdmi, 0x0006, 0x17);
+
+	dw_hdmi_phy_i2c_write(hdmi, phy_config->term, 0x19); /* TXTERM */
+	dw_hdmi_phy_i2c_write(hdmi, phy_config->sym_ctr, 0x09); /* CKSYMTXCTRL */
+	dw_hdmi_phy_i2c_write(hdmi, phy_config->vlev_ctr, 0x0E); /* VLEVCTRL */
+
+	/* REMOVE CLK TERM */
+	dw_hdmi_phy_i2c_write(hdmi, 0x8000, 0x05); /* CKCALCTRL */
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(dw_hdmi_phy_configure_synopsys);
+
+static int hdmi_phy_configure(struct dw_hdmi *hdmi,
+			      enum dw_hdmi_resolution resolution, int cscon)
+{
+	const struct dw_hdmi_plat_data *pdata = hdmi->plat_data;
+	unsigned long mpixelclock = hdmi->hdmi_data.video_mode.mpixelclock;
+	u8 val, msec;
+	int ret;
 
 	/* Enable csc path */
 	if (cscon)
@@ -988,21 +1012,14 @@ static int hdmi_phy_configure(struct dw_hdmi *hdmi,
 		    HDMI_PHY_I2CM_SLAVE_ADDR);
 	hdmi_phy_test_clear(hdmi, 0);
 
-	hdmi_phy_i2c_write(hdmi, mpll_config->res[res_idx].cpce, 0x06);
-	hdmi_phy_i2c_write(hdmi, mpll_config->res[res_idx].gmp, 0x15);
-
-	/* CURRCTRL */
-	hdmi_phy_i2c_write(hdmi, curr_ctrl->curr[res_idx], 0x10);
-
-	hdmi_phy_i2c_write(hdmi, 0x0000, 0x13);  /* PLLPHBYCTRL */
-	hdmi_phy_i2c_write(hdmi, 0x0006, 0x17);
-
-	hdmi_phy_i2c_write(hdmi, phy_config->term, 0x19);  /* TXTERM */
-	hdmi_phy_i2c_write(hdmi, phy_config->sym_ctr, 0x09); /* CKSYMTXCTRL */
-	hdmi_phy_i2c_write(hdmi, phy_config->vlev_ctr, 0x0E); /* VLEVCTRL */
-
-	/* REMOVE CLK TERM */
-	hdmi_phy_i2c_write(hdmi, 0x8000, 0x05);  /* CKCALCTRL */
+	/* Write to the PHY as configured by the platform */
+	ret = pdata->configure_phy(hdmi, pdata, mpixelclock, resolution);
+	if (ret) {
+		dev_err(hdmi->dev,
+			"PHY configuration failed (clock %lu resolution %u)\n",
+			mpixelclock, resolution);
+		return ret;
+	}
 
 	dw_hdmi_phy_enable_powerdown(hdmi, false);
 
