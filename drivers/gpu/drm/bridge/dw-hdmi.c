@@ -118,7 +118,6 @@ struct dw_hdmi {
 	struct drm_bridge bridge;
 
 	struct platform_device *audio;
-	enum dw_hdmi_devtype dev_type;
 	struct device *dev;
 	struct clk *isfr_clk;
 	struct clk *iahb_clk;
@@ -896,11 +895,11 @@ static void dw_hdmi_phy_enable_tmds(struct dw_hdmi *hdmi, u8 enable)
 			 HDMI_PHY_CONF0_ENTMDS_MASK);
 }
 
-static void dw_hdmi_phy_enable_spare(struct dw_hdmi *hdmi, u8 enable)
+static void dw_hdmi_phy_enable_svsret(struct dw_hdmi *hdmi, u8 enable)
 {
 	hdmi_mask_writeb(hdmi, enable, HDMI_PHY_CONF0,
-			 HDMI_PHY_CONF0_SPARECTRL_OFFSET,
-			 HDMI_PHY_CONF0_SPARECTRL_MASK);
+			 HDMI_PHY_CONF0_SVSRET_OFFSET,
+			 HDMI_PHY_CONF0_SVSRET_MASK);
 }
 
 static void dw_hdmi_phy_gen2_pddq(struct dw_hdmi *hdmi, u8 enable)
@@ -1031,8 +1030,8 @@ static int hdmi_phy_configure(struct dw_hdmi *hdmi,
 	dw_hdmi_phy_gen2_txpwron(hdmi, 1);
 	dw_hdmi_phy_gen2_pddq(hdmi, 0);
 
-	if (hdmi->dev_type == RK3288_HDMI)
-		dw_hdmi_phy_enable_spare(hdmi, 1);
+	if (pdata->quirks & DW_HDMI_QUIRK_PHY_SVSRET)
+		dw_hdmi_phy_enable_svsret(hdmi, 1);
 
 	/*Wait for PHY PLL lock */
 	msec = 5;
@@ -1348,7 +1347,7 @@ static void dw_hdmi_clear_overflow(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, (u8)~HDMI_MC_SWRSTZ_TMDSSWRST_REQ, HDMI_MC_SWRSTZ);
 
 	val = hdmi_readb(hdmi, HDMI_FC_INVIDCONF);
-	if (hdmi->dev_type == IMX6DL_HDMI) {
+	if (hdmi->plat_data->quirks & DW_HDMI_QUIRK_FC_INVIDCONF) {
 		hdmi_writeb(hdmi, val, HDMI_FC_INVIDCONF);
 		return;
 	}
@@ -1858,7 +1857,6 @@ __dw_hdmi_probe(struct platform_device *pdev,
 
 	hdmi->plat_data = plat_data;
 	hdmi->dev = dev;
-	hdmi->dev_type = plat_data->dev_type;
 	hdmi->sample_rate = 48000;
 	hdmi->disabled = true;
 	hdmi->rxsense = true;

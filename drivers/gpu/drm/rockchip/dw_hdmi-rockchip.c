@@ -238,7 +238,7 @@ static const struct dw_hdmi_plat_data rockchip_hdmi_drv_data = {
 	.cur_ctr    = rockchip_cur_ctr,
 	.phy_config = rockchip_phy_config,
 	.configure_phy = dw_hdmi_phy_configure_synopsys,
-	.dev_type   = RK3288_HDMI,
+	.quirks     = DW_HDMI_QUIRK_PHY_SVSRET,
 };
 
 static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {

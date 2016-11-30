@@ -21,12 +21,6 @@ enum dw_hdmi_resolution {
 	DW_HDMI_RES_MAX,
 };
 
-enum dw_hdmi_devtype {
-	IMX6Q_HDMI,
-	IMX6DL_HDMI,
-	RK3288_HDMI,
-};
-
 struct dw_hdmi_mpll_config {
 	unsigned long mpixelclock;
 	struct {
@@ -47,11 +41,15 @@ struct dw_hdmi_phy_config {
 	u16 vlev_ctr;   /* voltage level control */
 };
 
+/* Define DW HDMI platform-specific quirks */
+#define DW_HDMI_QUIRK_FC_INVIDCONF		BIT(0)
+#define DW_HDMI_QUIRK_PHY_SVSRET		BIT(1)
+
 struct dw_hdmi_plat_data {
-	enum dw_hdmi_devtype dev_type;
 	const struct dw_hdmi_mpll_config *mpll_cfg;
 	const struct dw_hdmi_curr_ctrl *cur_ctr;
 	const struct dw_hdmi_phy_config *phy_config;
+	unsigned int quirks;
 	int (*configure_phy)(struct dw_hdmi *hdmi,
 			     const struct dw_hdmi_plat_data *pdata,
 			     unsigned long mpixelclock,

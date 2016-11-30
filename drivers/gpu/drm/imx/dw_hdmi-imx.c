@@ -175,7 +175,6 @@ static struct dw_hdmi_plat_data imx6q_hdmi_drv_data = {
 	.mpll_cfg   = imx_mpll_cfg,
 	.cur_ctr    = imx_cur_ctr,
 	.phy_config = imx_phy_config,
-	.dev_type   = IMX6Q_HDMI,
 	.mode_valid = imx6q_hdmi_mode_valid,
 	.configure_phy = dw_hdmi_phy_configure_synopsys,
 };
@@ -184,7 +183,7 @@ static struct dw_hdmi_plat_data imx6dl_hdmi_drv_data = {
 	.mpll_cfg = imx_mpll_cfg,
 	.cur_ctr  = imx_cur_ctr,
 	.phy_config = imx_phy_config,
-	.dev_type = IMX6DL_HDMI,
+	.quirks   = DW_HDMI_QUIRK_FC_INVIDCONF,
 	.mode_valid = imx6dl_hdmi_mode_valid,
 	.configure_phy = dw_hdmi_phy_configure_synopsys,
 };
