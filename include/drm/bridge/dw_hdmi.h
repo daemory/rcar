@@ -50,10 +50,10 @@ struct dw_hdmi_plat_data {
 	const struct dw_hdmi_curr_ctrl *cur_ctr;
 	const struct dw_hdmi_phy_config *phy_config;
 	unsigned int quirks;
-	int (*configure_phy)(struct dw_hdmi *hdmi,
-			     const struct dw_hdmi_plat_data *pdata,
-			     unsigned long mpixelclock,
-			     enum dw_hdmi_resolution resolution);
+	int (*configure_phy_pll)(struct dw_hdmi *hdmi,
+				 const struct dw_hdmi_plat_data *pdata,
+				 unsigned long mpixelclock,
+				 enum dw_hdmi_resolution resolution);
 	enum drm_mode_status (*mode_valid)(struct drm_connector *connector,
 					   struct drm_display_mode *mode);
 };
@@ -72,9 +72,9 @@ void dw_hdmi_audio_disable(struct dw_hdmi *hdmi);
 /* PHY configuration */
 void dw_hdmi_phy_i2c_write(struct dw_hdmi *hdmi, unsigned short data,
 			   unsigned char addr);
-int dw_hdmi_phy_configure_synopsys(struct dw_hdmi *hdmi,
-				   const struct dw_hdmi_plat_data *pdata,
-				   unsigned long mpixelclock,
-				   enum dw_hdmi_resolution resolution);
+int dw_hdmi_phy_configure_synopsys_pll(struct dw_hdmi *hdmi,
+				       const struct dw_hdmi_plat_data *pdata,
+				       unsigned long mpixelclock,
+				       enum dw_hdmi_resolution resolution);
 
 #endif /* __IMX_HDMI_H__ */

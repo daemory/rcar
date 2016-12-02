@@ -930,10 +930,10 @@ static void dw_hdmi_phy_sel_interface_control(struct dw_hdmi *hdmi, u8 enable)
 			 HDMI_PHY_CONF0_SELDIPIF_MASK);
 }
 
-int dw_hdmi_phy_configure_synopsys(struct dw_hdmi *hdmi,
-				   const struct dw_hdmi_plat_data *pdata,
-				   unsigned long mpixelclock,
-				   enum dw_hdmi_resolution resolution)
+int dw_hdmi_phy_configure_synopsys_pll(struct dw_hdmi *hdmi,
+				       const struct dw_hdmi_plat_data *pdata,
+				       unsigned long mpixelclock,
+				       enum dw_hdmi_resolution resolution)
 
 {
 	const struct dw_hdmi_mpll_config *mpll_config = pdata->mpll_cfg;
@@ -976,7 +976,7 @@ int dw_hdmi_phy_configure_synopsys(struct dw_hdmi *hdmi,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(dw_hdmi_phy_configure_synopsys);
+EXPORT_SYMBOL_GPL(dw_hdmi_phy_configure_synopsys_pll);
 
 static int hdmi_phy_configure(struct dw_hdmi *hdmi,
 			      enum dw_hdmi_resolution resolution, int cscon)
@@ -1012,7 +1012,7 @@ static int hdmi_phy_configure(struct dw_hdmi *hdmi,
 	hdmi_phy_test_clear(hdmi, 0);
 
 	/* Write to the PHY as configured by the platform */
-	ret = pdata->configure_phy(hdmi, pdata, mpixelclock, resolution);
+	ret = pdata->configure_phy_pll(hdmi, pdata, mpixelclock, resolution);
 	if (ret) {
 		dev_err(hdmi->dev,
 			"PHY configuration failed (clock %lu resolution %u)\n",
