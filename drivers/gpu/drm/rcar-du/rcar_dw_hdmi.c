@@ -39,10 +39,10 @@ static const struct rcar_hdmi_phy_params rcar_hdmi_phy_params[] = {
 	{ ~0UL,      0x0000, 0x0000, 0x0000 },
 };
 
-static int rcar_hdmi_phy_configure(struct dw_hdmi *hdmi,
-				   const struct dw_hdmi_plat_data *pdata,
-				   unsigned long mpixelclock,
-				   enum dw_hdmi_resolution resolution)
+static int rcar_hdmi_phy_configure_pll(struct dw_hdmi *hdmi,
+				       const struct dw_hdmi_plat_data *pdata,
+				       unsigned long mpixelclock,
+				       enum dw_hdmi_resolution resolution)
 {
 	const struct rcar_hdmi_phy_params *params = rcar_hdmi_phy_params;
 
@@ -67,8 +67,8 @@ static int rcar_hdmi_phy_configure(struct dw_hdmi *hdmi,
 }
 
 static const struct dw_hdmi_plat_data rcar_dw_hdmi_plat_data = {
-	.configure_phy	= rcar_hdmi_phy_configure,
-	.quirks		= DW_HDMI_QUIRK_PHY_SVSRET,
+	.configure_phy_pll = rcar_hdmi_phy_configure_pll,
+	.quirks		   = DW_HDMI_QUIRK_PHY_SVSRET,
 };
 
 static int rcar_dw_hdmi_probe(struct platform_device *pdev)
