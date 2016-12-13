@@ -1418,7 +1418,8 @@ static int soc_probe_component(struct snd_soc_card *card,
 		return 0;
 
 	if (component->card) {
-		if (component->card != card) {
+		if (component->card != card &&
+		    component->registered_as_component) {
 			dev_err(component->dev,
 				"Trying to bind component to card \"%s\" but is already bound to card \"%s\"\n",
 				card->name, component->card->name);
@@ -3261,7 +3262,8 @@ int snd_soc_register_component(struct device *dev,
 		goto err_free;
 
 	cmpnt->ignore_pmdown_time = true;
-	cmpnt->registered_as_component = true;
+	if (num_dai == 1)
+		cmpnt->registered_as_component = true;
 
 	ret = snd_soc_register_dais(cmpnt, dai_drv, num_dai, true);
 	if (ret < 0) {
