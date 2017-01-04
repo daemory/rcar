@@ -1,0 +1,32 @@
+This small patchset helps rework the VSP1 driver to repair an issue on
+suspend/resume operations whereby the pipeline does not get reconfigured after
+it has been re-initialised following a resume operation.
+
+Along side this, there was an intrinsic race in the vsp1_video_start_streaming()
+function whereby multiple streams operating through a BRU, could find themselves
+commencing an operation before the pipeline has been configured, or worse -
+commencing, just as the pipeline is being configured resulting in a null pointer
+dereference on pipe->dl.
+
+This series superceeds a previous effort to fix the BRU race.
+
+Patch [1/4] is a code move only, with no functional change.
+Patch [2/4] refactors the vsp1_video_start_streaming() function and fixes both
+            suspend/resume, and the BRU race in a single change
+Patch [3/4] removes the context scoped 'pipe->dl' which has been susceptible to
+            races and isn't required to be in the context.
+Patch [4/4] is an RFC patch really, that fixes a segfault on error paths  and I
+            certainly expect feedback and brief discussion. Please drop Patch 4
+            in the event of any further discussion, and don't consider it as
+            blocking for the first three patches of this series.
+
+v3:
+ - Move configured=false from vsp1_device_init to vsp1_reset_wpf()
+ - Clean up flag dereferencing with a local struct *
+
+v2:
+ - Refactor video pipeline configuration implementation to solve both suspend
+   resume and the VSP BRU race in a single change
+
+v1:
+ - Original pipeline configuration rework
