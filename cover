@@ -1,4 +1,4 @@
-v4l: vsp1: Repair vidoe suspend/resume and BRU race
+v4l: vsp1: Fix suspend/resume and race on M2M pipelines
 
 This small patchset helps rework the VSP1 driver to repair an issue on
 suspend/resume operations whereby the pipeline does not get reconfigured after
