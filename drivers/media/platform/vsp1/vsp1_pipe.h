@@ -111,8 +111,6 @@ struct vsp1_pipeline {
 
 	struct list_head entities;
 
-	struct vsp1_dl_list *dl;
-
 	unsigned int partitions;
 	struct v4l2_rect partition;
 	struct v4l2_rect part_table[VSP1_PIPE_MAX_PARTITIONS];
