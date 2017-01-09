@@ -1,0 +1,24 @@
+vsp1 partition algorithm improvements
+
+Some updates and initial improvements for the VSP1 partition algorithm that
+remove redundant processing and variables, reducing the processing done in
+interrupt context slightly.
+
+Patch 1 brings in some protection against invalid pipeline configurations that
+are not supported by the partition algorithm on Gen3 hardware.
+
+Patches 2,3 and 4 clean up the calculation of the partition sizes such that they
+are only calculated once at streamon - and the partition windows are stored in
+the vsp1_pipeline object.
+
+Kieran Bingham (4):
+  v4l: vsp1: Implement partition algorithm restrictions
+  v4l: vsp1: Move vsp1_video_pipeline_setup_partitions() function
+  v4l: vsp1: Calculate partition sizes at stream start.
+  v4l: vsp1: Remove redundant context variables
+
+ drivers/media/platform/vsp1/vsp1_pipe.h  |  10 ++-
+ drivers/media/platform/vsp1/vsp1_sru.c   |   7 +-
+ drivers/media/platform/vsp1/vsp1_sru.h   |   1 +
+ drivers/media/platform/vsp1/vsp1_video.c | 124 +++++++++++++++++++------------
+ 4 files changed, 89 insertions(+), 53 deletions(-)
