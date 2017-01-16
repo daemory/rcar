@@ -286,6 +286,35 @@ drm_atomic_get_existing_crtc_state(struct drm_atomic_state *state,
 }
 
 /**
+ * drm_atomic_get_old_crtc_state - get old crtc state, if it exists
+ * @state: global atomic state object
+ * @crtc: crtc to grab
+ *
+ * This function returns the old crtc state for the given crtc, or
+ * NULL if the crtc is not part of the global atomic state.
+ */
+static inline struct drm_crtc_state *
+drm_atomic_get_old_crtc_state(struct drm_atomic_state *state,
+			      struct drm_crtc *crtc)
+{
+	return state->crtcs[drm_crtc_index(crtc)].old_state;
+}
+/**
+ * drm_atomic_get_new_crtc_state - get new crtc state, if it exists
+ * @state: global atomic state object
+ * @crtc: crtc to grab
+ *
+ * This function returns the new crtc state for the given crtc, or
+ * NULL if the crtc is not part of the global atomic state.
+ */
+static inline struct drm_crtc_state *
+drm_atomic_get_new_crtc_state(struct drm_atomic_state *state,
+			      struct drm_crtc *crtc)
+{
+	return state->crtcs[drm_crtc_index(crtc)].new_state;
+}
+
+/**
  * drm_atomic_get_existing_plane_state - get plane state, if it exists
  * @state: global atomic state object
  * @plane: plane to grab
@@ -298,6 +327,36 @@ drm_atomic_get_existing_plane_state(struct drm_atomic_state *state,
 				    struct drm_plane *plane)
 {
 	return state->planes[drm_plane_index(plane)].state;
+}
+
+/**
+ * drm_atomic_get_old_plane_state - get plane state, if it exists
+ * @state: global atomic state object
+ * @plane: plane to grab
+ *
+ * This function returns the old plane state for the given plane, or
+ * NULL if the plane is not part of the global atomic state.
+ */
+static inline struct drm_plane_state *
+drm_atomic_get_old_plane_state(struct drm_atomic_state *state,
+			       struct drm_plane *plane)
+{
+	return state->planes[drm_plane_index(plane)].old_state;
+}
+
+/**
+ * drm_atomic_get_new_plane_state - get plane state, if it exists
+ * @state: global atomic state object
+ * @plane: plane to grab
+ *
+ * This function returns the new plane state for the given plane, or
+ * NULL if the plane is not part of the global atomic state.
+ */
+static inline struct drm_plane_state *
+drm_atomic_get_new_plane_state(struct drm_atomic_state *state,
+			       struct drm_plane *plane)
+{
+	return state->planes[drm_plane_index(plane)].new_state;
 }
 
 /**
@@ -318,6 +377,46 @@ drm_atomic_get_existing_connector_state(struct drm_atomic_state *state,
 		return NULL;
 
 	return state->connectors[index].state;
+}
+
+/**
+ * drm_atomic_get_old_connector_state - get connector state, if it exists
+ * @state: global atomic state object
+ * @connector: connector to grab
+ *
+ * This function returns the old connector state for the given connector,
+ * or NULL if the connector is not part of the global atomic state.
+ */
+static inline struct drm_connector_state *
+drm_atomic_get_old_connector_state(struct drm_atomic_state *state,
+				   struct drm_connector *connector)
+{
+	int index = drm_connector_index(connector);
+
+	if (index >= state->num_connector)
+		return NULL;
+
+	return state->connectors[index].old_state;
+}
+
+/**
+ * drm_atomic_get_new_connector_state - get connector state, if it exists
+ * @state: global atomic state object
+ * @connector: connector to grab
+ *
+ * This function returns the new connector state for the given connector,
+ * or NULL if the connector is not part of the global atomic state.
+ */
+static inline struct drm_connector_state *
+drm_atomic_get_new_connector_state(struct drm_atomic_state *state,
+				   struct drm_connector *connector)
+{
+	int index = drm_connector_index(connector);
+
+	if (index >= state->num_connector)
+		return NULL;
+
+	return state->connectors[index].new_state;
 }
 
 /**
