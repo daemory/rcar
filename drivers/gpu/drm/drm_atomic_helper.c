@@ -70,8 +70,7 @@ drm_atomic_helper_plane_changed(struct drm_atomic_state *state,
 	struct drm_crtc_state *crtc_state;
 
 	if (old_plane_state->crtc) {
-		crtc_state = drm_atomic_get_existing_crtc_state(state,
-								old_plane_state->crtc);
+		crtc_state = drm_atomic_get_new_crtc_state(state, old_plane_state->crtc);
 
 		if (WARN_ON(!crtc_state))
 			return;
@@ -80,8 +79,7 @@ drm_atomic_helper_plane_changed(struct drm_atomic_state *state,
 	}
 
 	if (plane_state->crtc) {
-		crtc_state = drm_atomic_get_existing_crtc_state(state,
-								plane_state->crtc);
+		crtc_state = drm_atomic_get_new_crtc_state(state, plane_state->crtc);
 
 		if (WARN_ON(!crtc_state))
 			return;
@@ -150,7 +148,7 @@ static int handle_conflicting_encoders(struct drm_atomic_state *state,
 	drm_for_each_connector_iter(connector, &conn_iter) {
 		struct drm_crtc_state *crtc_state;
 
-		if (drm_atomic_get_existing_connector_state(state, connector))
+		if (drm_atomic_get_new_connector_state(state, connector))
 			continue;
 
 		encoder = connector->state->best_encoder;
@@ -178,7 +176,7 @@ static int handle_conflicting_encoders(struct drm_atomic_state *state,
 				 conn_state->crtc->base.id, conn_state->crtc->name,
 				 connector->base.id, connector->name);
 
-		crtc_state = drm_atomic_get_existing_crtc_state(state, conn_state->crtc);
+		crtc_state = drm_atomic_get_new_crtc_state(state, conn_state->crtc);
 
 		ret = drm_atomic_set_crtc_for_connector(conn_state, NULL);
 		if (ret)
@@ -219,7 +217,7 @@ set_best_encoder(struct drm_atomic_state *state,
 		 */
 		WARN_ON(!crtc && encoder != conn_state->best_encoder);
 		if (crtc) {
-			crtc_state = drm_atomic_get_existing_crtc_state(state, crtc);
+			crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
 
 			crtc_state->encoder_mask &=
 				~(1 << drm_encoder_index(conn_state->best_encoder));
@@ -230,7 +228,7 @@ set_best_encoder(struct drm_atomic_state *state,
 		crtc = conn_state->crtc;
 		WARN_ON(!crtc);
 		if (crtc) {
-			crtc_state = drm_atomic_get_existing_crtc_state(state, crtc);
+			crtc_state = drm_atomic_get_new_crtc_state(state, crtc);
 
 			crtc_state->encoder_mask |=
 				1 << drm_encoder_index(encoder);
@@ -263,7 +261,7 @@ steal_encoder(struct drm_atomic_state *state,
 
 		set_best_encoder(state, new_connector_state, NULL);
 
-		crtc_state = drm_atomic_get_existing_crtc_state(state, encoder_crtc);
+		crtc_state = drm_atomic_get_new_crtc_state(state, encoder_crtc);
 		crtc_state->connectors_changed = true;
 
 		return;
@@ -286,12 +284,12 @@ update_connector_routing(struct drm_atomic_state *state,
 
 	if (old_connector_state->crtc != new_connector_state->crtc) {
 		if (old_connector_state->crtc) {
-			crtc_state = drm_atomic_get_existing_crtc_state(state, old_connector_state->crtc);
+			crtc_state = drm_atomic_get_new_crtc_state(state, old_connector_state->crtc);
 			crtc_state->connectors_changed = true;
 		}
 
 		if (new_connector_state->crtc) {
-			crtc_state = drm_atomic_get_existing_crtc_state(state, new_connector_state->crtc);
+			crtc_state = drm_atomic_get_new_crtc_state(state, new_connector_state->crtc);
 			crtc_state->connectors_changed = true;
 		}
 	}
@@ -349,7 +347,7 @@ update_connector_routing(struct drm_atomic_state *state,
 
 	set_best_encoder(state, new_connector_state, new_encoder);
 
-	crtc_state = drm_atomic_get_existing_crtc_state(state, new_connector_state->crtc);
+	crtc_state = drm_atomic_get_new_crtc_state(state, new_connector_state->crtc);
 	crtc_state->connectors_changed = true;
 
 	DRM_DEBUG_ATOMIC("[CONNECTOR:%d:%s] using [ENCODER:%d:%s] on [CRTC:%d:%s]\n",
@@ -390,8 +388,7 @@ mode_fixup(struct drm_atomic_state *state)
 		if (!conn_state->crtc || !conn_state->best_encoder)
 			continue;
 
-		crtc_state = drm_atomic_get_existing_crtc_state(state,
-								conn_state->crtc);
+		crtc_state = drm_atomic_get_new_crtc_state(state, conn_state->crtc);
 
 		/*
 		 * Each encoder has at most one connector (since we always steal
@@ -703,8 +700,7 @@ disable_outputs(struct drm_device *dev, struct drm_atomic_state *old_state)
 		if (!old_conn_state->crtc)
 			continue;
 
-		old_crtc_state = drm_atomic_get_existing_crtc_state(old_state,
-								    old_conn_state->crtc);
+		old_crtc_state = drm_atomic_get_new_crtc_state(old_state, old_conn_state->crtc);
 
 		if (!old_crtc_state->active ||
 		    !drm_atomic_crtc_needs_modeset(old_conn_state->crtc->state))
@@ -833,14 +829,15 @@ drm_atomic_helper_update_legacy_modeset_state(struct drm_device *dev,
 	/* set legacy state in the crtc structure */
 	for_each_new_crtc_in_state(old_state, crtc, crtc_state, i) {
 		struct drm_plane *primary = crtc->primary;
+		struct drm_plane_state *plane_state;
 
 		crtc->mode = crtc_state->mode;
 		crtc->enabled = crtc_state->enable;
 
-		if (drm_atomic_get_existing_plane_state(old_state, primary) &&
-		    primary->state->crtc == crtc) {
-			crtc->x = primary->state->src_x >> 16;
-			crtc->y = primary->state->src_y >> 16;
+		plane_state = drm_atomic_get_new_plane_state(old_state, primary);
+		if (plane_state && plane_state->crtc == crtc) {
+			crtc->x = plane_state->src_x >> 16;
+			crtc->y = plane_state->src_y >> 16;
 		}
 
 		if (crtc_state->enable)
@@ -1841,7 +1838,7 @@ drm_atomic_helper_commit_planes_on_crtc(struct drm_crtc_state *old_crtc_state)
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct drm_plane_state *old_plane_state =
-			drm_atomic_get_existing_plane_state(old_state, plane);
+			drm_atomic_get_old_plane_state(old_state, plane);
 		const struct drm_plane_helper_funcs *plane_funcs;
 
 		plane_funcs = plane->helper_private;
