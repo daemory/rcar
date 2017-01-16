@@ -58,6 +58,14 @@ enum vsp1_pipeline_state {
 };
 
 /*
+ * struct vsp1_partition - A description of each partition slice performed by HW
+ * @dest: The position and dimension of this partition in the destination image
+ */
+struct vsp1_partition {
+	struct v4l2_rect dest;
+};
+
+/*
  * struct vsp1_pipeline - A VSP1 hardware pipeline
  * @pipe: the media pipeline
  * @irqlock: protects the pipeline state
@@ -114,8 +122,8 @@ struct vsp1_pipeline {
 	struct vsp1_dl_list *dl;
 
 	unsigned int partitions;
-	struct v4l2_rect partition;
-	struct v4l2_rect *part_table;
+	struct vsp1_partition *partition;
+	struct vsp1_partition *part_table;
 };
 
 void vsp1_pipeline_reset(struct vsp1_pipeline *pipe);
