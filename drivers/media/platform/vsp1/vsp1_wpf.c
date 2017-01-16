@@ -218,8 +218,8 @@ static void wpf_configure(struct vsp1_entity *entity,
 		const struct v4l2_pix_format_mplane *format = &wpf->format;
 		struct vsp1_rwpf_memory mem = wpf->mem;
 		unsigned int flip = wpf->flip.active;
-		unsigned int width = source_format->width;
-		unsigned int height = source_format->height;
+		unsigned int width = sink_format->width;
+		unsigned int height = sink_format->height;
 		unsigned int offset;
 
 		/*
