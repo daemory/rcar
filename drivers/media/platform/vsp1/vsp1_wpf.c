@@ -227,7 +227,7 @@ static void wpf_configure(struct vsp1_entity *entity,
 		 * multiple slices.
 		 */
 		if (pipe->partitions > 1)
-			width = pipe->partition.width;
+			width = pipe->partition->dest.width;
 
 		vsp1_wpf_write(wpf, dl, VI6_WPF_HSZCLIP, VI6_WPF_SZCLIP_EN |
 			       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
@@ -255,10 +255,11 @@ static void wpf_configure(struct vsp1_entity *entity,
 			 * order the partitions correctly.
 			 */
 			if (flip & BIT(WPF_CTRL_HFLIP))
-				offset = format->width - pipe->partition.left
-					- pipe->partition.width;
+				offset = format->width
+					- pipe->partition->dest.left
+					- pipe->partition->dest.width;
 			else
-				offset = pipe->partition.left;
+				offset = pipe->partition->dest.left;
 
 			mem.addr[0] += offset * fmtinfo->bpp[0] / 8;
 			if (format->num_planes > 1) {

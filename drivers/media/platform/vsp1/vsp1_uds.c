@@ -272,11 +272,13 @@ static void uds_configure(struct vsp1_entity *entity,
 	bool multitap;
 
 	if (params == VSP1_ENTITY_PARAMS_PARTITION) {
-		const struct v4l2_rect *clip = &pipe->partition;
+		struct vsp1_partition *partition = pipe->partition;
 
 		vsp1_uds_write(uds, dl, VI6_UDS_CLIP_SIZE,
-			       (clip->width << VI6_UDS_CLIP_SIZE_HSIZE_SHIFT) |
-			       (clip->height << VI6_UDS_CLIP_SIZE_VSIZE_SHIFT));
+			       (partition->dest.width
+					<< VI6_UDS_CLIP_SIZE_HSIZE_SHIFT) |
+			       (partition->dest.height
+					<< VI6_UDS_CLIP_SIZE_VSIZE_SHIFT));
 		return;
 	}
 

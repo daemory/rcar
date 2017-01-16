@@ -271,8 +271,11 @@ static void vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 
 	/* Gen2 hardware doesn't require image partitioning. */
 	if (vsp1->info->gen == 2) {
+		struct vsp1_partition *partition = &pipe->part_table[0];
+
 		pipe->partitions = 1;
-		pipe->part_table[0] = vsp1_video_partition(pipe, div_size, 0);
+		partition->dest = vsp1_video_partition(pipe, div_size, 0);
+
 		return;
 	}
 
@@ -288,8 +291,11 @@ static void vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 
 	pipe->partitions = DIV_ROUND_UP(format->width, div_size);
 
-	for (i = 0; i < pipe->partitions; i++)
-		pipe->part_table[i] = vsp1_video_partition(pipe, div_size, i);
+	for (i = 0; i < pipe->partitions; i++) {
+		struct vsp1_partition *partition = &pipe->part_table[i];
+
+		partition->dest = vsp1_video_partition(pipe, div_size, i);
+	}
 }
 
 /* -----------------------------------------------------------------------------
@@ -373,7 +379,7 @@ static void vsp1_video_pipeline_run_partition(struct vsp1_pipeline *pipe,
 {
 	struct vsp1_entity *entity;
 
-	pipe->partition = pipe->part_table[partition_number];
+	pipe->partition = &pipe->part_table[partition_number];
 
 	list_for_each_entry(entity, &pipe->entities, list_pipe) {
 		if (entity->ops->configure)
