@@ -282,7 +282,7 @@ static int vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 			return -ENOMEM;
 
 		pipe->partitions = 1;
-		pipe->part_table[0] = vsp1_video_partition(pipe, div_size, 0);
+		pipe->part_table[0].dest = vsp1_video_partition(pipe, div_size, 0);
 		return 0;
 	}
 
@@ -303,8 +303,11 @@ static int vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
 	if (pipe->part_table == NULL)
 		return -ENOMEM;
 
-	for (i = 0; i < pipe->partitions; i++)
-		pipe->part_table[i] = vsp1_video_partition(pipe, div_size, i);
+	for (i = 0; i < pipe->partitions; i++) {
+		struct vsp1_partition *partition = &pipe->part_table[i];
+
+		partition->dest = vsp1_video_partition(pipe, div_size, i);
+	}
 
 	return 0;
 }
@@ -389,7 +392,7 @@ static void vsp1_video_pipeline_run_partition(struct vsp1_pipeline *pipe,
 {
 	struct vsp1_entity *entity;
 
-	pipe->partition = pipe->part_table[partition];
+	pipe->partition = &pipe->part_table[partition];
 
 	list_for_each_entry(entity, &pipe->entities, list_pipe) {
 		if (entity->ops->configure)
