@@ -323,9 +323,46 @@ void vsp1_reg_read_and_decode(struct vsp1_device *vsp1, struct seq_file *s,
  * Debugfs management
  */
 
+
+static void vsp1_debugfs_print_vsp1_partition_rect(struct seq_file *s,
+						  struct vsp1_partition_rect *r)
+{
+	seq_printf(s, "[{%d} %d,%d:%dx%d {%d}]",
+			r->offset,
+			r->left, r->top, r->width, r->height,
+			0);
+}
+
+
+static void vsp1_debugfs_print_vsp1_partition(struct seq_file *s,
+					      struct vsp1_pipeline *pipe,
+					      struct vsp1_partition *p)
+{
+	vsp1_debugfs_print_vsp1_partition_rect(s, &p->rpf);
+	seq_puts(s, "->");
+
+	if (pipe->uds) {
+		vsp1_debugfs_print_vsp1_partition_rect(s, &p->uds_sink);
+		seq_puts(s, "->");
+		vsp1_debugfs_print_vsp1_partition_rect(s, &p->uds_source);
+		seq_puts(s, "->");
+	}
+
+	if (pipe->sru) {
+		vsp1_debugfs_print_vsp1_partition_rect(s, &p->sru);
+		seq_puts(s, "->");
+	}
+
+	vsp1_debugfs_print_vsp1_partition_rect(s, &p->wpf);
+
+	seq_printf(s, " : Start %d, EndP: %d\n",
+		   p->start_phase, p->end_phase);
+}
+
 static void vsp1_debugfs_print_vsp1_pipe(struct seq_file *seq,
 					 struct vsp1_pipeline *pipe, char *msg)
 {
+	unsigned int i;
 
 	if (!pipe) {
 		seq_printf(seq, "No Pipe @ %p : %s\n", pipe, msg);
@@ -349,6 +386,9 @@ static void vsp1_debugfs_print_vsp1_pipe(struct seq_file *seq,
 			pipe->num_inputs,
 			pipe->partitions);
 
+	for (i = 0; i < pipe->partitions; i++)
+		vsp1_debugfs_print_vsp1_partition(seq, pipe,
+						  &pipe->part_table[i]);
 }
 
 static int vsp1_debugfs_info(struct seq_file *s, void *p)
