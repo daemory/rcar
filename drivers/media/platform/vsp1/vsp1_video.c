@@ -473,7 +473,6 @@ static int vsp1_video_pipeline_build_branch(struct vsp1_pipeline *pipe,
 	struct vsp1_entity *entity;
 	struct media_pad *pad;
 	bool bru_found = false;
-	bool sru_found = false;
 	int ret;
 
 	ret = media_entity_enum_init(&ent_enum, &input->entity.vsp1->media_dev);
@@ -523,6 +522,12 @@ static int vsp1_video_pipeline_build_branch(struct vsp1_pipeline *pipe,
 		if (entity->type == VSP1_ENTITY_SRU) {
 			struct vsp1_sru *sru = to_sru(&entity->subdev);
 
+			/* SRU can't be chained. */
+			if (pipe->sru) {
+				ret = -EPIPE;
+				goto out;
+			}
+
 			/*
 			 * Gen3 partition algorithm restricts SRU double-scaled
 			 * resolution if it is connected after a UDS entity
@@ -530,7 +535,7 @@ static int vsp1_video_pipeline_build_branch(struct vsp1_pipeline *pipe,
 			if (vsp1->info->gen == 3 && pipe->uds)
 				sru->force_identity_mode = true;
 
-			sru_found = true;
+			pipe->sru = entity;
 		}
 
 		if (entity->type == VSP1_ENTITY_UDS) {
@@ -546,7 +551,7 @@ static int vsp1_video_pipeline_build_branch(struct vsp1_pipeline *pipe,
 			 * SRU on Gen3 will always engage the partition
 			 * algorithm
 			 */
-			if (vsp1->info->gen == 3 && sru_found) {
+			if (vsp1->info->gen == 3 && pipe->sru) {
 				ret = -EPIPE;
 				goto out;
 			}
