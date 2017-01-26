@@ -518,8 +518,10 @@ phys_addr_t swiotlb_tbl_map_single(struct device *hwdev,
 
 not_found:
 	spin_unlock_irqrestore(&io_tlb_lock, flags);
+#if 0
 	if (printk_ratelimit())
 		dev_warn(hwdev, "swiotlb buffer is full (sz: %zd bytes)\n", size);
+#endif
 	return SWIOTLB_MAP_ERROR;
 found:
 	spin_unlock_irqrestore(&io_tlb_lock, flags);
@@ -729,8 +731,10 @@ swiotlb_full(struct device *dev, size_t size, enum dma_data_direction dir,
 	 * When the mapping is small enough return a static buffer to limit
 	 * the damage, or panic when the transfer is too big.
 	 */
+#if 0
 	dev_err_ratelimited(dev, "DMA: Out of SW-IOMMU space for %zu bytes\n",
 			    size);
+#endif
 
 	if (size <= io_tlb_overflow || !do_panic)
 		return;
