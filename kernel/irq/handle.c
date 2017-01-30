@@ -141,6 +141,27 @@ irqreturn_t __handle_irq_event_percpu(struct irq_desc *desc, unsigned int *flags
 	for_each_action_of_desc(desc, action) {
 		irqreturn_t res;
 
+		/*
+		 * This could be 'somewhere else, but it will do here for now
+		 * This is clearly 'bad' as we are completely stalling the CPU
+		 * in interrupt context. It would be great if we could add
+		 * latency to the requested interrupt without affecting the rest
+		 * of the system. Perhaps just 'postpone' or 'miss' the
+		 * interrupt occasionally ?
+		 */
+
+		/* Do something crazy... lets block / wait / postpone */
+		if (action->flags & IRQF_LATENCY_FUZZ) {
+			if (get_random_int() > 0xF0000000) {
+				trace_printk("Skipped interrupt randomly!?\n");
+				/*
+				 * Interrupt will not be disabled, and so will
+				 * be handled on the next 'loop'?
+				 */
+				continue;
+			}
+		}
+
 		trace_irq_handler_entry(irq, action);
 		res = action->handler(irq, action->dev_id);
 		trace_irq_handler_exit(irq, action, res);
