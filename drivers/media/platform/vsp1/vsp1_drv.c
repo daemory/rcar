@@ -715,7 +715,8 @@ static int vsp1_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(&pdev->dev, irq->start, vsp1_irq_handler,
-			      IRQF_SHARED, dev_name(&pdev->dev), vsp1);
+			      IRQF_SHARED | IRQF_LATENCY_FUZZ,
+			      dev_name(&pdev->dev), vsp1);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to request IRQ\n");
 		return ret;
