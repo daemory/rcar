@@ -117,6 +117,8 @@ struct vsp1_dl_manager {
 
 	struct work_struct gc_work;
 	struct list_head gc_fragments;
+
+	struct dentry *dbgroot;
 };
 
 /* -----------------------------------------------------------------------------
@@ -676,6 +678,106 @@ static void vsp1_dlm_garbage_collect(struct work_struct *work)
 	vsp1_dlm_fragments_free(dlm);
 }
 
+/* -----------------------------------------------------------------------------
+ * Debugfs internal views
+ */
+
+static void seq_print_list_body(struct seq_file *s, struct vsp1_dl_body *dlb)
+{
+	int i;
+
+	for (i = 0; i < dlb->num_entries; i++) {
+		struct vsp1_dl_entry *e = &dlb->entries[i];
+
+		seq_printf(s, "0x%08x -> %s\n", e->data,
+				vsp1_reg_to_name(e->addr));
+	}
+}
+
+static void seq_printf_dl(struct seq_file *s, struct vsp1_dl_list *dl)
+{
+	struct vsp1_dl_body *dlb;
+	struct vsp1_dl_list *child;
+
+	if (!dl)
+		return;
+
+	seq_print_list_body(s, &dl->body0);
+
+	list_for_each_entry(dlb, &dl->fragments, list)
+		seq_print_list_body(s, dlb);
+
+	if (dl->has_chain)
+		list_for_each_entry(child, &dl->chain, chain)
+			seq_print_list_body(s, &child->body0);
+}
+
+static int vsp1_debugfs_dlm_active(struct seq_file *s, void *p)
+{
+	struct vsp1_dl_manager *dlm = s->private;
+
+	seq_printf_dl(s, dlm->active);
+
+	return 0;
+}
+
+DEBUGFS_RO_ATTR(vsp1_debugfs_dlm_active);
+
+static int vsp1_debugfs_dlm_pending(struct seq_file *s, void *p)
+{
+	struct vsp1_dl_manager *dlm = s->private;
+
+	seq_printf_dl(s, dlm->pending);
+
+	return 0;
+}
+
+DEBUGFS_RO_ATTR(vsp1_debugfs_dlm_pending);
+
+static int vsp1_debugfs_dlm_queued(struct seq_file *s, void *p)
+{
+	struct vsp1_dl_manager *dlm = s->private;
+
+	seq_printf_dl(s, dlm->queued);
+
+	return 0;
+}
+
+DEBUGFS_RO_ATTR(vsp1_debugfs_dlm_queued);
+
+/* Debugfs initialised after entities are created */
+static int vsp1_debugfs_init_dlm(struct vsp1_dl_manager *dlm)
+{
+	struct dentry *dentry;
+	struct vsp1_device *vsp1 = dlm->vsp1;
+
+	dlm->dbgroot = debugfs_create_dir("DLM", vsp1->dbgroot);
+	if (!dlm->dbgroot)
+		return -ENOMEM;
+
+	/* dentry pointers discarded */
+	dentry = debugfs_create_file("active", 0444, dlm->dbgroot, dlm,
+				     &vsp1_debugfs_dlm_active_fops);
+
+	dentry = debugfs_create_file("pending", 0444, dlm->dbgroot, dlm,
+				     &vsp1_debugfs_dlm_pending_fops);
+
+	dentry = debugfs_create_file("queued", 0444, dlm->dbgroot, dlm,
+				     &vsp1_debugfs_dlm_queued_fops);
+
+	return 0;
+}
+
+static void vsp1_debugfs_destroy_dlm(struct vsp1_dl_manager *dlm)
+{
+	debugfs_remove(dlm->dbgroot);
+	dlm->dbgroot = NULL;
+}
+
+/* -----------------------------------------------------------------------------
+ * Object creation and destruction
+ */
+
 struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 					unsigned int index,
 					unsigned int prealloc)
@@ -707,6 +809,8 @@ struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 		list_add_tail(&dl->list, &dlm->free);
 	}
 
+	vsp1_debugfs_init_dlm(dlm);
+
 	return dlm;
 }
 
@@ -716,6 +820,8 @@ void vsp1_dlm_destroy(struct vsp1_dl_manager *dlm)
 
 	if (!dlm)
 		return;
+
+	vsp1_debugfs_destroy_dlm(dlm);
 
 	cancel_work_sync(&dlm->gc_work);
 
