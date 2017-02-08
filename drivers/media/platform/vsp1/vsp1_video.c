@@ -196,6 +196,7 @@ static void vsp1_video_partition(struct vsp1_pipeline *pipe,
 				 unsigned int div_size, unsigned int index)
 {
 	const struct v4l2_mbus_framefmt *format;
+	struct vsp1_partition_window dest;
 	unsigned int modulus;
 
 	/*
@@ -208,19 +209,22 @@ static void vsp1_video_partition(struct vsp1_pipeline *pipe,
 
 	/* A single partition simply processes the output size in full. */
 	if (pipe->partitions <= 1) {
-		partition->dest.left = 0;
-		partition->dest.top = 0;
-		partition->dest.width = format->width;
-		partition->dest.height = format->height;
+		dest.left = 0;
+		dest.top = 0;
+		dest.width = format->width;
+		dest.height = format->height;
+
+		vsp1_pipeline_propagate_partition(pipe, partition, index,
+						  &dest);
 
 		return;
 	}
 
 	/* Initialise the partition with sane starting conditions. */
-	partition->dest.left = index * div_size;
-	partition->dest.top = 0;
-	partition->dest.width = div_size;
-	partition->dest.height = format->height;
+	dest.left = index * div_size;
+	dest.top = 0;
+	dest.width = div_size;
+	dest.height = format->height;
 
 	modulus = format->width % div_size;
 
@@ -243,16 +247,18 @@ static void vsp1_video_partition(struct vsp1_pipeline *pipe,
 		if (modulus < div_size / 2) {
 			if (index == partitions - 1) {
 				/* Halve the penultimate partition. */
-				partition->dest.width = div_size / 2;
+				dest.width = div_size / 2;
 			} else if (index == partitions) {
 				/* Increase the final partition. */
-				partition->dest.width = div_size / 2 + modulus;
-				partition->dest.left -= div_size / 2;
+				dest.width = div_size / 2 + modulus;
+				dest.left -= div_size / 2;
 			}
 		} else if (index == partitions) {
-			partition->dest.width = modulus;
+			dest.width = modulus;
 		}
 	}
+
+	vsp1_pipeline_propagate_partition(pipe, partition, index, &dest);
 }
 
 static int vsp1_video_pipeline_setup_partitions(struct vsp1_pipeline *pipe)
