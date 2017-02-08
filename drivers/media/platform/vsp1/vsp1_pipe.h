@@ -58,11 +58,32 @@ enum vsp1_pipeline_state {
 };
 
 /*
+ * struct vsp1_partition_rect
+ *
+ * replicates struct v4l2_rect, but with an offset to apply
+ */
+struct vsp1_partition_rect {
+	__s32   left;
+	__s32   top;
+	__u32   width;
+	__u32   height;
+	__u32   offset;
+};
+
+/*
  * struct vsp1_partition - A description of each partition slice performed by HW
- * @dest: The position and dimension of this partition in the destination image
+ * @rpf: The RPF partition window configuration
+ * @uds_sink: The UDS input partition window configuration
+ * @uds_source: The UDS output partition window configuration
+ * @sru: The SRU partition window configuration
+ * @wpf: The WPF partition window configuration
  */
 struct vsp1_partition {
-	struct v4l2_rect dest;
+	struct vsp1_partition_rect rpf;
+	struct vsp1_partition_rect uds_sink;
+	struct vsp1_partition_rect uds_source;
+	struct vsp1_partition_rect sru;
+	struct vsp1_partition_rect wpf;
 };
 
 /*
@@ -119,6 +140,11 @@ struct vsp1_pipeline {
 	struct vsp1_entity *uds;
 	struct vsp1_entity *uds_input;
 
+	/*
+	 * The order of this list should be representative of the order and
+	 * routing of the the pipeline, as it is assumed by the partition
+	 * algorithm that we can walk this list in sequence.
+	 */
 	struct list_head entities;
 
 	struct vsp1_dl_list *dl;
@@ -140,6 +166,11 @@ void vsp1_pipeline_frame_end(struct vsp1_pipeline *pipe);
 
 void vsp1_pipeline_propagate_alpha(struct vsp1_pipeline *pipe,
 				   struct vsp1_dl_list *dl, unsigned int alpha);
+
+void vsp1_pipeline_propagate_partition(struct vsp1_pipeline *pipe,
+				       struct vsp1_partition *partition,
+				       unsigned int index,
+				       struct vsp1_partition_rect *rect);
 
 void vsp1_pipelines_suspend(struct vsp1_device *vsp1);
 void vsp1_pipelines_resume(struct vsp1_device *vsp1);

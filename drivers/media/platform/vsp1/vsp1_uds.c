@@ -274,10 +274,18 @@ static void uds_configure(struct vsp1_entity *entity,
 	if (params == VSP1_ENTITY_PARAMS_PARTITION) {
 		struct vsp1_partition *partition = pipe->partition;
 
+		/* Input size clipping */
+		vsp1_uds_write(uds, dl, VI6_UDS_HSZCLIP, VI6_UDS_HSZCLIP_HCEN |
+			       (partition->uds_sink.offset
+					<< VI6_UDS_HSZCLIP_HCL_OFST_SHIFT) |
+			       (partition->uds_sink.width
+					<< VI6_UDS_HSZCLIP_HCL_SIZE_SHIFT));
+
+		/* Output size clipping */
 		vsp1_uds_write(uds, dl, VI6_UDS_CLIP_SIZE,
-			       (partition->dest.width
+			       (partition->uds_source.width
 					<< VI6_UDS_CLIP_SIZE_HSIZE_SHIFT) |
-			       (partition->dest.height
+			       (partition->uds_source.height
 					<< VI6_UDS_CLIP_SIZE_VSIZE_SHIFT));
 		return;
 	}
@@ -345,9 +353,42 @@ static unsigned int uds_max_width(struct vsp1_entity *entity,
 		return 2048;
 }
 
+/* -----------------------------------------------------------------------------
+ * Partition Algorithm Support
+ */
+
+/* Perform UDS specific calculations for the Partition Algorithm */
+struct vsp1_partition_rect *uds_partition(struct vsp1_entity *entity,
+					  struct vsp1_pipeline *pipe,
+					  struct vsp1_partition *partition,
+					  unsigned int partition_idx,
+					  struct vsp1_partition_rect *dest)
+{
+	struct vsp1_uds *uds = to_uds(&entity->subdev);
+	const struct v4l2_mbus_framefmt *output;
+	const struct v4l2_mbus_framefmt *input;
+
+	/* Initialise the partition state */
+	partition->uds_sink = *dest;
+	partition->uds_source = *dest;
+
+	input = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
+					   UDS_PAD_SINK);
+	output = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
+					    UDS_PAD_SOURCE);
+
+	partition->uds_sink.width = dest->width * input->width
+				  / output->width;
+	partition->uds_sink.left = dest->left * input->width
+				 / output->width;
+
+	return &partition->uds_sink;
+}
+
 static const struct vsp1_entity_operations uds_entity_ops = {
 	.configure = uds_configure,
 	.max_width = uds_max_width,
+	.partition = uds_partition,
 };
 
 /* -----------------------------------------------------------------------------
