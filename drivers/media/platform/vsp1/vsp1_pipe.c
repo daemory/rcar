@@ -375,10 +375,21 @@ bool vsp1_pipeline_partitioned(struct vsp1_pipeline *pipe)
 /*
  * Propagate the partition calculations through the pipeline
  *
- * Work backwards through the pipe, allowing each entity to update the partition
- * parameters based on its configuration, and the entity connected to its
- * source. Each entity must produce the partition required for the previous
- * entity in the pipeline.
+ * Work backwards through the pipe, allowing each entity to update the
+ * partition parameters based on its configuration. Each entity must produce
+ * the partition window required for the previous entity in the pipeline
+ * to generate. This window can be passed through if no changes are necessary.
+ *
+ * Entities are processed in reverse order:
+ *	DDDD = Destination pixels
+ *	SSSS = Source pixels
+ *	==== = Intermediate pixels
+ *	____ = Disposable pixels
+ *
+ * WPF			    |DDDD|	WPF determines it's required partition
+ * UDS(source)		   |<====>|	UDS Source requests overlap
+ * UDS(sink)		|<-|======|->|	UDS Sink calculates input size
+ * RPF			|__SSSSSSSS__|	RPF provides extra pixels
  */
 void vsp1_pipeline_propagate_partition(struct vsp1_pipeline *pipe,
 				       struct vsp1_partition *partition,

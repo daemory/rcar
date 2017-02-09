@@ -222,6 +222,7 @@ static void vsp1_video_calculate_partition(struct vsp1_pipeline *pipe,
 	/* Initialise the partition with sane starting conditions. */
 	window.left = index * div_size;
 	window.width = div_size;
+	window.offset = 0;
 
 	modulus = format->width % div_size;
 

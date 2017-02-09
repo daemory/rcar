@@ -62,6 +62,7 @@ enum vsp1_pipeline_state {
 struct vsp1_partition_window {
 	unsigned int left;
 	unsigned int width;
+	unsigned int offset;
 };
 
 /*

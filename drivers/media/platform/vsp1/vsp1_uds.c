@@ -77,6 +77,20 @@ static struct uds_phase uds_phase_calculation(int position, int start_phase,
 	return phase;
 }
 
+static int uds_left_src_pixel(int pos, int start_phase, int ratio)
+{
+	struct uds_phase phase;
+
+	phase = uds_phase_calculation(pos, start_phase, ratio);
+
+	/* Renesas guard against odd values in these scale ratios here ? */
+	if ((phase.mp == 2 && (phase.residual & 0x01)) ||
+	    (phase.mp == 4 && (phase.residual & 0x03)))
+		WARN_ON(1);
+
+	return phase.mp * (phase.prefilt_outpos + (phase.residual ? 1 : 0));
+}
+
 static int uds_start_phase(int pos, int start_phase, int ratio)
 {
 	struct uds_phase phase;
@@ -427,6 +441,10 @@ static void uds_partition(struct vsp1_entity *entity,
 	const struct v4l2_mbus_framefmt *input;
 	unsigned int hscale;
 	unsigned int image_start_phase = 0;
+	unsigned int right_sink;
+	unsigned int margin;
+	unsigned int left;
+	unsigned int right;
 
 	/* Initialise the partition state. */
 	partition->uds_sink = *window;
@@ -439,10 +457,27 @@ static void uds_partition(struct vsp1_entity *entity,
 
 	hscale = uds_compute_ratio(input->width, output->width);
 
-	partition->uds_sink.width = window->width * input->width
-				  / output->width;
-	partition->uds_sink.left = window->left * input->width
-				 / output->width;
+	/* margin = clamp_pow_2(scale) * 4; ? */
+	margin = hscale < 0x200 ? 32 : /* 8 <  scale */
+		 hscale < 0x400 ? 16 : /* 4 <  scale <= 8 */
+		 hscale < 0x800 ?  8 : /* 2 <  scale <= 4 */
+				   4;  /*      scale <= 2 */
+
+	/* Identify expanded output pixels.  */
+	left = max_t(int, 0, window->left - margin);
+	right = min_t(int, output->width, window->left + window->width + margin);
+
+	partition->uds_source.left = left;
+	partition->uds_source.width = right - left;
+
+	/* Identify the input positions from the expanded partition. */
+	partition->uds_sink.left = uds_left_src_pixel(left,
+					image_start_phase, hscale);
+
+	/* Because this is 'left src pixel' perhaps we need to add one here, then subtract later. */
+	right_sink = uds_left_src_pixel(right, image_start_phase, hscale);
+
+	partition->uds_sink.width = right_sink - partition->uds_sink.left;
 
 	partition->start_phase = uds_start_phase(partition->uds_source.left,
 						 image_start_phase, hscale);
@@ -462,6 +497,12 @@ static void uds_partition(struct vsp1_entity *entity,
 
 	partition->end_phase = 0;
 
+	/* Pixels to clip from the left edge need to be clipped by the wpf -
+	  so algorithm needs to propagate uds_source margin forwards? (or just
+	  set it from here ? */
+	partition->wpf.offset = window->left - left;
+
+	/* Pass a copy of our sink down to the previous entity. */
 	*window = partition->uds_sink;
 }
 
