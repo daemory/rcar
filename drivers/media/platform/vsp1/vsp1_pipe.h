@@ -71,6 +71,8 @@ struct vsp1_partition_window {
  * @uds_source: The UDS output partition window configuration
  * @sru: The SRU partition window configuration
  * @wpf: The WPF partition window configuration
+ * @start_phase: The UDS start phase specific to this partition.
+ * @end_phase: The UDS end phase specific to this partition.
  */
 struct vsp1_partition {
 	struct vsp1_partition_window rpf;
@@ -78,6 +80,8 @@ struct vsp1_partition {
 	struct vsp1_partition_window uds_source;
 	struct vsp1_partition_window sru;
 	struct vsp1_partition_window wpf;
+	unsigned int start_phase;
+	unsigned int end_phase;
 };
 
 /*
