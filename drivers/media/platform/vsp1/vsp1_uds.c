@@ -59,6 +59,85 @@ static unsigned int uds_multiplier(int ratio)
 }
 
 /*
+ *  These functions all assume a starting phase of 0.
+ *	i.e. the left edge of the image.
+ */
+
+/*
+ * uds_residual - Return the residual phase cycle at the given position
+ * @pos: source destination position
+ * @ratio: scaling ratio in U4.12 fixed-point format
+ */
+static unsigned int uds_residual(unsigned int pos, unsigned int ratio)
+{
+	unsigned int mp = uds_multiplier(ratio);
+	unsigned int residual = (pos * ratio) % (mp * 4096);
+
+	return residual;
+}
+
+/*
+ * uds_left_src_pixel - Return the sink pixel location for the given source
+ * position
+ *
+ * @pos: source destination position
+ * @ratio: scaling ratio in U4.12 fixed-point format
+ */
+static unsigned int uds_left_src_pixel(unsigned int pos, unsigned int ratio)
+{
+	unsigned int mp = uds_multiplier(ratio);
+	unsigned int prefilter_out = (pos * ratio) / (mp * 4096);
+	unsigned int residual = (pos * ratio) % (mp * 4096);
+
+	/* Todo: Section 32.3.7.5 : Procedure 3
+	 *
+	 * A restriction is described where the destination position must
+	 * satisfy the following conditions:
+	 *
+	 *  (pos * ratio) must be a multiple of mp
+	 *
+	 * This is not yet guaranteed and thus this check is in place
+	 * until the pull-back is correctly calculated for all ratio
+	 * and position values.
+	 */
+	WARN_ONCE((mp == 2 && (residual & 0x01)) ||
+		  (mp == 4 && (residual & 0x03)),
+		       "uds_left_pixel restrictions failed");
+
+	return mp * (prefilter_out + (residual ? 1 : 0));
+}
+
+/*
+ * uds_right_src_pixel - Return the sink pixel location for the given source
+ * position
+ *
+ * @pos: source destination position
+ * @ratio: scaling ratio in U4.12 fixed-point format
+ */
+static unsigned int uds_right_src_pixel(unsigned int pos, unsigned int ratio)
+{
+	unsigned int mp = uds_multiplier(ratio);
+	unsigned int prefilter_out = (pos * ratio) / (mp * 4096);
+
+	return mp * (prefilter_out + 2) + (mp / 2);
+}
+
+/*
+ * uds_start_phase - Return the sink pixel location for the given source
+ * position
+ *
+ * @pos: source destination position
+ * @ratio: scaling ratio in U4.12 fixed-point format
+ */
+static unsigned int uds_start_phase(unsigned int pos, unsigned int ratio)
+{
+	unsigned int mp = uds_multiplier(ratio);
+	unsigned int residual = (pos * ratio) % (mp * 4096);
+
+	return residual ? (4096 - residual / mp) : 0;
+}
+
+/*
  * uds_output_size - Return the output size for an input size and scaling ratio
  * @input: input size in pixels
  * @ratio: scaling ratio in U4.12 fixed-point format
@@ -270,6 +349,7 @@ static void uds_configure_stream(struct vsp1_entity *entity,
 	const struct v4l2_mbus_framefmt *input;
 	unsigned int hscale;
 	unsigned int vscale;
+	bool manual_phase = vsp1_pipeline_partitioned(pipe);
 	bool multitap;
 
 	input = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
@@ -294,7 +374,8 @@ static void uds_configure_stream(struct vsp1_entity *entity,
 
 	vsp1_uds_write(uds, dlb, VI6_UDS_CTRL,
 		       (uds->scale_alpha ? VI6_UDS_CTRL_AON : 0) |
-		       (multitap ? VI6_UDS_CTRL_BC : 0));
+		       (multitap ? VI6_UDS_CTRL_BC : 0) |
+		       (manual_phase ? VI6_UDS_CTRL_AMDSLH : 0));
 
 	vsp1_uds_write(uds, dlb, VI6_UDS_PASS_BWIDTH,
 		       (uds_passband_width(hscale)
@@ -332,6 +413,12 @@ static void uds_configure_partition(struct vsp1_entity *entity,
 				<< VI6_UDS_CLIP_SIZE_HSIZE_SHIFT) |
 		       (output->height
 				<< VI6_UDS_CLIP_SIZE_VSIZE_SHIFT));
+
+	vsp1_uds_write(uds, dlb, VI6_UDS_HPHASE,
+		       (partition->start_phase
+				<< VI6_UDS_HPHASE_HSTP_SHIFT) |
+		       (partition->end_phase
+				<< VI6_UDS_HPHASE_HEDP_SHIFT));
 }
 
 static unsigned int uds_max_width(struct vsp1_entity *entity,
@@ -374,11 +461,23 @@ static void uds_partition(struct vsp1_entity *entity,
 			  struct vsp1_pipeline *pipe,
 			  struct vsp1_partition *partition,
 			  unsigned int partition_idx,
-			  struct vsp1_partition_window *window)
+			  struct vsp1_partition_window *window,
+			  bool forwards)
 {
 	struct vsp1_uds *uds = to_uds(&entity->subdev);
 	const struct v4l2_mbus_framefmt *output;
 	const struct v4l2_mbus_framefmt *input;
+	unsigned int hscale;
+	unsigned int right_sink;
+	unsigned int margin;
+	unsigned int left;
+	unsigned int right;
+
+	/* For forwards propagation - simply pass on our output. */
+	if (forwards) {
+		*window = partition->uds_source;
+		return;
+	}
 
 	/* Initialise the partition state. */
 	partition->uds_sink = *window;
@@ -389,11 +488,51 @@ static void uds_partition(struct vsp1_entity *entity,
 	output = vsp1_entity_get_pad_format(&uds->entity, uds->entity.config,
 					    UDS_PAD_SOURCE);
 
-	partition->uds_sink.width = window->width * input->width
-				  / output->width;
-	partition->uds_sink.left = window->left * input->width
-				 / output->width;
+	hscale = uds_compute_ratio(input->width, output->width);
 
+	/*
+	 * Quantify the margin required for discontinuous overlap, and expand
+	 * the window no further than the limits of the image.
+	 */
+	margin = hscale < 0x200 ? 32 : /* 8 <  scale */
+		 hscale < 0x400 ? 16 : /* 4 <  scale <= 8 */
+		 hscale < 0x800 ?  8 : /* 2 <  scale <= 4 */
+				   4;  /*      scale <= 2 */
+
+	left = max_t(int, 0, window->left - margin);
+	right = min_t(int, output->width - 1,
+			   window->left + window->width - 1 + margin);
+
+	/*
+	 * Handle our output partition configuration.
+	 * We can clip the pixels from the right edge, thus the
+	 * uds_source.width does not include the right margin.
+	 */
+	partition->uds_source.left = left;
+	partition->uds_source.width = window->left - left + window->width;
+
+	/*
+	 * The UDS can not clip the left pixels so this value will be
+	 * propagated forwards until it reaches the WPF.
+	 */
+	partition->uds_source.offset = window->left - left;
+
+	/* Identify the input positions from the expanded partition. */
+	partition->uds_sink.left = uds_left_src_pixel(left, hscale);
+
+	right_sink = uds_right_src_pixel(right, hscale);
+	partition->uds_sink.width = right_sink - partition->uds_sink.left;
+
+	/*
+	 * We do not currently use VI6_UDS_CTRL_AMD from VI6_UDS_CTRL.
+	 * In the event that we enable VI6_UDS_CTRL_AMD, we must set the end
+	 * phase for the final partition to the phase_edge.
+	 */
+	partition->end_phase = 0;
+	partition->start_phase = uds_start_phase(partition->uds_source.left,
+						 hscale);
+
+	/* Pass a copy of our sink down to the previous entity. */
 	*window = partition->uds_sink;
 }
 

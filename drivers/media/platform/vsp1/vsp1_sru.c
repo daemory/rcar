@@ -327,24 +327,57 @@ static void sru_partition(struct vsp1_entity *entity,
 			  struct vsp1_pipeline *pipe,
 			  struct vsp1_partition *partition,
 			  unsigned int partition_idx,
-			  struct vsp1_partition_window *window)
+			  struct vsp1_partition_window *window,
+			  bool forwards)
 {
 	struct vsp1_sru *sru = to_sru(&entity->subdev);
 	struct v4l2_mbus_framefmt *input;
 	struct v4l2_mbus_framefmt *output;
+	int scale_up;
+
+	/* The partition->sru represents the SRU sink pad configuration. */
 
 	input = vsp1_entity_get_pad_format(&sru->entity, sru->entity.config,
 					   SRU_PAD_SINK);
 	output = vsp1_entity_get_pad_format(&sru->entity, sru->entity.config,
 					    SRU_PAD_SOURCE);
 
-	/* Adapt if SRUx2 is enabled. */
-	if (input->width != output->width) {
-		window->width /= 2;
-		window->left /= 2;
+	scale_up = (input->width != output->width);
+
+	if (forwards) {
+		/* Propagate the clipping offsets forwards. */
+		window->offset += partition->sru.offset;
+
+		if (scale_up)
+			window->offset *= 2;
+
+		return;
 	}
 
+	/* Adapt if SRUx2 is enabled. */
+	if (scale_up) {
+		/* Clipping offsets are not back-propagated. */
+		window->width /= 2;
+		window->left /= 2;
+
+		/* SRUx2 requires an extra pixel at the right edge. */
+		window->width++;
+	}
+
+	/* Store our adapted sink window. */
 	partition->sru = *window;
+
+	/* Expand to the left edge. */
+	if (window->left != 0) {
+		window->left--;
+		window->width++;
+		partition->sru.offset = 1;
+	} else {
+		partition->sru.offset = 0;
+	}
+
+	/* Expand to the right edge. */
+	window->width++;
 }
 
 static const struct vsp1_entity_operations sru_entity_ops = {
