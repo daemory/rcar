@@ -247,6 +247,13 @@ struct vsp1_partition_rect *rpf_partition(struct vsp1_entity *entity,
 	/* Duplicate the target configuration to the RPF */
 	partition->rpf = *dest;
 
+	/*
+	 * A partition offset, is a request for more input pixels, and a
+	 * declaration that the consumer will clip excess.
+	 */
+	partition->rpf.width += dest->offset;
+	partition->rpf.left -= dest->offset;
+
 	return &partition->rpf;
 }
 
