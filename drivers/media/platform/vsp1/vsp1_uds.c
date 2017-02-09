@@ -81,6 +81,20 @@ static struct uds_phase uds_phase_calculation(int position, int start_phase,
 	return phase;
 }
 
+static int uds_left_src_pixel(int pos, int start_phase, int ratio)
+{
+	struct uds_phase phase;
+
+	phase = uds_phase_calculation(pos, start_phase, ratio);
+
+	/* Renesas guard against odd values in these scale ratios here ? */
+	if ((phase.mp == 2 && (phase.residual & 0x01)) ||
+	    (phase.mp == 4 && (phase.residual & 0x03)))
+		WARN_ON(1);
+
+	return phase.mp * (phase.prefilt_outpos + (phase.residual ? 1 : 0));
+}
+
 static int uds_start_phase(int pos, int start_phase, int ratio)
 {
 	struct uds_phase phase;
@@ -420,6 +434,8 @@ struct vsp1_partition_rect *uds_partition(struct vsp1_entity *entity,
 	const struct v4l2_mbus_framefmt *input;
 	unsigned int hscale;
 	unsigned int image_start_phase = 0;
+	unsigned int right_sink;
+	unsigned int margin;
 
 	/* Initialise the partition state */
 	partition->uds_sink = *dest;
@@ -432,10 +448,25 @@ struct vsp1_partition_rect *uds_partition(struct vsp1_entity *entity,
 
 	hscale = uds_compute_ratio(input->width, output->width);
 
-	partition->uds_sink.width = dest->width * input->width
-				  / output->width;
-	partition->uds_sink.left = dest->left * input->width
-				 / output->width;
+	/* Handle 'left' edge of the partitions */
+	if (partition_idx == 0) {
+		margin = 0;
+	} else {
+		margin = hscale < 0x200 ? 32 : // 8 <  scale
+			 hscale < 0x400 ? 16 : // 4 <  scale <= 8
+			 hscale < 0x800 ?  8 : // 2 <  scale <= 4
+					   4;  // 1 <  scale <= 2, scale <= 1
+	}
+
+	partition->uds_sink.left = uds_left_src_pixel(dest->left,
+					image_start_phase, hscale);
+
+	partition->uds_sink.offset = margin;
+
+	right_sink = uds_left_src_pixel(dest->left + dest->width - 1,
+					image_start_phase, hscale);
+
+	partition->uds_sink.width = right_sink - partition->uds_sink.left + 1;
 
 	partition->start_phase = uds_start_phase(partition->uds_source.left,
 						 image_start_phase, hscale);
