@@ -1,0 +1,28 @@
+v4l: vsp1: Partition phase developments
+
+This series presents ongoing work with the scaler partition algorithm.
+
+Patches 1-3, provide fixes and additions to the register definitions needed for
+controlling the phases of the UDS.
+
+Patches 4 and 5 rework the partition data configuration storage, opening the
+path for Patch 6 to implement a new entity operation API. This new '.partition'
+operation gives each entity an opportunity to adapt the partition data based on
+its configuration.
+
+A new helper function "vsp1_pipeline_propagate_partition()" is provided by the
+vsp1_pipe to walk the pipeline in reverse, with each entity having the
+opportunity to define it's input requirements to the predecessors.
+
+Partition data is stored somewhat inefficiently in this series, whilst the
+process is established and can be considered for improvement later.
+
+Patch 7 begins the implementation of calculating the phase values in the UDS,
+and applying them in the VI6_UDS_HPHASE register appropriately. Phase
+calculations have been established from the partition algorithm pseudo code
+provided by renesas, although the 'end phase' is always set as 0 in this code,
+it is yet to be determined if this has an effect.
+
+Finally Patch 8, begins to allow the UDS entity to perform extra overlap at the
+partition borders to provide the filters with the required data to generate
+clean transitions from one partition to the next.
