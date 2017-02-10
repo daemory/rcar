@@ -28,6 +28,7 @@
 #include "vsp1.h"
 #include "vsp1_bru.h"
 #include "vsp1_clu.h"
+#include "vsp1_debugfs.h"
 #include "vsp1_dl.h"
 #include "vsp1_drm.h"
 #include "vsp1_hsit.h"
@@ -39,13 +40,18 @@
 #include "vsp1_uds.h"
 #include "vsp1_video.h"
 
+
+int vsp1_debug = DEBUG_ERROR;
+module_param(vsp1_debug, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
  */
 
 static irqreturn_t vsp1_irq_handler(int irq, void *data)
 {
-	u32 mask = VI6_WFP_IRQ_STA_DFE | VI6_WFP_IRQ_STA_FRE;
+	u32 mask = VI6_WFP_IRQ_STA_UND | VI6_WFP_IRQ_STA_DFE |
+			VI6_WFP_IRQ_STA_FRE;
 	struct vsp1_device *vsp1 = data;
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int i;
@@ -60,8 +66,17 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 		status = vsp1_read(vsp1, VI6_WPF_IRQ_STA(i));
 		vsp1_write(vsp1, VI6_WPF_IRQ_STA(i), ~status & mask);
 
+		if (status & VI6_WFP_IRQ_STA_FRE)
+			trace_printk("Partition End Interrupt WPF[%d]\n", i);
+
 		if (status & VI6_WFP_IRQ_STA_DFE) {
+			trace_printk("Display List End Interrupt WPF[%d]\n", i);
 			vsp1_pipeline_frame_end(wpf->pipe);
+			ret = IRQ_HANDLED;
+		}
+
+		if (status & VI6_WFP_IRQ_STA_UND) {
+			dev_err(vsp1->dev, "WPF[%d] Underflow error\n", i);
 			ret = IRQ_HANDLED;
 		}
 	}
@@ -70,6 +85,7 @@ static irqreturn_t vsp1_irq_handler(int irq, void *data)
 	vsp1_write(vsp1, VI6_DISP_IRQ_STA, ~status & VI6_DISP_IRQ_STA_DST);
 
 	if (status & VI6_DISP_IRQ_STA_DST) {
+		trace_printk("Display Start Interrupt\n");
 		vsp1_drm_display_start(vsp1);
 		ret = IRQ_HANDLED;
 	}
@@ -744,6 +760,9 @@ static int vsp1_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "IP version 0x%08x\n", vsp1->version);
 
+	/* Register Debug File System before entities */
+	vsp1_debugfs_init(vsp1);
+
 	/* Instanciate entities */
 	ret = vsp1_create_entities(vsp1);
 	if (ret < 0) {
@@ -763,6 +782,7 @@ static int vsp1_remove(struct platform_device *pdev)
 	struct vsp1_device *vsp1 = platform_get_drvdata(pdev);
 
 	vsp1_destroy_entities(vsp1);
+	vsp1_debugfs_remove(vsp1);
 	rcar_fcp_put(vsp1->fcp);
 
 	pm_runtime_disable(&pdev->dev);

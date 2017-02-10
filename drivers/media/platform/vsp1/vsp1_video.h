@@ -32,6 +32,12 @@ to_vsp1_vb2_buffer(struct vb2_v4l2_buffer *vbuf)
 	return container_of(vbuf, struct vsp1_vb2_buffer, buf);
 }
 
+struct vsp1_video_stats {
+	u32 buffer_queued;
+	u32 buffer_done;
+	u32 buffer_failed;
+};
+
 struct vsp1_video {
 	struct list_head list;
 	struct vsp1_device *vsp1;
@@ -53,6 +59,9 @@ struct vsp1_video {
 	struct list_head wbqueue;
 	struct vsp1_vb2_buffer *pending;
 	void (*frame_end)(struct vsp1_pipeline *pipe);
+
+	struct dentry *debugfs_file;
+	struct vsp1_video_stats statistics;
 };
 
 static inline struct vsp1_video *to_vsp1_video(struct video_device *vdev)
