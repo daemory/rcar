@@ -2,6 +2,9 @@ v4l: vsp1: Partition phase developments
 
 This series presents ongoing work with the scaler partition algorithm.
 
+It is based upon the previous partition algorithm improvements submission [0]
+This series has been pushed to a tag [1] for convenience in testing.
+
 Patches 1-3, provide fixes and additions to the register definitions needed for
 controlling the phases of the UDS.
 
@@ -26,3 +29,6 @@ it is yet to be determined if this has an effect.
 Finally Patch 8, begins to allow the UDS entity to perform extra overlap at the
 partition borders to provide the filters with the required data to generate
 clean transitions from one partition to the next.
+
+[0] https://www.mail-archive.com/linux-renesas-soc@vger.kernel.org/msg08631.html
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git#vsp1/pa-phases-2017-02-10
