@@ -13,6 +13,7 @@
 #ifndef __VSP1_H__
 #define __VSP1_H__
 
+#include <linux/debugfs.h>
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
@@ -22,6 +23,23 @@
 #include <media/v4l2-subdev.h>
 
 #include "vsp1_regs.h"
+
+enum debug_levels {
+	DEBUG_DISABLED	= 0,
+	DEBUG_ERROR	= 1,
+	DEBUG_WARNING	= 2,
+	DEBUG_INFO	= 3,
+	DEBUG_DL_LIST	= 4,
+};
+
+extern int vsp1_debug;
+
+#define dprintk(lvl, fmt, args...) \
+	trace_printk("[%d] %s:%d: " fmt, \
+			task_pid_nr(current), __func__, __LINE__, ##args); \
+	if (lvl <= vsp1_debug) \
+		printk("[%d] %s:%d: " fmt, \
+			task_pid_nr(current), __func__, __LINE__, ##args)
 
 struct clk;
 struct device;
@@ -38,6 +56,7 @@ struct vsp1_lut;
 struct vsp1_rwpf;
 struct vsp1_sru;
 struct vsp1_uds;
+struct vsp1_video;
 
 #define VSP1_MAX_RPF		5
 #define VSP1_MAX_UDS		3
@@ -90,6 +109,9 @@ struct vsp1_device {
 	struct media_entity_operations media_ops;
 
 	struct vsp1_drm *drm;
+
+	struct debugfs_regset32 regset;
+	struct dentry *dbgroot;
 };
 
 int vsp1_device_get(struct vsp1_device *vsp1);

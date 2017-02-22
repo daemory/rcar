@@ -20,23 +20,41 @@
 #define VI6_CMD(n)			(0x0000 + (n) * 4)
 #define VI6_CMD_STRCMD			(1 << 0)
 
+#define VI6_CLK_CTRL0			0x0010
+#define VI6_CLK_CTRL1			0x0014
+
 #define VI6_CLK_DCSWT			0x0018
 #define VI6_CLK_DCSWT_CSTPW_MASK	(0xff << 8)
 #define VI6_CLK_DCSWT_CSTPW_SHIFT	8
 #define VI6_CLK_DCSWT_CSTRW_MASK	(0xff << 0)
 #define VI6_CLK_DCSWT_CSTRW_SHIFT	0
 
+#define VI6_CLK_DCSM0			0x001c
+#define VI6_CLK_DCSM1			0x0020
+
 #define VI6_SRESET			0x0028
 #define VI6_SRESET_SRTS(n)		(1 << (n))
+
+#define VI6_MRESET_ENB0			0x002c
+#define VI6_MRESET_ENB0_RESET		0x0000001F
+#define VI6_MRESET_ENB0_RESET_BUS	0x30000F1F
+
+#define VI6_MRESET_ENB1			0x0030
+#define VI6_MRESET_ENB1_RESET		0xFF00FFFF
+
+#define VI6_MRESET			0x0034
+#define VI6_MRESET_MRST			(1 << 0)
 
 #define VI6_STATUS			0x0038
 #define VI6_STATUS_SYS_ACT(n)		(1 << ((n) + 8))
 
 #define VI6_WPF_IRQ_ENB(n)		(0x0048 + (n) * 12)
+#define VI6_WFP_IRQ_ENB_UNDE		(1 << 16)
 #define VI6_WFP_IRQ_ENB_DFEE		(1 << 1)
 #define VI6_WFP_IRQ_ENB_FREE		(1 << 0)
 
 #define VI6_WPF_IRQ_STA(n)		(0x004c + (n) * 12)
+#define VI6_WFP_IRQ_STA_UND		(1 << 16)
 #define VI6_WFP_IRQ_STA_DFE		(1 << 1)
 #define VI6_WFP_IRQ_STA_FRE		(1 << 0)
 
@@ -388,6 +406,7 @@
 #define VI6_UDS_CTRL_NE_RCR		(1 << 18)
 #define VI6_UDS_CTRL_NE_GY		(1 << 17)
 #define VI6_UDS_CTRL_NE_BCB		(1 << 16)
+#define VI6_UDS_CTRL_ANDSLH		(1 << 2)
 #define VI6_UDS_CTRL_TDIPC		(1 << 1)
 
 #define VI6_UDS_SCALE			0x2304
@@ -420,10 +439,23 @@
 #define VI6_UDS_PASS_BWIDTH_V_MASK	(0x7f << 0)
 #define VI6_UDS_PASS_BWIDTH_V_SHIFT	0
 
+#define VI6_UDS_HPHASE			0x2314
+#define VI6_UDS_HPHASE_HSTP_MASK	(0xfff << 16)
+#define VI6_UDS_HPHASE_HSTP_SHIFT	16
+#define VI6_UDS_HPHASE_HEDP_MASK	(0xfff << 0)
+#define VI6_UDS_HPHASE_HEDP_SHIFT	0
+
 #define VI6_UDS_IPC			0x2318
 #define VI6_UDS_IPC_FIELD		(1 << 27)
 #define VI6_UDS_IPC_VEDP_MASK		(0xfff << 0)
 #define VI6_UDS_IPC_VEDP_SHIFT		0
+
+#define VI6_UDS_HSZCLIP			0x231c
+#define VI6_UDS_HSZCLIP_HCEN		(1 << 28)
+#define VI6_UDS_HSZCLIP_HCL_OFST_MASK	(0x1ff << 16)
+#define VI6_UDS_HSZCLIP_HCL_OFST_SHIFT	16
+#define VI6_UDS_HSZCLIP_HCL_SIZE_MASK	(0x1fff << 0)
+#define VI6_UDS_HSZCLIP_HCL_SIZE_SHIFT	0
 
 #define VI6_UDS_CLIP_SIZE		0x2324
 #define VI6_UDS_CLIP_SIZE_HSIZE_MASK	(0x1fff << 16)
