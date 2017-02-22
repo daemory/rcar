@@ -380,11 +380,13 @@ static void rcar_du_crtc_start(struct rcar_du_crtc *rcrtc)
 			     (interlaced ? DSYSR_SCM_INT_VIDEO : 0) |
 			     DSYSR_TVM_MASTER);
 
-	rcar_du_group_start_stop(rcrtc->group, true);
 
 	/* Enable the VSP compositor. */
 	if (rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE))
 		rcar_du_vsp_enable(rcrtc);
+
+	/* DU must be started *after* the VSP */
+	rcar_du_group_start_stop(rcrtc->group, true);
 
 	/* Turn vertical blanking interrupt reporting back on. */
 	drm_crtc_vblank_on(crtc);
