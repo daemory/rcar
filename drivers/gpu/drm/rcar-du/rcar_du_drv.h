@@ -21,6 +21,8 @@
 #include "rcar_du_group.h"
 #include "rcar_du_vsp.h"
 
+#include "rcar_du_debugfs.h"
+
 struct clk;
 struct device;
 struct drm_device;
