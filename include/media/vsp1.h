@@ -20,6 +20,10 @@ struct device;
 
 int vsp1_du_init(struct device *dev);
 
+void vsp1_du_register_callback(struct device *dev,
+			       void (*callback)(void *, unsigned int),
+			       void *private);
+
 int vsp1_du_setup_lif(struct device *dev, unsigned int width,
 		      unsigned int height);
 
