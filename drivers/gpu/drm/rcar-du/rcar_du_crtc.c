@@ -41,12 +41,18 @@ static void rcar_du_crtc_write(struct rcar_du_crtc *rcrtc, u32 reg, u32 data)
 {
 	struct rcar_du_device *rcdu = rcrtc->group->dev;
 
+	trace_printk("0x%08x -> %s CRTC:%d\n",
+			data, rcar_du_reg_to_name(reg), rcrtc->index);
+
 	rcar_du_write(rcdu, rcrtc->mmio_offset + reg, data);
 }
 
 static void rcar_du_crtc_clr(struct rcar_du_crtc *rcrtc, u32 reg, u32 clr)
 {
 	struct rcar_du_device *rcdu = rcrtc->group->dev;
+
+	trace_printk("0x%08x -> %s CRTC:%d\n",
+			clr, rcar_du_reg_to_name(reg), rcrtc->index);
 
 	rcar_du_write(rcdu, rcrtc->mmio_offset + reg,
 		      rcar_du_read(rcdu, rcrtc->mmio_offset + reg) & ~clr);
@@ -55,6 +61,9 @@ static void rcar_du_crtc_clr(struct rcar_du_crtc *rcrtc, u32 reg, u32 clr)
 static void rcar_du_crtc_set(struct rcar_du_crtc *rcrtc, u32 reg, u32 set)
 {
 	struct rcar_du_device *rcdu = rcrtc->group->dev;
+
+	trace_printk("0x%08x -> %s CRTC:%d\n",
+			set, rcar_du_reg_to_name(reg), rcrtc->index);
 
 	rcar_du_write(rcdu, rcrtc->mmio_offset + reg,
 		      rcar_du_read(rcdu, rcrtc->mmio_offset + reg) | set);

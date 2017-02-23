@@ -314,6 +314,10 @@ int rcar_du_atomic_check_planes(struct drm_device *dev,
 static void rcar_du_plane_write(struct rcar_du_group *rgrp,
 				unsigned int index, u32 reg, u32 data)
 {
+	trace_printk("0x%08x -> %s Group:%d Plane %d\n",
+			data, rcar_du_reg_to_name(reg),
+			rgrp->index, index);
+
 	rcar_du_write(rgrp->dev, rgrp->mmio_offset + index * PLANE_OFF + reg,
 		      data);
 }

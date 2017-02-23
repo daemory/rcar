@@ -41,6 +41,9 @@ u32 rcar_du_group_read(struct rcar_du_group *rgrp, u32 reg)
 
 void rcar_du_group_write(struct rcar_du_group *rgrp, u32 reg, u32 data)
 {
+	trace_printk("0x%08x -> %s Group:%d\n",
+			data, rcar_du_reg_to_name(reg), rgrp->index);
+
 	rcar_du_write(rgrp->dev, rgrp->mmio_offset + reg, data);
 }
 

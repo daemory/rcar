@@ -126,6 +126,7 @@ static inline u32 rcar_du_read(struct rcar_du_device *rcdu, u32 reg)
 
 static inline void rcar_du_write(struct rcar_du_device *rcdu, u32 reg, u32 data)
 {
+	trace_printk("0x%08x -> %s\n", data, rcar_du_reg_to_name(reg));
 	iowrite32(data, rcdu->mmio + reg);
 }
 
