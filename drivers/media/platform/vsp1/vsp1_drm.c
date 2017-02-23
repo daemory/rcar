@@ -52,6 +52,40 @@ int vsp1_du_init(struct device *dev)
 EXPORT_SYMBOL_GPL(vsp1_du_init);
 
 /**
+ * vsp1_du_register_callback - Register VSP completion notifier callback
+ *
+ * Allow the DRM framework to register a callback with us to notify the end of
+ * processing each frame. This allows synchronisation for page flipping.
+ *
+ * @dev: the VSP device
+ * @callback: the callback function to notify the DU module
+ * @private: private structure data to pass with the callback
+ *
+ */
+void vsp1_du_register_callback(struct device *dev,
+			       void (*callback)(void *, void *),
+			       void *private)
+{
+	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
+
+	vsp1->drm->du_complete = callback;
+	vsp1->drm->du_private = private;
+}
+EXPORT_SYMBOL_GPL(vsp1_du_register_callback);
+
+static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe)
+{
+	struct vsp1_drm *drm = to_vsp1_drm(pipe);
+
+	if (drm->du_complete && drm->active_data)
+		drm->du_complete(drm->du_private, drm->active_data);
+
+	/* The pending frame is now active */
+	drm->active_data = drm->pending_data;
+	drm->pending_data = NULL;
+}
+
+/**
  * vsp1_du_setup_lif - Setup the output part of the VSP pipeline
  * @dev: the VSP device
  * @width: output frame width in pixels
@@ -99,7 +133,8 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int width,
 		}
 
 		pipe->num_inputs = 0;
-
+		pipe->frame_end = NULL;
+		vsp1->drm->du_complete = NULL;
 		vsp1_dlm_reset(pipe->output->dlm);
 		vsp1_device_put(vsp1);
 
@@ -195,6 +230,8 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int width,
 	ret = vsp1_device_get(vsp1);
 	if (ret < 0)
 		return ret;
+
+	pipe->frame_end = vsp1_du_pipeline_frame_end;
 
 	ret = media_entity_pipeline_start(&pipe->output->entity.subdev.entity,
 					  &pipe->pipe);
@@ -420,7 +457,7 @@ static unsigned int rpf_zpos(struct vsp1_device *vsp1, struct vsp1_rwpf *rpf)
  * vsp1_du_atomic_flush - Commit an atomic update
  * @dev: the VSP device
  */
-void vsp1_du_atomic_flush(struct device *dev)
+void vsp1_du_atomic_flush(struct device *dev, void *data)
 {
 	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
 	struct vsp1_pipeline *pipe = &vsp1->drm->pipe;
@@ -504,6 +541,7 @@ void vsp1_du_atomic_flush(struct device *dev)
 
 	vsp1_dl_list_commit(pipe->dl);
 	pipe->dl = NULL;
+	vsp1->drm->pending_data = data;
 
 	/* Start or stop the pipeline if needed. */
 	if (!vsp1->drm->num_inputs && pipe->num_inputs) {

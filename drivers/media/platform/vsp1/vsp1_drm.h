@@ -33,7 +33,19 @@ struct vsp1_drm {
 		struct v4l2_rect compose;
 		unsigned int zpos;
 	} inputs[VSP1_MAX_RPF];
+
+	/* Frame syncronisation */
+	void (*du_complete)(void *, void *);
+	void *du_private;
+	void *pending_data;
+	void *active_data;
 };
+
+static inline struct vsp1_drm *
+to_vsp1_drm(struct vsp1_pipeline *pipe)
+{
+	return container_of(pipe, struct vsp1_drm, pipe);
+}
 
 int vsp1_drm_init(struct vsp1_device *vsp1);
 void vsp1_drm_cleanup(struct vsp1_device *vsp1);
