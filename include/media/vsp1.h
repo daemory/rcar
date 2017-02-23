@@ -23,6 +23,9 @@ int vsp1_du_init(struct device *dev);
 struct vsp1_du_lif_config {
 	unsigned int width;
 	unsigned int height;
+
+	void (*callback)(void *);
+	void *callback_data;
 };
 
 int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg);
