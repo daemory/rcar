@@ -39,6 +39,8 @@ struct vsp1_rwpf;
 struct vsp1_sru;
 struct vsp1_uds;
 
+extern int vsp1_delay;
+
 #define VSP1_MAX_RPF		5
 #define VSP1_MAX_UDS		3
 #define VSP1_MAX_WPF		4

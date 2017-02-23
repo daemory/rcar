@@ -13,6 +13,7 @@
 
 #include <linux/device.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #include <media/media-entity.h>
 #include <media/v4l2-subdev.h>
@@ -429,6 +430,19 @@ void vsp1_du_atomic_flush(struct device *dev)
 	unsigned long flags;
 	unsigned int i;
 	int ret;
+
+	/*
+	 * WARNING: msleep < 20ms can sleep for up to 20ms;
+	 *  see Documentation/timers/timers-howto.txt
+	 *
+	 * However, this is exactly what I want...
+	 * non-deterministic sleeping!
+	 */
+	trace_printk("EVT: Sleeping for %dms\n", vsp1_delay);
+
+	/* msleep(0) still sleeps! */
+	if (vsp1_delay)
+		msleep(vsp1_delay);
 
 	/* Count the number of enabled inputs and sort them by Z-order. */
 	pipe->num_inputs = 0;
