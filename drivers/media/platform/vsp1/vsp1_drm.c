@@ -36,6 +36,18 @@ void vsp1_drm_display_start(struct vsp1_device *vsp1)
 	vsp1_dlm_irq_display_start(vsp1->drm->pipe.output->dlm);
 }
 
+static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe)
+{
+	struct vsp1_drm *drm = to_vsp1_drm(pipe);
+
+	if (drm->du_complete)
+		drm->du_complete(drm->du_private, drm->active_data);
+
+	/* The pending frame is now active */
+	drm->active_data = drm->pending_data;
+	drm->pending_data = NULL;
+}
+
 /* -----------------------------------------------------------------------------
  * DU Driver API
  */
@@ -95,6 +107,7 @@ int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg)
 		}
 
 		pipe->num_inputs = 0;
+		vsp1->drm->du_complete = NULL;
 
 		vsp1_dlm_reset(pipe->output->dlm);
 		vsp1_device_put(vsp1);
@@ -195,6 +208,13 @@ int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg)
 	ret = vsp1_device_get(vsp1);
 	if (ret < 0)
 		return ret;
+
+	/*
+	 * Register a callback to allow us to notify the DRM framework of frame
+	 * completion events.
+	 */
+	vsp1->drm->du_complete = cfg->callback;
+	vsp1->drm->du_private = cfg->callback_data;
 
 	ret = media_pipeline_start(&pipe->output->entity.subdev.entity,
 					  &pipe->pipe);
@@ -420,7 +440,7 @@ static unsigned int rpf_zpos(struct vsp1_device *vsp1, struct vsp1_rwpf *rpf)
  * vsp1_du_atomic_flush - Commit an atomic update
  * @dev: the VSP device
  */
-void vsp1_du_atomic_flush(struct device *dev)
+void vsp1_du_atomic_flush(struct device *dev, void *data)
 {
 	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
 	struct vsp1_pipeline *pipe = &vsp1->drm->pipe;
@@ -504,6 +524,7 @@ void vsp1_du_atomic_flush(struct device *dev)
 
 	vsp1_dl_list_commit(pipe->dl);
 	pipe->dl = NULL;
+	vsp1->drm->pending_data = data;
 
 	/* Start or stop the pipeline if needed. */
 	if (!vsp1->drm->num_inputs && pipe->num_inputs) {
@@ -597,6 +618,7 @@ int vsp1_drm_init(struct vsp1_device *vsp1)
 	pipe->lif = &vsp1->lif->entity;
 	pipe->output = vsp1->wpf[0];
 	pipe->output->pipe = pipe;
+	pipe->frame_end = vsp1_du_pipeline_frame_end;
 
 	return 0;
 }

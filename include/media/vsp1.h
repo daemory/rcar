@@ -23,6 +23,9 @@ int vsp1_du_init(struct device *dev);
 struct vsp1_du_lif_config {
 	unsigned int width;
 	unsigned int height;
+
+	void (*callback)(void *, void*);
+	void *callback_data;
 };
 
 int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg);
@@ -40,6 +43,6 @@ struct vsp1_du_atomic_config {
 void vsp1_du_atomic_begin(struct device *dev);
 int vsp1_du_atomic_update(struct device *dev, unsigned int rpf,
 			  const struct vsp1_du_atomic_config *cfg);
-void vsp1_du_atomic_flush(struct device *dev);
+void vsp1_du_atomic_flush(struct device *dev, void *data);
 
 #endif /* __MEDIA_VSP1_H__ */
