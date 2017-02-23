@@ -44,6 +44,9 @@
 int vsp1_debug = DEBUG_ERROR;
 module_param(vsp1_debug, int, 0644);
 
+int vsp1_delay = 16;
+module_param(vsp1_delay, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
  */

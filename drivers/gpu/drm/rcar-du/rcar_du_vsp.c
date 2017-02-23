@@ -79,8 +79,20 @@ void rcar_du_vsp_atomic_begin(struct rcar_du_crtc *crtc)
 	vsp1_du_atomic_begin(crtc->vsp->vsp);
 }
 
+extern int vsp1_delay;
+
 void rcar_du_vsp_atomic_flush(struct rcar_du_crtc *crtc)
 {
+	/*
+	 * WARNING: msleep < 20ms can sleep for up to 20ms;
+	 *  see Documentation/timers/timers-howto.txt
+	 *
+	 * However, this is exactly what I want...
+	 * non-deterministic sleeping!
+	 */
+	trace_printk("Sleeping for %dms\n", vsp1_delay);
+	msleep(vsp1_delay);
+
 	vsp1_du_atomic_flush(crtc->vsp->vsp);
 }
 
