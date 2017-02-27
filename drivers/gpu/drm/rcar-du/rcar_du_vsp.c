@@ -28,6 +28,17 @@
 #include "rcar_du_kms.h"
 #include "rcar_du_vsp.h"
 
+static void rcar_du_vsp_complete(void *private, void *data)
+{
+	struct rcar_du_crtc *crtc = (struct rcar_du_crtc *)private;
+	unsigned long completed = (uintptr_t)data;
+
+	if (completed) {
+		WARN_ON(crtc->pending != completed);
+		crtc->pending = 0;
+	}
+}
+
 void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 {
 	const struct drm_display_mode *mode = &crtc->crtc.state->adjusted_mode;
@@ -35,6 +46,8 @@ void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 	struct vsp1_du_lif_config cfg = {
 		.width = mode->hdisplay,
 		.height = mode->vdisplay,
+		.callback = rcar_du_vsp_complete,
+		.callback_data = crtc,
 	};
 	struct rcar_du_plane_state state = {
 		.state = {
@@ -85,7 +98,15 @@ void rcar_du_vsp_atomic_begin(struct rcar_du_crtc *crtc)
 
 void rcar_du_vsp_atomic_flush(struct rcar_du_crtc *crtc)
 {
-	vsp1_du_atomic_flush(crtc->vsp->vsp, NULL);
+	WARN(crtc->pending, "Queuing frame before VSP completion\n");
+
+	/*
+	 * Use the current vblank count as a unique tracking value for each
+	 * frame processed by the VSP.
+	 */
+	crtc->pending = drm_crtc_vblank_count(&crtc->crtc);
+
+	vsp1_du_atomic_flush(crtc->vsp->vsp, (void *)crtc->pending);
 }
 
 /* Keep the two tables in sync. */

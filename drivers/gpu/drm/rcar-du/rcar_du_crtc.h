@@ -47,6 +47,7 @@ struct rcar_du_crtc {
 
 	struct drm_pending_vblank_event *event;
 	wait_queue_head_t flip_wait;
+	unsigned long pending;
 
 	unsigned int outputs;
 
