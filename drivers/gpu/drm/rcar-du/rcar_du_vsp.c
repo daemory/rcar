@@ -28,6 +28,19 @@
 #include "rcar_du_kms.h"
 #include "rcar_du_vsp.h"
 
+static void rcar_du_vsp_complete(void *private, unsigned int seq)
+{
+	struct rcar_du_crtc *crtc = (struct rcar_du_crtc *)private;
+	struct drm_device *dev = crtc->crtc.dev;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+	crtc->vsp->complete = seq;
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+
+	trace_printk("VSP Completed %d;\n", seq);
+}
+
 void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 {
 	const struct drm_display_mode *mode = &crtc->crtc.state->adjusted_mode;
@@ -66,6 +79,8 @@ void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 	 */
 	crtc->group->need_restart = true;
 
+	vsp1_du_register_callback(crtc->vsp->vsp, rcar_du_vsp_complete, crtc);
+
 	vsp1_du_setup_lif(crtc->vsp->vsp, mode->hdisplay, mode->vdisplay);
 }
 
@@ -83,6 +98,10 @@ extern int vsp1_delay;
 
 void rcar_du_vsp_atomic_flush(struct rcar_du_crtc *crtc)
 {
+	struct drm_device *dev = crtc->crtc.dev;
+	unsigned long flags;
+	unsigned int pending;
+
 	/*
 	 * WARNING: msleep < 20ms can sleep for up to 20ms;
 	 *  see Documentation/timers/timers-howto.txt
@@ -93,7 +112,11 @@ void rcar_du_vsp_atomic_flush(struct rcar_du_crtc *crtc)
 	trace_printk("Sleeping for %dms\n", vsp1_delay);
 	msleep(vsp1_delay);
 
-	vsp1_du_atomic_flush(crtc->vsp->vsp);
+	pending = vsp1_du_atomic_flush(crtc->vsp->vsp);
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+	crtc->vsp->pending = pending;
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
 /* Keep the two tables in sync. */

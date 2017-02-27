@@ -582,6 +582,8 @@ static const struct drm_crtc_funcs crtc_funcs = {
 static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 {
 	struct rcar_du_crtc *rcrtc = arg;
+	struct rcar_du_vsp *vsp = rcrtc->vsp;
+
 	irqreturn_t ret = IRQ_NONE;
 	u32 status;
 
@@ -589,7 +591,16 @@ static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 	rcar_du_crtc_write(rcrtc, DSRCR, status & DSRCR_MASK);
 
 	if (status & DSSR_FRM) {
+
 		drm_crtc_handle_vblank(&rcrtc->crtc);
+
+		if (vsp && (vsp->pending > vsp->complete)) {
+
+			trace_printk("Frame Loss due to VSP Overrun\n");
+			// statistics.frame_loss++;
+			return IRQ_HANDLED;
+		}
+
 		rcar_du_crtc_finish_page_flip(rcrtc);
 		ret = IRQ_HANDLED;
 	}
