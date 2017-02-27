@@ -47,6 +47,7 @@ struct rcar_du_crtc {
 
 	struct drm_pending_vblank_event *event;
 	wait_queue_head_t flip_wait;
+	bool pending;
 
 	unsigned int outputs;
 
@@ -71,5 +72,6 @@ void rcar_du_crtc_resume(struct rcar_du_crtc *rcrtc);
 
 void rcar_du_crtc_route_output(struct drm_crtc *crtc,
 			       enum rcar_du_output output);
+void rcar_du_crtc_finish_page_flip(struct rcar_du_crtc *rcrtc);
 
 #endif /* __RCAR_DU_CRTC_H__ */
