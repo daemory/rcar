@@ -456,7 +456,7 @@ static unsigned int rpf_zpos(struct vsp1_device *vsp1, struct vsp1_rwpf *rpf)
  * vsp1_du_atomic_flush - Commit an atomic update
  * @dev: the VSP device
  */
-void vsp1_du_atomic_flush(struct device *dev)
+unsigned int vsp1_du_atomic_flush(struct device *dev)
 {
 	struct vsp1_device *vsp1 = dev_get_drvdata(dev);
 	struct vsp1_pipeline *pipe = &vsp1->drm->pipe;
@@ -554,6 +554,8 @@ void vsp1_du_atomic_flush(struct device *dev)
 		vsp1_write(vsp1, VI6_DISP_IRQ_ENB, 0);
 		vsp1_pipeline_stop(pipe);
 	}
+
+	return vsp1->drm->pending;
 }
 EXPORT_SYMBOL_GPL(vsp1_du_atomic_flush);
 
