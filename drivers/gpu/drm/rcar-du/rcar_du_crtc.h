@@ -46,6 +46,7 @@ struct rcar_du_crtc {
 	bool started;
 
 	struct drm_pending_vblank_event *event;
+	struct drm_pending_vblank_event *pending;
 	wait_queue_head_t flip_wait;
 
 	unsigned int outputs;
