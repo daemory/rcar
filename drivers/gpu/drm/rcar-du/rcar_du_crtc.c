@@ -328,7 +328,7 @@ static bool rcar_du_crtc_page_flip_pending(struct rcar_du_crtc *rcrtc)
 	bool pending;
 
 	spin_lock_irqsave(&dev->event_lock, flags);
-	pending = rcrtc->event != NULL;
+	pending = (rcrtc->event != NULL) || (rcrtc->pending != NULL);
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 
 	return pending;
@@ -578,6 +578,12 @@ static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 	rcar_du_crtc_write(rcrtc, DSRCR, status & DSRCR_MASK);
 
 	if (status & DSSR_FRM) {
+
+		if (rcrtc->pending) {
+			trace_printk("VBlank loss due to VSP Overrun\n");
+			return IRQ_HANDLED;
+		}
+
 		drm_crtc_handle_vblank(&rcrtc->crtc);
 		rcar_du_crtc_finish_page_flip(rcrtc);
 		ret = IRQ_HANDLED;

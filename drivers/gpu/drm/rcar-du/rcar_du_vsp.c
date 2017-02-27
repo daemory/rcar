@@ -28,6 +28,26 @@
 #include "rcar_du_kms.h"
 #include "rcar_du_vsp.h"
 
+static void rcar_du_vsp_complete(void *private, void *data)
+{
+	struct rcar_du_crtc *crtc = (struct rcar_du_crtc *)private;
+	struct drm_device *dev = crtc->crtc.dev;
+	struct drm_pending_vblank_event *event;
+	bool match;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+	event = crtc->event;
+	crtc->event = data;
+	match = (crtc->event == crtc->pending);
+	crtc->pending = NULL;
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+
+	/* Safety checks */
+	WARN(event, "Event lost by VSP completion callback\n");
+	WARN(!match, "Stored pending event, does not match completion\n");
+}
+
 void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 {
 	const struct drm_display_mode *mode = &crtc->crtc.state->adjusted_mode;
@@ -66,6 +86,8 @@ void rcar_du_vsp_enable(struct rcar_du_crtc *crtc)
 	 */
 	crtc->group->need_restart = true;
 
+	vsp1_du_register_callback(crtc->vsp->vsp, rcar_du_vsp_complete, crtc);
+
 	vsp1_du_setup_lif(crtc->vsp->vsp, mode->hdisplay, mode->vdisplay);
 }
 
@@ -81,7 +103,17 @@ void rcar_du_vsp_atomic_begin(struct rcar_du_crtc *crtc)
 
 void rcar_du_vsp_atomic_flush(struct rcar_du_crtc *crtc)
 {
-	vsp1_du_atomic_flush(crtc->vsp->vsp, NULL);
+	struct drm_device *dev = crtc->crtc.dev;
+	struct drm_pending_vblank_event *event;
+	unsigned long flags;
+
+	/* Move the event to the VSP, track it locally as 'pending' */
+	spin_lock_irqsave(&dev->event_lock, flags);
+	event = crtc->pending = crtc->event;
+	crtc->event = NULL;
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+
+	vsp1_du_atomic_flush(crtc->vsp->vsp, event);
 }
 
 /* Keep the two tables in sync. */
