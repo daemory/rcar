@@ -1,0 +1,26 @@
+RCAR-DU, VSP1: Prevent pre-emptive frame flips on VSP1-DRM pipelines
+
+The RCAR-DU utilises a running VSPD pipeline to perform processing
+for the display pipeline.
+
+Changes to this pipeline are performed with an atomic flush operation which
+updates the state in the VSPD. Due to the way the running pipeline is
+operated, any flush operation has an implicit latency of one frame interval.
+
+This comes about as the display list is committed, but not updated until the
+next VSP1 interrupt. At this point the frame is being processed, but is not
+complete until the following VSP1 frame end interrupt.
+
+To prevent reporting page flips early, we must track this timing through the
+VSP1, and only allow the rcar-du object to report the page-flip completion
+event after the VSP1 has processed.
+
+[PATCH 1/3] fixes the VSP DRM object to register it's pipeline correctly.
+[PATCH 2/3] extends the VSP1 to allow a callback to be registered allowing the
+            VSP1 to notify completion events, and extend the existing atomic
+            flush API to allow private event data to be passed through.
+[PATCH 3/3] Utilises this API extension to postpone page flips as required.
+
+In current testing, with kmstest, and kmscube, it can be seen that our refresh
+rate has halved. I believe this is due to the one frame latency imposed by the
+VSPD and will need further investigation.
