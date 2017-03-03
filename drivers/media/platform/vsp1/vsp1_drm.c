@@ -40,10 +40,12 @@ static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe)
 {
 	struct vsp1_drm *drm = to_vsp1_drm(pipe);
 
-	if (drm->du_complete && drm->du_pending) {
+	if (drm->du_complete && drm->du_pending && !pipe->dl_postponed) {
 		drm->du_complete(drm->du_private);
 		drm->du_pending = false;
 	}
+
+	pipe->dl_postponed = false;
 }
 
 /* -----------------------------------------------------------------------------

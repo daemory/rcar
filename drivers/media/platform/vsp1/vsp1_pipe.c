@@ -297,10 +297,14 @@ bool vsp1_pipeline_ready(struct vsp1_pipeline *pipe)
 
 void vsp1_pipeline_frame_end(struct vsp1_pipeline *pipe)
 {
+	int ret;
+
 	if (pipe == NULL)
 		return;
 
-	vsp1_dlm_irq_frame_end(pipe->output->dlm);
+	ret = vsp1_dlm_irq_frame_end(pipe->output->dlm);
+	if (ret)
+		pipe->dl_postponed = true;
 
 	if (pipe->frame_end)
 		pipe->frame_end(pipe);
