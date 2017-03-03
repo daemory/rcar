@@ -557,9 +557,10 @@ void vsp1_dlm_irq_display_start(struct vsp1_dl_manager *dlm)
 	spin_unlock(&dlm->lock);
 }
 
-void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
+int vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 {
 	struct vsp1_device *vsp1 = dlm->vsp1;
+	int ret = 0;
 
 	spin_lock(&dlm->lock);
 
@@ -578,8 +579,10 @@ void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 	 * before interrupt processing. The hardware hasn't taken the update
 	 * into account yet, we'll thus skip one frame and retry.
 	 */
-	if (vsp1_read(vsp1, VI6_DL_BODY_SIZE) & VI6_DL_BODY_SIZE_UPD)
+	if (vsp1_read(vsp1, VI6_DL_BODY_SIZE) & VI6_DL_BODY_SIZE_UPD) {
+		ret = -EBUSY;
 		goto done;
+	}
 
 	/* The device starts processing the queued display list right after the
 	 * frame end interrupt. The display list thus becomes active.
@@ -606,6 +609,8 @@ void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 
 done:
 	spin_unlock(&dlm->lock);
+
+	return ret;
 }
 
 /* Hardware Setup */
