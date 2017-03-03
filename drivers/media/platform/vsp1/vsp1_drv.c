@@ -39,6 +39,9 @@
 #include "vsp1_uds.h"
 #include "vsp1_video.h"
 
+int vsp1_delay = 0;
+module_param(vsp1_delay, int, 0644);
+
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
  */

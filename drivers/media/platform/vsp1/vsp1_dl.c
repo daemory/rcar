@@ -520,6 +520,7 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl)
 	 */
 	update = !!(vsp1_read(vsp1, VI6_DL_BODY_SIZE) & VI6_DL_BODY_SIZE_UPD);
 	if (update) {
+		trace_printk("vsp: race in %s\n", __func__);
 		__vsp1_dl_list_put(dlm->pending);
 		dlm->pending = dl;
 		goto done;
@@ -584,8 +585,10 @@ void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 	 * before interrupt processing. The hardware hasn't taken the update
 	 * into account yet, we'll thus skip one frame and retry.
 	 */
-	if (vsp1_read(vsp1, VI6_DL_BODY_SIZE) & VI6_DL_BODY_SIZE_UPD)
+	if (vsp1_read(vsp1, VI6_DL_BODY_SIZE) & VI6_DL_BODY_SIZE_UPD) {
+		trace_printk("vsp: race in %s\n", __func__);
 		goto done;
+	}
 
 	/*
 	 * The device starts processing the queued display list right after the
@@ -610,6 +613,8 @@ void vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 
 		dlm->queued = dl;
 		dlm->pending = NULL;
+
+		trace_printk("vsp: recovered from race in %s\n", __func__);
 	}
 
 done:

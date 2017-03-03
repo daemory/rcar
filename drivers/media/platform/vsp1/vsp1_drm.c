@@ -13,6 +13,7 @@
 
 #include <linux/device.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #include <media/media-entity.h>
 #include <media/v4l2-subdev.h>
@@ -433,6 +434,9 @@ void vsp1_du_atomic_flush(struct device *dev)
 	unsigned long flags;
 	unsigned int i;
 	int ret;
+
+	if (vsp1_delay)
+		usleep_range(vsp1_delay, vsp1_delay + 500);
 
 	/* Prepare the display list. */
 	dl = vsp1_dl_list_get(pipe->output->dlm);
