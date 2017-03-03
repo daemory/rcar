@@ -77,6 +77,7 @@ enum vsp1_pipeline_state {
  * @uds_input: entity at the input of the UDS, if the UDS is present
  * @entities: list of entities in the pipeline
  * @dl: display list associated with the pipeline
+ * @dl_postponed: identifies if the dl commit was caught by a race condition
  * @div_size: The maximum allowed partition size for the pipeline
  * @partitions: The number of partitions used to process one frame
  * @current_partition: The partition number currently being configured
@@ -107,6 +108,7 @@ struct vsp1_pipeline {
 	struct list_head entities;
 
 	struct vsp1_dl_list *dl;
+	bool dl_postponed;
 
 	unsigned int div_size;
 	unsigned int partitions;
