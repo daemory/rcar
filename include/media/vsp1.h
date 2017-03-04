@@ -20,9 +20,22 @@ struct device;
 
 int vsp1_du_init(struct device *dev);
 
+/**
+ * struct vsp1_du_lif_config - VSP LIF configuration
+ * @width: output frame width
+ * @height: output frame height
+ * @callback: frame completion callback function (optional)
+ * @callback_data: data to be passed to the frame completion callback
+ *
+ * When the optional callback is provided to the VSP1, the VSP1 must guarantee
+ * that one completion callback is performed after every vsp1_du_atomic_flush()
+ */
 struct vsp1_du_lif_config {
 	unsigned int width;
 	unsigned int height;
+
+	void (*callback)(void *);
+	void *callback_data;
 };
 
 int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg);
