@@ -411,6 +411,7 @@ struct uvc_buffer {
 
 #define UVC_QUEUE_DISCONNECTED		(1 << 0)
 #define UVC_QUEUE_DROP_CORRUPTED	(1 << 1)
+#define UVC_QUEUE_STOPPING		(1 << 2)
 
 struct uvc_video_queue {
 	struct vb2_queue queue;
@@ -483,12 +484,30 @@ struct uvc_stats_stream {
 };
 
 /**
+ * struct uvc_decode_op: Context structure to schedule asynchronous memcpy
+ *
+ * @buf: active buf object for this decode
+ * @dst: copy destination address
+ * @src: copy source address
+ * @len: copy length
+ */
+struct uvc_decode_op {
+	struct uvc_buffer *buf;
+	void *dst;
+	const __u8 *src;
+	int len;
+};
+
+/**
  * struct uvc_urb - URB context management structure
  *
  * @urb: described URB. Must be allocated with usb_alloc_urb()
  * @stream: UVC streaming context
  * @urb_buffer: memory storage for the URB
  * @urb_dma: DMA coherent addressing for the urb_buffer
+ * @packets: counter to indicate the number of copy operations
+ * @decodes: work descriptors for asynchronous copy operations
+ * @work: work queue entry for asynchronous decode
  */
 struct uvc_urb {
 	struct urb *urb;
@@ -496,6 +515,10 @@ struct uvc_urb {
 
 	char *urb_buffer;
 	dma_addr_t urb_dma;
+
+	unsigned int packets;
+	struct uvc_decode_op decodes[UVC_MAX_PACKETS];
+	struct work_struct work;
 };
 
 struct uvc_streaming {
@@ -528,6 +551,7 @@ struct uvc_streaming {
 	/* Buffers queue. */
 	unsigned int frozen : 1;
 	struct uvc_video_queue queue;
+	struct workqueue_struct *async_wq;
 	void (*decode) (struct uvc_urb *uvc_urb, struct uvc_buffer *buf);
 
 	/* Context data used by the bulk completion handler. */
