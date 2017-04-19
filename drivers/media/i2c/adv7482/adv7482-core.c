@@ -22,101 +22,10 @@
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-of.h>
 
-/* I2C slave addresses */
-/*
- * TODO: Use 'i2c_new_secondary_device' from patch
- * 'PATCH v2] i2c: Add generic support passing secondary devices addresses'
- * to be able to set all addresses in DT.
- */
-#define ADV7482_I2C_IO			0x70	/* IO Map */
-#define ADV7482_I2C_DPLL		0x26	/* DPLL Map */
-#define ADV7482_I2C_CP			0x22	/* CP Map */
-#define ADV7482_I2C_HDMI		0x34	/* HDMI Map */
-#define ADV7482_I2C_EDID		0x36	/* EDID Map */
-#define ADV7482_I2C_REPEATER		0x32	/* HDMI RX Repeater Map */
-#define ADV7482_I2C_INFOFRAME		0x31	/* HDMI RX InfoFrame Map */
-#define ADV7482_I2C_CEC			0x41	/* CEC Map */
-#define ADV7482_I2C_SDP			0x79	/* SDP Map */
-#define ADV7482_I2C_TXB			0x48	/* CSI-TXB Map */
-#define ADV7482_I2C_TXA			0x4A	/* CSI-TXA Map */
-#define ADV7482_I2C_WAIT		0xFE	/* Wait x mesec */
-#define ADV7482_I2C_EOR			0xFF	/* End Mark */
-
-enum adv7482_pads {
-	ADV7482_SINK_HDMI,
-	ADV7482_SINK_AIN1,
-	ADV7482_SINK_AIN2,
-	ADV7482_SINK_AIN3,
-	ADV7482_SINK_AIN4,
-	ADV7482_SINK_AIN5,
-	ADV7482_SINK_AIN6,
-	ADV7482_SINK_AIN7,
-	ADV7482_SINK_AIN8,
-	ADV7482_SINK_TTL,
-	ADV7482_SOURCE_TXA,
-	ADV7482_SOURCE_TXB,
-	ADV7482_PAD_MAX,
-};
-
-/**
- * struct adv7482_hdmi_cp - State of HDMI CP sink
- * @timings:		Timings for {g,s}_dv_timings
- */
-struct adv7482_hdmi_cp {
-	struct v4l2_dv_timings timings;
-};
-
-/**
- * struct adv7482_sdp - State of SDP sink
- * @streaming:		Flag if SDP is currently streaming
- * @curr_norm:		Current video standard
- */
-struct adv7482_sdp {
-	bool streaming;
-	v4l2_std_id curr_norm;
-};
-
-/**
- * struct adv7482_state - State of ADV7482
- * @dev:		(OF) device
- * @client:		I2C client
- * @sd:			v4l2 subevice
- * @mutex:		protect aginst sink state changes while streaming
- *
- * @pads:		meda pads exposed
- *
- * @cp:			state of CP HDMI
- * @sdp:		state of SDP
- *
- * @ctrl_hdl		control handler
- */
-struct adv7482_state {
-	struct device *dev;
-	struct i2c_client *client;
-	struct v4l2_subdev sd;
-	struct mutex mutex;
-
-	struct media_pad pads[ADV7482_PAD_MAX];
-
-	struct adv7482_hdmi_cp cp;
-	struct adv7482_sdp sdp;
-
-	struct v4l2_ctrl_handler ctrl_hdl;
-};
-
-#define to_state(a) container_of(a, struct adv7482_state, sd)
-
-#define adv_err(a, fmt, arg...)	dev_err(a->dev, fmt, ##arg)
-#define adv_info(a, fmt, arg...) dev_info(a->dev, fmt, ##arg)
-#define adv_dbg(a, fmt, arg...)	dev_dbg(a->dev, fmt, ##arg)
-
-static bool hack_is_hdmi(struct adv7482_state *state)
-{
-	return state->client->addr == 0x70;
-}
+#include "adv7482.h"
 
 /* -----------------------------------------------------------------------------
- * Register manipulaton
+ * Register manipulation
  */
 
 /**
@@ -170,7 +79,7 @@ static int adv7482_write_regs(struct adv7482_state *state,
 	return (ret < 0) ? ret : 0;
 }
 
-static int adv7482_write(struct adv7482_state *state, u8 addr, u8 reg, u8 value)
+int adv7482_write(struct adv7482_state *state, u8 addr, u8 reg, u8 value)
 {
 	struct adv7482_reg_value regs[2];
 	int ret;
@@ -187,7 +96,7 @@ static int adv7482_write(struct adv7482_state *state, u8 addr, u8 reg, u8 value)
 	return ret;
 }
 
-static int adv7482_read(struct adv7482_state *state, u8 addr, u8 reg)
+int adv7482_read(struct adv7482_state *state, u8 addr, u8 reg)
 {
 	struct i2c_msg msg[2];
 	u8 reg_buf, data_buf;
@@ -212,351 +121,14 @@ static int adv7482_read(struct adv7482_state *state, u8 addr, u8 reg)
 
 	ret = i2c_transfer(state->client->adapter, msg, 2);
 	if (ret < 0) {
+		trace_printk("Error reading addr: 0x%02x reg: 0x%02x\n",
+			addr, reg);
 		adv_err(state, "Error reading addr: 0x%02x reg: 0x%02x\n",
 			addr, reg);
 		return ret;
 	}
 
 	return data_buf;
-}
-
-#define io_read(s, r) adv7482_read(s, ADV7482_I2C_IO, r)
-#define io_write(s, r, v) adv7482_write(s, ADV7482_I2C_IO, r, v)
-#define io_clrset(s, r, m, v) io_write(s, r, (io_read(s, r) & ~m) | v)
-
-#define hdmi_read(s, r) adv7482_read(s, ADV7482_I2C_HDMI, r)
-#define hdmi_read16(s, r, m) (((hdmi_read(s, r) << 8) | hdmi_read(s, r+1)) & m)
-#define hdmi_write(s, r, v) adv7482_write(s, ADV7482_I2C_HDMI, r, v)
-#define hdmi_clrset(s, r, m, v) hdmi_write(s, r, (hdmi_read(s, r) & ~m) | v)
-
-#define sdp_read(s, r) adv7482_read(s, ADV7482_I2C_SDP, r)
-#define sdp_write(s, r, v) adv7482_write(s, ADV7482_I2C_SDP, r, v)
-#define sdp_clrset(s, r, m, v) sdp_write(s, r, (sdp_read(s, r) & ~m) | v)
-
-#define cp_read(s, r) adv7482_read(s, ADV7482_I2C_CP, r)
-#define cp_write(s, r, v) adv7482_write(s, ADV7482_I2C_CP, r, v)
-#define cp_clrset(s, r, m, v) cp_write(s, r, (cp_read(s, r) & ~m) | v)
-
-#define txa_read(s, r) adv7482_read(s, ADV7482_I2C_TXA, r)
-#define txa_write(s, r, v) adv7482_write(s, ADV7482_I2C_TXA, r, v)
-#define txa_clrset(s, r, m, v) txa_write(s, r, (txa_read(s, r) & ~m) | v)
-
-#define txb_read(s, r) adv7482_read(s, ADV7482_I2C_TXB, r)
-#define txb_write(s, r, v) adv7482_write(s, ADV7482_I2C_TXB, r, v)
-#define txb_clrset(s, r, m, v) txb_write(s, r, (txb_read(s, r) & ~m) | v)
-
-/* -----------------------------------------------------------------------------
- * HDMI and CP
- */
-
-#define ADV7482_CP_MIN_WIDTH		640
-#define ADV7482_CP_MAX_WIDTH		1920
-#define ADV7482_CP_MIN_HEIGHT		480
-#define ADV7482_CP_MAX_HEIGHT		1200
-#define ADV7482_CP_MIN_PIXELCLOCK	0		/* unknown */
-#define ADV7482_CP_MAX_PIXELCLOCK	162000000
-
-static const struct v4l2_dv_timings_cap adv7482_cp_timings_cap = {
-	.type = V4L2_DV_BT_656_1120,
-	/* keep this initialization for compatibility with GCC < 4.4.6 */
-	.reserved = { 0 },
-	/* Min pixelclock value is unknown */
-	V4L2_INIT_BT_TIMINGS(ADV7482_CP_MIN_WIDTH, ADV7482_CP_MAX_WIDTH,
-			     ADV7482_CP_MIN_HEIGHT, ADV7482_CP_MAX_HEIGHT,
-			     ADV7482_CP_MIN_PIXELCLOCK,
-			     ADV7482_CP_MAX_PIXELCLOCK,
-			     V4L2_DV_BT_STD_CEA861 | V4L2_DV_BT_STD_DMT,
-			     V4L2_DV_BT_CAP_INTERLACED |
-			     V4L2_DV_BT_CAP_PROGRESSIVE)
-};
-
-struct adv7482_cp_video_standards {
-	struct v4l2_dv_timings timings;
-	u8 vid_std;
-	u8 v_freq;
-};
-
-static const struct adv7482_cp_video_standards adv7482_cp_video_standards[] = {
-	{ V4L2_DV_BT_CEA_720X480I59_94, 0x40, 0x00 },
-	{ V4L2_DV_BT_CEA_720X576I50, 0x41, 0x01 },
-	{ V4L2_DV_BT_CEA_720X480P59_94, 0x4a, 0x00 },
-	{ V4L2_DV_BT_CEA_720X576P50, 0x4b, 0x00 },
-	{ V4L2_DV_BT_CEA_1280X720P60, 0x53, 0x00 },
-	{ V4L2_DV_BT_CEA_1280X720P50, 0x53, 0x01 },
-	{ V4L2_DV_BT_CEA_1280X720P30, 0x53, 0x02 },
-	{ V4L2_DV_BT_CEA_1280X720P25, 0x53, 0x03 },
-	{ V4L2_DV_BT_CEA_1280X720P24, 0x53, 0x04 },
-	{ V4L2_DV_BT_CEA_1920X1080I60, 0x54, 0x00 },
-	{ V4L2_DV_BT_CEA_1920X1080I50, 0x54, 0x01 },
-	{ V4L2_DV_BT_CEA_1920X1080P60, 0x5e, 0x00 },
-	{ V4L2_DV_BT_CEA_1920X1080P50, 0x5e, 0x01 },
-	{ V4L2_DV_BT_CEA_1920X1080P30, 0x5e, 0x02 },
-	{ V4L2_DV_BT_CEA_1920X1080P25, 0x5e, 0x03 },
-	{ V4L2_DV_BT_CEA_1920X1080P24, 0x5e, 0x04 },
-	/* SVGA */
-	{ V4L2_DV_BT_DMT_800X600P56, 0x80, 0x00 },
-	{ V4L2_DV_BT_DMT_800X600P60, 0x81, 0x00 },
-	{ V4L2_DV_BT_DMT_800X600P72, 0x82, 0x00 },
-	{ V4L2_DV_BT_DMT_800X600P75, 0x83, 0x00 },
-	{ V4L2_DV_BT_DMT_800X600P85, 0x84, 0x00 },
-	/* SXGA */
-	{ V4L2_DV_BT_DMT_1280X1024P60, 0x85, 0x00 },
-	{ V4L2_DV_BT_DMT_1280X1024P75, 0x86, 0x00 },
-	/* VGA */
-	{ V4L2_DV_BT_DMT_640X480P60, 0x88, 0x00 },
-	{ V4L2_DV_BT_DMT_640X480P72, 0x89, 0x00 },
-	{ V4L2_DV_BT_DMT_640X480P75, 0x8a, 0x00 },
-	{ V4L2_DV_BT_DMT_640X480P85, 0x8b, 0x00 },
-	/* XGA */
-	{ V4L2_DV_BT_DMT_1024X768P60, 0x8c, 0x00 },
-	{ V4L2_DV_BT_DMT_1024X768P70, 0x8d, 0x00 },
-	{ V4L2_DV_BT_DMT_1024X768P75, 0x8e, 0x00 },
-	{ V4L2_DV_BT_DMT_1024X768P85, 0x8f, 0x00 },
-	/* UXGA */
-	{ V4L2_DV_BT_DMT_1600X1200P60, 0x96, 0x00 },
-	/* End of standards */
-	{ },
-};
-
-static void adv7482_hdmi_fill_format(struct adv7482_state *state,
-				     struct v4l2_mbus_framefmt *fmt)
-{
-	memset(fmt, 0, sizeof(*fmt));
-
-	fmt->code = MEDIA_BUS_FMT_RGB888_1X24;
-	fmt->colorspace = V4L2_COLORSPACE_SRGB;
-	fmt->field = state->cp.timings.bt.interlaced ?
-		V4L2_FIELD_INTERLACED : V4L2_FIELD_NONE;
-
-	fmt->width = state->cp.timings.bt.width;
-	fmt->height = state->cp.timings.bt.height;
-}
-
-static void adv7482_fill_optional_dv_timings(struct adv7482_state *state,
-					     struct v4l2_dv_timings *timings)
-{
-	v4l2_find_dv_timings_cap(timings, &adv7482_cp_timings_cap,
-				 250000, NULL, NULL);
-}
-
-static bool adv7482_hdmi_have_signal(struct adv7482_state *state)
-{
-	int val;
-
-	/* Check that VERT_FILTER and DG_REGEN is locked */
-	val = hdmi_read(state, 0x07);
-	return !!(val & BIT(7) && val & BIT(5));
-}
-
-static unsigned int adv7482_hdmi_read_pixelclock(struct adv7482_state *state)
-{
-	int a, b;
-
-	a = hdmi_read(state, 0x51);
-	b = hdmi_read(state, 0x52);
-	if (a < 0 || b < 0)
-		return 0;
-	return ((a << 1) | (b >> 7)) * 1000000 + (b & 0x7f) * 1000000 / 128;
-}
-
-static int adv7482_hdmi_set_video_timings(struct adv7482_state *state,
-					  const struct v4l2_dv_timings *timings)
-{
-	const struct adv7482_cp_video_standards *stds =
-		adv7482_cp_video_standards;
-	int i;
-
-	for (i = 0; stds[i].timings.bt.width; i++) {
-		if (!v4l2_match_dv_timings(timings, &stds[i].timings, 250000,
-					   false))
-			continue;
-		/*
-		 * The resolution of 720p, 1080i and 1080p is Hsync width of
-		 * 40 pixelclock cycles. These resolutions must be shifted
-		 * horizontally to the left in active video mode.
-		 */
-		switch (stds[i].vid_std) {
-		case 0x53: /* 720p */
-			cp_write(state, 0x8B, 0x43);
-			cp_write(state, 0x8C, 0xD8);
-			cp_write(state, 0x8B, 0x4F);
-			cp_write(state, 0x8D, 0xD8);
-			break;
-		case 0x54: /* 1080i */
-		case 0x5e: /* 1080p */
-			cp_write(state, 0x8B, 0x43);
-			cp_write(state, 0x8C, 0xD4);
-			cp_write(state, 0x8B, 0x4F);
-			cp_write(state, 0x8D, 0xD4);
-			break;
-		default:
-			cp_write(state, 0x8B, 0x40);
-			cp_write(state, 0x8C, 0x00);
-			cp_write(state, 0x8B, 0x40);
-			cp_write(state, 0x8D, 0x00);
-			break;
-		}
-
-		io_write(state, 0x05, stds[i].vid_std);
-		io_clrset(state, 0x03, 0x70, stds[i].v_freq << 4);
-
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-/* -----------------------------------------------------------------------------
- * SDP
- */
-
-#define ADV7482_SDP_INPUT_CVBS_AIN1			0x00
-#define ADV7482_SDP_INPUT_CVBS_AIN2			0x01
-#define ADV7482_SDP_INPUT_CVBS_AIN3			0x02
-#define ADV7482_SDP_INPUT_CVBS_AIN4			0x03
-#define ADV7482_SDP_INPUT_CVBS_AIN5			0x04
-#define ADV7482_SDP_INPUT_CVBS_AIN6			0x05
-#define ADV7482_SDP_INPUT_CVBS_AIN7			0x06
-#define ADV7482_SDP_INPUT_CVBS_AIN8			0x07
-
-#define ADV7482_SDP_STD_AD_PAL_BG_NTSC_J_SECAM		0x0
-#define ADV7482_SDP_STD_AD_PAL_BG_NTSC_J_SECAM_PED	0x1
-#define ADV7482_SDP_STD_AD_PAL_N_NTSC_J_SECAM		0x2
-#define ADV7482_SDP_STD_AD_PAL_N_NTSC_M_SECAM		0x3
-#define ADV7482_SDP_STD_NTSC_J				0x4
-#define ADV7482_SDP_STD_NTSC_M				0x5
-#define ADV7482_SDP_STD_PAL60				0x6
-#define ADV7482_SDP_STD_NTSC_443			0x7
-#define ADV7482_SDP_STD_PAL_BG				0x8
-#define ADV7482_SDP_STD_PAL_N				0x9
-#define ADV7482_SDP_STD_PAL_M				0xa
-#define ADV7482_SDP_STD_PAL_M_PED			0xb
-#define ADV7482_SDP_STD_PAL_COMB_N			0xc
-#define ADV7482_SDP_STD_PAL_COMB_N_PED			0xd
-#define ADV7482_SDP_STD_PAL_SECAM			0xe
-#define ADV7482_SDP_STD_PAL_SECAM_PED			0xf
-
-static int adv7482_sdp_read_ro_map(struct adv7482_state *state, u8 reg)
-{
-	int ret;
-
-	/* Select SDP Read-Only Main Map */
-	ret = sdp_write(state, 0x0e, 0x01);
-	if (ret < 0)
-		return ret;
-
-	return sdp_read(state, reg);
-}
-
-static int adv7482_sdp_status(struct adv7482_state *state, u32 *signal,
-			      v4l2_std_id *std)
-{
-	int info;
-
-	/* Read status from reg 0x10 of SDP RO Map */
-	info = adv7482_sdp_read_ro_map(state, 0x10);
-	if (info < 0)
-		return info;
-
-	if (signal)
-		*signal = info & BIT(0) ? 0 : V4L2_IN_ST_NO_SIGNAL;
-
-	if (std) {
-		*std = V4L2_STD_UNKNOWN;
-
-		/* Standard not valid if there is no signal */
-		if (info & BIT(0)) {
-			switch (info & 0x70) {
-			case 0x00:
-				*std = V4L2_STD_NTSC;
-				break;
-			case 0x10:
-				*std = V4L2_STD_NTSC_443;
-				break;
-			case 0x20:
-				*std = V4L2_STD_PAL_M;
-				break;
-			case 0x30:
-				*std = V4L2_STD_PAL_60;
-				break;
-			case 0x40:
-				*std = V4L2_STD_PAL;
-				break;
-			case 0x50:
-				*std = V4L2_STD_SECAM;
-				break;
-			case 0x60:
-				*std = V4L2_STD_PAL_Nc | V4L2_STD_PAL_N;
-				break;
-			case 0x70:
-				*std = V4L2_STD_SECAM;
-				break;
-			default:
-				*std = V4L2_STD_UNKNOWN;
-				break;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static void adv7482_sdp_fill_format(struct adv7482_state *state,
-				    struct v4l2_mbus_framefmt *fmt)
-{
-	v4l2_std_id std;
-	memset(fmt, 0, sizeof(*fmt));
-
-	fmt->code = MEDIA_BUS_FMT_UYVY8_2X8;
-	fmt->colorspace = V4L2_COLORSPACE_SMPTE170M;
-	fmt->field = V4L2_FIELD_INTERLACED;
-
-	fmt->width = 720;
-
-	if (state->sdp.curr_norm == V4L2_STD_ALL)
-		adv7482_sdp_status(state, NULL,  &std);
-	else
-		std = state->sdp.curr_norm;
-
-	fmt->height = std & V4L2_STD_525_60 ? 480 : 576;
-}
-
-static int adv7482_sdp_std(v4l2_std_id std)
-{
-	if (std == V4L2_STD_ALL)
-		return ADV7482_SDP_STD_AD_PAL_BG_NTSC_J_SECAM;
-	if (std == V4L2_STD_PAL_60)
-		return ADV7482_SDP_STD_PAL60;
-	if (std == V4L2_STD_NTSC_443)
-		return ADV7482_SDP_STD_NTSC_443;
-	if (std == V4L2_STD_PAL_N)
-		return ADV7482_SDP_STD_PAL_N;
-	if (std == V4L2_STD_PAL_M)
-		return ADV7482_SDP_STD_PAL_M;
-	if (std == V4L2_STD_PAL_Nc)
-		return ADV7482_SDP_STD_PAL_COMB_N;
-	if (std & V4L2_STD_PAL)
-		return ADV7482_SDP_STD_PAL_BG;
-	if (std & V4L2_STD_NTSC)
-		return ADV7482_SDP_STD_NTSC_M;
-	if (std & V4L2_STD_SECAM)
-		return ADV7482_SDP_STD_PAL_SECAM;
-
-	return -EINVAL;
-}
-
-static int adv7482_sdp_set_video_standard(struct adv7482_state *state,
-					  v4l2_std_id std)
-{
-	int sdpstd;
-
-	sdpstd = adv7482_sdp_std(std);
-	if (sdpstd < 0)
-		return sdpstd;
-
-	sdp_clrset(state, 0x02, 0xf0, (sdpstd & 0xf) << 4);
-
-	return 0;
 }
 
 /* -----------------------------------------------------------------------------
@@ -621,7 +193,7 @@ static const struct adv7482_reg_value adv7482_power_down_txb_1lane[] = {
 	{ADV7482_I2C_EOR, 0xFF, 0xFF}	/* End of register table */
 };
 
-static int adv7482_txa_power(struct adv7482_state *state, bool on)
+int adv7482_txa_power(struct adv7482_state *state, bool on)
 {
 	int val, ret;
 
@@ -637,7 +209,7 @@ static int adv7482_txa_power(struct adv7482_state *state, bool on)
 	return ret;
 }
 
-static int adv7482_txb_power(struct adv7482_state *state, bool on)
+int adv7482_txb_power(struct adv7482_state *state, bool on)
 {
 	int val, ret;
 
@@ -651,735 +223,6 @@ static int adv7482_txb_power(struct adv7482_state *state, bool on)
 		ret = adv7482_write_regs(state, adv7482_power_down_txb_1lane);
 
 	return ret;
-}
-
-/* -----------------------------------------------------------------------------
- * V4L Video
- */
-
-static int adv7482_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
-{
-	struct adv7482_state *state = to_state(sd);
-
-	/* TODO: This is only valid for SDP pad*/
-
-	if (state->sdp.curr_norm == V4L2_STD_ALL)
-		adv7482_sdp_status(state, NULL,  norm);
-	else
-		*norm = state->sdp.curr_norm;
-
-	return 0;
-}
-
-
-static int adv7482_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
-{
-	struct adv7482_state *state = to_state(sd);
-	int ret;
-
-	/* TODO: This is only valid for SDP pad*/
-
-	ret = mutex_lock_interruptible(&state->mutex);
-	if (ret)
-		return ret;
-
-	ret = adv7482_sdp_set_video_standard(state, std);
-	if (ret < 0)
-		goto out;
-
-	state->sdp.curr_norm = std;
-
-out:
-	mutex_unlock(&state->mutex);
-	return ret;
-}
-
-static int adv7482_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
-{
-	/* TODO: This is only valid for SDP pad*/
-
-	struct adv7482_state *state = to_state(sd);
-	int ret;
-
-	ret = mutex_lock_interruptible(&state->mutex);
-	if (ret)
-		return ret;
-
-	if (state->sdp.streaming) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	/* Set auto detect mode */
-	ret = adv7482_sdp_set_video_standard(state, V4L2_STD_ALL);
-	if (ret)
-		goto unlock;
-
-	msleep(100);
-
-	/* Read detected standard */
-	ret = adv7482_sdp_status(state, NULL, std);
-unlock:
-	mutex_unlock(&state->mutex);
-
-	return ret;
-}
-
-static int adv7482_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *norm)
-{
-	/* TODO: This is only valid for SDP pad*/
-
-	*norm = V4L2_STD_ALL;
-
-	return 0;
-}
-static int adv7482_g_input_status(struct v4l2_subdev *sd, u32 *status)
-{
-	struct adv7482_state *state = to_state(sd);
-	int ret;
-
-	/* TODO: this needs to be sink pad aware */
-
-	ret = mutex_lock_interruptible(&state->mutex);
-	if (ret)
-		return ret;
-
-	/* TODO: Fix hack */
-	if (hack_is_hdmi(state))
-		*status = adv7482_hdmi_have_signal(state) ? 0 : V4L2_IN_ST_NO_SIGNAL;
-	else
-		ret = adv7482_sdp_status(state, status, NULL);
-
-	mutex_unlock(&state->mutex);
-	return ret;
-}
-
-static int adv7482_g_pixelaspect(struct v4l2_subdev *sd,
-				 struct v4l2_fract *aspect)
-{
-	struct adv7482_state *state = to_state(sd);
-
-	/* TODO: this needs to be sink pad aware */
-
-	/* TODO: Fix hack */
-	if (hack_is_hdmi(state)) {
-		aspect->numerator = 1;
-		aspect->denominator = 1;
-	} else {
-		struct adv7482_state *state = to_state(sd);
-		v4l2_std_id std;
-
-		if (state->sdp.curr_norm == V4L2_STD_ALL)
-			adv7482_sdp_status(state, NULL,  &std);
-		else
-			std = state->sdp.curr_norm;
-
-		if (std & V4L2_STD_525_60) {
-			aspect->numerator = 11;
-			aspect->denominator = 10;
-		} else {
-			aspect->numerator = 54;
-			aspect->denominator = 59;
-		}
-	}
-
-	return 0;
-}
-
-static int adv7482_s_dv_timings(struct v4l2_subdev *sd,
-				struct v4l2_dv_timings *timings)
-{
-	struct adv7482_state *state = to_state(sd);
-	struct v4l2_bt_timings *bt;
-	int ret;
-
-	/* TODO: This is only valid for CP pad*/
-
-	if (!timings)
-		return -EINVAL;
-
-	if (v4l2_match_dv_timings(&state->cp.timings, timings, 0, false))
-		return 0;
-
-	bt = &timings->bt;
-
-	if (!v4l2_valid_dv_timings(timings, &adv7482_cp_timings_cap,
-				   NULL, NULL))
-		return -ERANGE;
-
-	adv7482_fill_optional_dv_timings(state, timings);
-
-	ret = adv7482_hdmi_set_video_timings(state, timings);
-	if (ret)
-		return ret;
-
-	state->cp.timings = *timings;
-
-	cp_clrset(state, 0x91, 0x40, bt->interlaced ? 0x40 : 0x00);
-
-	return 0;
-}
-
-static int adv7482_g_dv_timings(struct v4l2_subdev *sd,
-				struct v4l2_dv_timings *timings)
-{
-	struct adv7482_state *state = to_state(sd);
-
-	/* TODO: This is only valid for CP pad*/
-
-	*timings = state->cp.timings;
-
-	return 0;
-}
-
-static int adv7482_query_dv_timings(struct v4l2_subdev *sd,
-				    struct v4l2_dv_timings *timings)
-{
-	struct adv7482_state *state = to_state(sd);
-	struct v4l2_bt_timings *bt = &timings->bt;
-	int tmp;
-
-	/* TODO: This is only valid for CP pad*/
-
-	if (!timings)
-		return -EINVAL;
-
-	memset(timings, 0, sizeof(struct v4l2_dv_timings));
-
-	if (!adv7482_hdmi_have_signal(state))
-		return -ENOLINK;
-
-	timings->type = V4L2_DV_BT_656_1120;
-
-	bt->interlaced = hdmi_read(state, 0x0b) & BIT(5) ?
-		V4L2_DV_INTERLACED : V4L2_DV_PROGRESSIVE;
-
-	bt->width = hdmi_read16(state, 0x07, 0x1fff);
-	bt->height = hdmi_read16(state, 0x09, 0x1fff);
-	bt->hfrontporch = hdmi_read16(state, 0x20, 0x1fff);
-	bt->hsync = hdmi_read16(state, 0x22, 0x1fff);
-	bt->hbackporch = hdmi_read16(state, 0x24, 0x1fff);
-	bt->vfrontporch = hdmi_read16(state, 0x2a, 0x3fff) / 2;
-	bt->vsync = hdmi_read16(state, 0x2e, 0x3fff) / 2;
-	bt->vbackporch = hdmi_read16(state, 0x32, 0x3fff) / 2;
-
-	bt->pixelclock = adv7482_hdmi_read_pixelclock(state);
-
-	tmp = hdmi_read(state, 0x05);
-	bt->polarities = (tmp & BIT(4) ? V4L2_DV_VSYNC_POS_POL : 0) |
-		(tmp & BIT(5) ? V4L2_DV_HSYNC_POS_POL : 0);
-
-	if (bt->interlaced == V4L2_DV_INTERLACED) {
-		bt->height += hdmi_read16(state, 0x0b, 0x1fff);
-		bt->il_vfrontporch = hdmi_read16(state, 0x2c, 0x3fff) / 2;
-		bt->il_vsync = hdmi_read16(state, 0x30, 0x3fff) / 2;
-		bt->il_vbackporch = hdmi_read16(state, 0x34, 0x3fff) / 2;
-	}
-
-	adv7482_fill_optional_dv_timings(state, timings);
-
-	if (!adv7482_hdmi_have_signal(state)) {
-		adv_info(state, "HDMI signal lost during readout\n");
-		return -ENOLINK;
-	}
-
-	/* HACK: There should be an IRQ when a cable is plugged and a the new
-	 * timings figured out and stored to state. This the next best thing
-	 * but still a hack which needs to be fixed */
-	state->cp.timings = *timings;
-
-	adv_dbg(state, "HDMI %dx%d%c clock: %llu Hz pol: %x " \
-		"hfront: %d hsync: %d hback: %d " \
-		"vfront: %d vsync: %d vback: %d " \
-		"il_vfron: %d il_vsync: %d il_vback: %d\n",
-		bt->width, bt->height,
-		bt->interlaced == V4L2_DV_INTERLACED ? 'i' : 'p',
-		bt->pixelclock, bt->polarities,
-		bt->hfrontporch, bt->hsync, bt->hbackporch,
-		bt->vfrontporch, bt->vsync, bt->vbackporch,
-		bt->il_vfrontporch, bt->il_vsync, bt->il_vbackporch);
-
-	return 0;
-}
-
-/* -----------------------------------------------------------------------------
- * V4L Pad
- */
-
-static int adv7482_enum_mbus_code(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_mbus_code_enum *code)
-{
-	if (code->index != 0)
-		return -EINVAL;
-
-	switch (code->pad) {
-	case ADV7482_SOURCE_TXA:
-		code->code = MEDIA_BUS_FMT_RGB888_1X24;
-		break;
-	case ADV7482_SOURCE_TXB:
-		code->code = MEDIA_BUS_FMT_UYVY8_2X8;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int adv7482_get_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
-{
-	struct adv7482_state *state = to_state(sd);
-
-	switch (format->pad) {
-	case ADV7482_SOURCE_TXA:
-		adv7482_hdmi_fill_format(state, &format->format);
-		break;
-	case ADV7482_SOURCE_TXB:
-		adv7482_sdp_fill_format(state, &format->format);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
-
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		format->format.code = fmt->code;
-	}
-
-	return 0;
-}
-
-static int adv7482_set_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
-{
-	struct adv7482_state *state = to_state(sd);
-
-	switch (format->pad) {
-	case ADV7482_SOURCE_TXA:
-		adv7482_hdmi_fill_format(state, &format->format);
-		break;
-	case ADV7482_SOURCE_TXB:
-		adv7482_sdp_fill_format(state, &format->format);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
-
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		fmt->code = format->format.code;
-	}
-
-	return 0;
-}
-
-static bool adv7482_check_dv_timings(const struct v4l2_dv_timings *timings,
-				     void *hdl)
-{
-	const struct adv7482_cp_video_standards *stds =
-		adv7482_cp_video_standards;
-	int i;
-
-	for (i = 0; stds[i].timings.bt.width; i++)
-		if (v4l2_match_dv_timings(timings, &stds[i].timings, 0, false))
-			return true;
-
-        return false;
-}
-
-static int adv7482_enum_dv_timings(struct v4l2_subdev *sd,
-				   struct v4l2_enum_dv_timings *timings)
-{
-	if (timings->pad != ADV7482_SINK_HDMI)
-		return -ENOTTY;
-
-	return v4l2_enum_dv_timings_cap(timings, &adv7482_cp_timings_cap,
-					adv7482_check_dv_timings, NULL);
-}
-
-static int adv7482_dv_timings_cap(struct v4l2_subdev *sd,
-				  struct v4l2_dv_timings_cap *cap)
-{
-	if (cap->pad != ADV7482_SINK_HDMI)
-		return -EINVAL;
-
-	*cap = adv7482_cp_timings_cap;
-	return 0;
-}
-
-static int adv7482_s_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct adv7482_state *state = to_state(sd);
-	int ret, signal = 0;
-
-	ret = mutex_lock_interruptible(&state->mutex);
-	if (ret)
-		return ret;
-
-	if (hack_is_hdmi(state)) {
-		ret = adv7482_txa_power(state, enable);
-		if (ret)
-			goto error;
-
-		if (adv7482_hdmi_have_signal(state))
-			adv_dbg(state, "Detected HDMI signal\n");
-		else
-			adv_info(state, "Couldn't detect HDMI video signal\n");
-	} else {
-		ret = adv7482_txb_power(state, enable);
-		if (ret)
-			goto error;
-
-		state->sdp.streaming = enable;
-
-		adv7482_sdp_status(state, &signal, NULL);
-		if (signal != V4L2_IN_ST_NO_SIGNAL)
-			adv_dbg(state, "Detected SDP signal\n");
-		else
-			adv_info(state, "Couldn't detect SDP video signal\n");
-	}
-error:
-	mutex_unlock(&state->mutex);
-	return ret;
-}
-
-static const struct v4l2_subdev_video_ops adv7482_video_ops_hdmi = {
-	.s_dv_timings = adv7482_s_dv_timings,
-	.g_dv_timings = adv7482_g_dv_timings,
-	.query_dv_timings = adv7482_query_dv_timings,
-	.g_input_status = adv7482_g_input_status,
-	.s_stream = adv7482_s_stream,
-	.g_pixelaspect = adv7482_g_pixelaspect,
-};
-
-static const struct v4l2_subdev_video_ops adv7482_video_ops_cvbs = {
-	.g_std = adv7482_g_std,
-	.s_std = adv7482_s_std,
-	.querystd = adv7482_querystd,
-	.g_tvnorms = adv7482_g_tvnorms,
-	.g_input_status = adv7482_g_input_status,
-	.s_stream = adv7482_s_stream,
-	.g_pixelaspect = adv7482_g_pixelaspect,
-};
-
-static const struct v4l2_subdev_pad_ops adv7482_pad_ops_hdmi = {
-	.enum_mbus_code = adv7482_enum_mbus_code,
-	.set_fmt = adv7482_set_pad_format,
-	.get_fmt = adv7482_get_pad_format,
-	.dv_timings_cap = adv7482_dv_timings_cap,
-	.enum_dv_timings = adv7482_enum_dv_timings,
-};
-
-static const struct v4l2_subdev_pad_ops adv7482_pad_ops_cvbs = {
-	.enum_mbus_code = adv7482_enum_mbus_code,
-	.set_fmt = adv7482_set_pad_format,
-	.get_fmt = adv7482_get_pad_format,
-};
-
-static const struct v4l2_subdev_ops adv7482_ops_hdmi= {
-	.video = &adv7482_video_ops_hdmi,
-	.pad = &adv7482_pad_ops_hdmi,
-};
-
-static const struct v4l2_subdev_ops adv7482_ops_cvbs= {
-	.video = &adv7482_video_ops_cvbs,
-	.pad = &adv7482_pad_ops_cvbs,
-};
-
-/* -----------------------------------------------------------------------------
- * Controls
- */
-
-/* Contrast Control */
-#define ADV7482_CP_CON_REG	0x3a	/* Contrast (unsigned) */
-#define ADV7482_CP_CON_MIN	0	/* Minimum contrast */
-#define ADV7482_CP_CON_DEF	128	/* Default */
-#define ADV7482_CP_CON_MAX	255	/* Maximum contrast */
-
-/* Saturation Control */
-#define ADV7482_CP_SAT_REG	0x3b	/* Saturation (unsigned) */
-#define ADV7482_CP_SAT_MIN	0	/* Minimum saturation */
-#define ADV7482_CP_SAT_DEF	128	/* Default */
-#define ADV7482_CP_SAT_MAX	255	/* Maximum saturation */
-
-/* Brightness Control */
-#define ADV7482_CP_BRI_REG	0x3c	/* Brightness (signed) */
-#define ADV7482_CP_BRI_MIN	-128	/* Luma is -512d */
-#define ADV7482_CP_BRI_DEF	0	/* Luma is 0 */
-#define ADV7482_CP_BRI_MAX	127	/* Luma is 508d */
-
-/* Hue Control */
-#define ADV7482_CP_HUE_REG	0x3d	/* Hue (unsigned) */
-#define ADV7482_CP_HUE_MIN	0	/* -90 degree */
-#define ADV7482_CP_HUE_DEF	0	/* -90 degree */
-#define ADV7482_CP_HUE_MAX	255	/* +90 degree */
-
-/* Video adjustment register */
-#define ADV7482_CP_VID_ADJ_REG		0x3e
-/* Video adjustment mask */
-#define ADV7482_CP_VID_ADJ_MASK		0x7F
-/* Enable color controls */
-#define ADV7482_CP_VID_ADJ_ENABLE	0x80
-
-static int adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl,
-			     struct adv7482_state *state)
-{
-	int ret;
-
-	/* Enable video adjustment first */
-	ret = cp_read(state, ADV7482_CP_VID_ADJ_REG);
-	if (ret < 0)
-		return ret;
-	ret |= ADV7482_CP_VID_ADJ_ENABLE;
-
-	ret = cp_write(state, ADV7482_CP_VID_ADJ_REG, ret);
-	if (ret < 0)
-		return ret;
-
-	switch (ctrl->id) {
-	case V4L2_CID_BRIGHTNESS:
-		if (ctrl->val < ADV7482_CP_BRI_MIN ||
-		    ctrl->val > ADV7482_CP_BRI_MAX)
-			return -ERANGE;
-
-		ret = cp_write(state, ADV7482_CP_BRI_REG, ctrl->val);
-		break;
-	case V4L2_CID_HUE:
-		if (ctrl->val < ADV7482_CP_HUE_MIN ||
-		    ctrl->val > ADV7482_CP_HUE_MAX)
-			return -ERANGE;
-
-		ret = cp_write(state, ADV7482_CP_HUE_REG, ctrl->val);
-		break;
-	case V4L2_CID_CONTRAST:
-		if (ctrl->val < ADV7482_CP_CON_MIN ||
-		    ctrl->val > ADV7482_CP_CON_MAX)
-			return -ERANGE;
-
-		ret = cp_write(state, ADV7482_CP_CON_REG, ctrl->val);
-		break;
-	case V4L2_CID_SATURATION:
-		if (ctrl->val < ADV7482_CP_SAT_MIN ||
-		    ctrl->val > ADV7482_CP_SAT_MAX)
-			return -ERANGE;
-
-		ret = cp_write(state, ADV7482_CP_SAT_REG, ctrl->val);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return ret;
-}
-
-/* Contrast */
-#define ADV7482_SDP_REG_CON		0x08	/*Unsigned */
-#define ADV7482_SDP_CON_MIN		0
-#define ADV7482_SDP_CON_DEF		128
-#define ADV7482_SDP_CON_MAX		255
-/* Brightness*/
-#define ADV7482_SDP_REG_BRI		0x0a	/*Signed */
-#define ADV7482_SDP_BRI_MIN		-128
-#define ADV7482_SDP_BRI_DEF		0
-#define ADV7482_SDP_BRI_MAX		127
-/* Hue */
-#define ADV7482_SDP_REG_HUE		0x0b	/*Signed, inverted */
-#define ADV7482_SDP_HUE_MIN		-127
-#define ADV7482_SDP_HUE_DEF		0
-#define ADV7482_SDP_HUE_MAX		128
-
-/* Saturation */
-#define ADV7482_SDP_REG_SD_SAT_CB	0xe3
-#define ADV7482_SDP_REG_SD_SAT_CR	0xe4
-#define ADV7482_SDP_SAT_MIN		0
-#define ADV7482_SDP_SAT_DEF		128
-#define ADV7482_SDP_SAT_MAX		255
-
-static int adv7482_sdp_s_ctrl(struct v4l2_ctrl *ctrl,
-			      struct adv7482_state *state)
-{
-	int ret;
-
-	ret = sdp_write(state, 0x0e, 0x00);
-	if (ret < 0)
-		return ret;
-
-	switch (ctrl->id) {
-	case V4L2_CID_BRIGHTNESS:
-		if (ctrl->val < ADV7482_SDP_BRI_MIN ||
-		    ctrl->val > ADV7482_SDP_BRI_MAX)
-			return -ERANGE;
-
-		ret = sdp_write(state, ADV7482_SDP_REG_BRI, ctrl->val);
-		break;
-	case V4L2_CID_HUE:
-		if (ctrl->val < ADV7482_SDP_HUE_MIN ||
-		    ctrl->val > ADV7482_SDP_HUE_MAX)
-			return -ERANGE;
-
-		/*Hue is inverted according to HSL chart */
-		ret = sdp_write(state, ADV7482_SDP_REG_HUE, -ctrl->val);
-		break;
-	case V4L2_CID_CONTRAST:
-		if (ctrl->val < ADV7482_SDP_CON_MIN ||
-		    ctrl->val > ADV7482_SDP_CON_MAX)
-			return -ERANGE;
-
-		ret = sdp_write(state, ADV7482_SDP_REG_CON, ctrl->val);
-		break;
-	case V4L2_CID_SATURATION:
-		if (ctrl->val < ADV7482_SDP_SAT_MIN ||
-		    ctrl->val > ADV7482_SDP_SAT_MAX)
-			return -ERANGE;
-		/*
-		 *This could be V4L2_CID_BLUE_BALANCE/V4L2_CID_RED_BALANCE
-		 *Let's not confuse the user, everybody understands saturation
-		 */
-		ret = sdp_write(state, ADV7482_SDP_REG_SD_SAT_CB, ctrl->val);
-		if (ret)
-			break;
-		ret = sdp_write(state, ADV7482_SDP_REG_SD_SAT_CR, ctrl->val);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return ret;
-}
-
-static int adv7482_s_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, ctrl_hdl);
-	int ret;
-
-	ret = mutex_lock_interruptible(&state->mutex);
-	if (ret)
-		return ret;
-
-	if (hack_is_hdmi(state))
-		ret = adv7482_cp_s_ctrl(ctrl, state);
-	else
-		ret = adv7482_sdp_s_ctrl(ctrl, state);
-
-	mutex_unlock(&state->mutex);
-
-	return ret;
-}
-
-static int adv7482_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, ctrl_hdl);
-	unsigned int width, height, fps;
-	v4l2_std_id std;
-
-	switch (ctrl->id) {
-	case V4L2_CID_PIXEL_RATE:
-		if (hack_is_hdmi(state)) {
-			struct v4l2_dv_timings timings;
-			struct v4l2_bt_timings *bt = &timings.bt;
-
-			adv7482_query_dv_timings(&state->sd, &timings);
-
-			width = bt->width;
-			height = bt->height;
-			fps = DIV_ROUND_CLOSEST(bt->pixelclock,
-						V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt));
-		} else {
-			width = 720;
-			if (state->sdp.curr_norm == V4L2_STD_ALL)
-				adv7482_sdp_status(state, NULL,  &std);
-			else
-				std = state->sdp.curr_norm;
-
-			height = std & V4L2_STD_525_60 ? 480 : 576;
-			fps = std & V4L2_STD_525_60 ? 30 : 25;
-		}
-		*ctrl->p_new.p_s64 = width * height * fps;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static const struct v4l2_ctrl_ops adv7482_ctrl_ops = {
-	.s_ctrl = adv7482_s_ctrl,
-	.g_volatile_ctrl = adv7482_g_volatile_ctrl,
-};
-
-static int adv7482_cp_init_controls(struct adv7482_state *state)
-{
-	struct v4l2_ctrl *ctrl;
-
-	v4l2_ctrl_handler_init(&state->ctrl_hdl, 5);
-
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_BRIGHTNESS, ADV7482_CP_BRI_MIN,
-			  ADV7482_CP_BRI_MAX, 1, ADV7482_CP_BRI_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_CONTRAST, ADV7482_CP_CON_MIN,
-			  ADV7482_CP_CON_MAX, 1, ADV7482_CP_CON_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_SATURATION, ADV7482_CP_SAT_MIN,
-			  ADV7482_CP_SAT_MAX, 1, ADV7482_CP_SAT_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_HUE, ADV7482_CP_HUE_MIN,
-			  ADV7482_CP_HUE_MAX, 1, ADV7482_CP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
-
-	state->sd.ctrl_handler = &state->ctrl_hdl;
-	if (state->ctrl_hdl.error) {
-		v4l2_ctrl_handler_free(&state->ctrl_hdl);
-		return state->ctrl_hdl.error;
-	}
-
-	return v4l2_ctrl_handler_setup(&state->ctrl_hdl);
-}
-
-static int adv7482_sdp_init_controls(struct adv7482_state *state)
-{
-	struct v4l2_ctrl *ctrl;
-
-	v4l2_ctrl_handler_init(&state->ctrl_hdl, 5);
-
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_BRIGHTNESS, ADV7482_SDP_BRI_MIN,
-			  ADV7482_SDP_BRI_MAX, 1, ADV7482_SDP_BRI_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_CONTRAST, ADV7482_SDP_CON_MIN,
-			  ADV7482_SDP_CON_MAX, 1, ADV7482_SDP_CON_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_SATURATION, ADV7482_SDP_SAT_MIN,
-			  ADV7482_SDP_SAT_MAX, 1, ADV7482_SDP_SAT_DEF);
-	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-			  V4L2_CID_HUE, ADV7482_SDP_HUE_MIN,
-			  ADV7482_SDP_HUE_MAX, 1, ADV7482_SDP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7482_ctrl_ops,
-				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
-
-	state->sd.ctrl_handler = &state->ctrl_hdl;
-	if (state->ctrl_hdl.error) {
-		v4l2_ctrl_handler_free(&state->ctrl_hdl);
-		return state->ctrl_hdl.error;
-	}
-
-	return v4l2_ctrl_handler_setup(&state->ctrl_hdl);
 }
 
 /* -----------------------------------------------------------------------------
@@ -1406,8 +249,9 @@ static bool adv7482_media_has_route(struct media_entity *entity,
 	return false;
 }
 
-static const struct media_entity_operations adv7482_media_ops = {
+const struct media_entity_operations adv7482_media_ops = {
 	.has_route =  adv7482_media_has_route,
+	.link_validate = v4l2_subdev_link_validate,
 };
 
 /* -----------------------------------------------------------------------------
@@ -1506,6 +350,9 @@ static const struct adv7482_reg_value adv7482_init_txa_4lane[] = {
 #endif
 	{ADV7482_I2C_EOR, 0xFF, 0xFF}	/* End of register table */
 };
+
+/* TODO:KPB: This may be 'private' to CVBS?, and is currently duplicated! */
+#define ADV7482_SDP_INPUT_CVBS_AIN8 0x07
 
 /* 02-01 Analog CVBS to MIPI TX-B CSI 1-Lane - */
 /* Autodetect CVBS Single Ended In Ain 1 - MIPI Out */
@@ -1615,7 +462,7 @@ static int adv7482_print_info(struct adv7482_state *state)
 	msb = io_read(state, 0xe0);
 
 	if (lsb < 0 || msb < 0) {
-		adv_err(state, "Failed to read chip revsion\n");
+		adv_err(state, "Failed to read chip revision\n");
 		return -EIO;
 	}
 
@@ -1629,16 +476,15 @@ static int adv7482_print_info(struct adv7482_state *state)
  * i2c driver
  */
 
-static const struct media_entity_operations adv7482_entity_ops = {
-	.link_validate = v4l2_subdev_link_validate,
-};
+static int hack_is_hdmi(struct adv7482_state *state) {
+	return state->client->addr == 0x70;
+}
 
 static int adv7482_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct adv7482_state *state;
-	static const struct v4l2_dv_timings cea720x480 =
-		V4L2_DV_BT_CEA_720X480I59_94;
+
 	int i, ret;
 
 	/* Check if the adapter supports the needed features */
@@ -1655,25 +501,7 @@ static int adv7482_probe(struct i2c_client *client,
 	state->dev = &client->dev;
 	state->client = client;
 
-	state->sdp.streaming = false;
-	state->sdp.curr_norm = V4L2_STD_ALL;
-
-	state->cp.timings = cea720x480;
-
-	/* FIXME: Hack to expose CVBS and HDMI as differet subdevs based on i2c addr */
-	if (hack_is_hdmi(state)) {
-		adv_info(state, "HACK tweak for HDMI\n");
-		v4l2_i2c_subdev_init(&state->sd, client, &adv7482_ops_hdmi);
-	} else {
-		adv_info(state, "HACK tweak for CVBS\n");
-		v4l2_i2c_subdev_init(&state->sd, client, &adv7482_ops_cvbs);
-	}
-
-	state->sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
-	state->sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
-	state->sd.entity.ops = &adv7482_entity_ops;
-
-	/* SW reset AVD7482 to its default values */
+	/* SW reset ADV7482 to its default values */
 	ret = adv7482_reset(state);
 	if (ret)
 		return ret;
@@ -1687,30 +515,46 @@ static int adv7482_probe(struct i2c_client *client,
 	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
 		state->pads[i].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&state->sd.entity, ADV7482_PAD_MAX,
-				     state->pads);
+#ifdef HDMI_HACK_FIXED
+	/* Initialise HDMI */
+	ret = adv7482_cp_probe(state);
 	if (ret)
 		return ret;
 
-	state->sd.entity.ops = &adv7482_media_ops;
-
-	/* FIXME: Hack to expose CVBS and HDMI controls on correct subdev */
-	if (hack_is_hdmi(state))
-		ret = adv7482_cp_init_controls(state);
-	else
-		ret = adv7482_sdp_init_controls(state);
+	/* Initialise CVBS */
+	ret = adv7482_sdp_probe(state);
 	if (ret)
 		return ret;
-
-	ret = v4l2_async_register_subdev(&state->sd);
-	if (ret)
-		return ret;
+#else
+	/* FIXME:
+	 *  Hack to expose CVBS and HDMI as different subdevs based on i2c addr
+	 */
+	if (hack_is_hdmi(state)) {
+		adv_info(state, "HACK tweak for HDMI\n");
+		ret = adv7482_cp_probe(state);
+		if (ret)
+			return ret;
+	} else {
+		adv_info(state, "HACK tweak for CVBS\n");
+		ret = adv7482_sdp_probe(state);
+		if (ret)
+			return ret;
+	}
+#endif
 
 	return 0;
 }
 
 static int adv7482_remove(struct i2c_client *client)
 {
+#ifdef ADV7482_MULTI_SUBDEV
+
+#error - OH Dear - a giant fixme, and blocker !
+
+	/* These need to call down into each of the subdevs and allow them
+	 * to do any removal of controls and unregister their subdevs.
+	 */
+
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct adv7482_state *state = to_state(sd);
 
@@ -1719,8 +563,8 @@ static int adv7482_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 
 	v4l2_ctrl_handler_free(&state->ctrl_hdl);
-
 	mutex_destroy(&state->mutex);
+#endif
 
 	return 0;
 }
