@@ -3395,12 +3395,12 @@ static struct i2c_client *adv7842_dummy_client(struct v4l2_subdev *sd, const cha
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct i2c_client *cp;
 
-	io_write(sd, io_reg, addr << 1);
-
 	if (addr == 0) {
 		v4l2_err(sd, "no %s i2c addr configured\n", desc);
 		return NULL;
 	}
+
+	io_write(sd, io_reg, addr << 1);
 
 	cp = i2c_new_dummy(client->adapter, io_read(sd, io_reg) >> 1);
 	if (!cp)
