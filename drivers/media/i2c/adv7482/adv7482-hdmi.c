@@ -435,13 +435,13 @@ static bool adv7482_check_dv_timings(const struct v4l2_dv_timings *timings,
 {
 	const struct adv7482_cp_video_standards *stds =
 		adv7482_cp_video_standards;
-	int i;
+	unsigned int i;
 
 	for (i = 0; stds[i].timings.bt.width; i++)
 		if (v4l2_match_dv_timings(timings, &stds[i].timings, 0, false))
 			return true;
 
-        return false;
+	return false;
 }
 
 static int adv7482_enum_dv_timings(struct v4l2_subdev *sd,
@@ -480,7 +480,6 @@ static const struct v4l2_subdev_ops adv7482_ops_hdmi = {
 	.video = &adv7482_video_ops_hdmi,
 	.pad = &adv7482_pad_ops_hdmi,
 };
-
 
 /* -----------------------------------------------------------------------------
  * Controls
@@ -568,7 +567,6 @@ static int __adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl,
 	return ret;
 }
 
-
 static int adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adv7482_state *state =
@@ -651,7 +649,6 @@ static int adv7482_cp_init_controls(struct adv7482_state *state)
 
 	return v4l2_ctrl_handler_setup(&state->hdmi.ctrl_hdl);
 }
-
 
 int adv7482_cp_probe(struct adv7482_state *state)
 {

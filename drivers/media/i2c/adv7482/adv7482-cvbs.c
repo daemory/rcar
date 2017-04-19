@@ -158,7 +158,7 @@ static int adv7482_sdp_std(v4l2_std_id std)
 	if (std & V4L2_STD_SECAM)
 		return ADV7482_SDP_STD_PAL_SECAM;
 
-	{ trace_printk("-EINVAL"); return -EINVAL; };
+	return -EINVAL;
 }
 
 static int adv7482_sdp_set_video_standard(struct adv7482_state *state,
