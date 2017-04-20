@@ -22,6 +22,8 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
+#define kprint pr_err
+
 static bool match_i2c(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 {
 #if IS_ENABLED(CONFIG_I2C)
@@ -42,6 +44,12 @@ static bool match_devname(struct v4l2_subdev *sd,
 
 static bool match_of(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 {
+
+	pr_err("SD %s: ASD %s : Full ( %s : %s )\n",
+			sd->of_node->name, asd->match.of.node->name,
+			of_node_full_name(sd->of_node),
+			of_node_full_name(asd->match.of.node));
+
 	return !of_node_cmp(of_node_full_name(sd->of_node),
 			    of_node_full_name(asd->match.of.node));
 }
@@ -87,8 +95,23 @@ static struct v4l2_async_subdev *v4l2_async_belongs(struct v4l2_async_notifier *
 		}
 
 		/* match cannot be NULL here */
-		if (match(sd, asd))
+		if (match(sd, asd)) {
+			switch (asd->match_type) {
+			case V4L2_ASYNC_MATCH_CUSTOM:
+				pr_err("Matched custom: %s", sd->name);
+				break;
+			case V4L2_ASYNC_MATCH_DEVNAME:
+				pr_err("Matched devname: %s %s", sd->name, asd->match.device_name.name);
+				break;
+			case V4L2_ASYNC_MATCH_I2C:
+				pr_err("Matched i2c: %s %d", sd->name, asd->match.i2c.address);
+				break;
+			case V4L2_ASYNC_MATCH_OF:
+				pr_err("Matched of: %s == %s", sd->name, asd->match.of.node->name);
+				break;
+			}
 			return asd;
+		}
 	}
 
 	return NULL;
