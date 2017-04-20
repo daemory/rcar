@@ -56,7 +56,10 @@ enum adv7482_pads {
  * @timings:		Timings for {g,s}_dv_timings
  */
 struct adv7482_hdmi_cp {
+	struct v4l2_ctrl_handler ctrl_hdl;
 	struct v4l2_dv_timings timings;
+	struct v4l2_subdev sd;
+	struct media_pad pads[ADV7482_PAD_MAX];
 };
 
 /**
@@ -65,6 +68,10 @@ struct adv7482_hdmi_cp {
  * @curr_norm:		Current video standard
  */
 struct adv7482_sdp {
+	struct media_pad pads[ADV7482_PAD_MAX];
+	struct v4l2_ctrl_handler ctrl_hdl;
+	struct v4l2_subdev sd;
+
 	bool streaming;
 	v4l2_std_id curr_norm;
 };
@@ -102,19 +109,14 @@ struct adv7482_state {
 	struct adv7482_output ain;
 	struct adv7482_output ttl;
 
-	struct adv7482_output hdmi;
-	struct adv7482_output cvbs;
-
 	struct mutex mutex;
-
-	struct media_pad pads[ADV7482_PAD_MAX];
 
 	struct adv7482_hdmi_cp cp;
 	struct adv7482_sdp sdp;
 };
 
-#define adv7482_hdmi_to_state(a) container_of(a, struct adv7482_state, hdmi.sd)
-#define adv7482_cvbs_to_state(a) container_of(a, struct adv7482_state, cvbs.sd)
+#define adv7482_hdmi_to_state(a) container_of(a, struct adv7482_state, cp.sd)
+#define adv7482_cvbs_to_state(a) container_of(a, struct adv7482_state, sdp.sd)
 
 #define adv_err(a, fmt, arg...)	dev_err(a->dev, fmt, ##arg)
 #define adv_info(a, fmt, arg...) dev_info(a->dev, fmt, ##arg)

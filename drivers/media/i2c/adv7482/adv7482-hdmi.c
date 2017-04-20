@@ -570,7 +570,7 @@ static int __adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl,
 static int adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, hdmi.ctrl_hdl);
+		container_of(ctrl->handler, struct adv7482_state, cp.ctrl_hdl);
 	int ret;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -587,7 +587,7 @@ static int adv7482_cp_s_ctrl(struct v4l2_ctrl *ctrl)
 static int adv7482_cp_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, hdmi.ctrl_hdl);
+		container_of(ctrl->handler, struct adv7482_state, cp.ctrl_hdl);
 	unsigned int width, height, fps;
 
 	switch (ctrl->id) {
@@ -596,7 +596,7 @@ static int adv7482_cp_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		struct v4l2_dv_timings timings;
 		struct v4l2_bt_timings *bt = &timings.bt;
 
-		adv7482_query_dv_timings(&state->hdmi.sd, &timings);
+		adv7482_query_dv_timings(&state->cp.sd, &timings);
 
 		width = bt->width;
 		height = bt->height;
@@ -622,55 +622,62 @@ static int adv7482_cp_init_controls(struct adv7482_state *state)
 {
 	struct v4l2_ctrl *ctrl;
 
-	v4l2_ctrl_handler_init(&state->hdmi.ctrl_hdl, 5);
+	v4l2_ctrl_handler_init(&state->cp.ctrl_hdl, 5);
 
-	v4l2_ctrl_new_std(&state->hdmi.ctrl_hdl, &adv7482_cp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->cp.ctrl_hdl, &adv7482_cp_ctrl_ops,
 			  V4L2_CID_BRIGHTNESS, ADV7482_CP_BRI_MIN,
 			  ADV7482_CP_BRI_MAX, 1, ADV7482_CP_BRI_DEF);
-	v4l2_ctrl_new_std(&state->hdmi.ctrl_hdl, &adv7482_cp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->cp.ctrl_hdl, &adv7482_cp_ctrl_ops,
 			  V4L2_CID_CONTRAST, ADV7482_CP_CON_MIN,
 			  ADV7482_CP_CON_MAX, 1, ADV7482_CP_CON_DEF);
-	v4l2_ctrl_new_std(&state->hdmi.ctrl_hdl, &adv7482_cp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->cp.ctrl_hdl, &adv7482_cp_ctrl_ops,
 			  V4L2_CID_SATURATION, ADV7482_CP_SAT_MIN,
 			  ADV7482_CP_SAT_MAX, 1, ADV7482_CP_SAT_DEF);
-	v4l2_ctrl_new_std(&state->hdmi.ctrl_hdl, &adv7482_cp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->cp.ctrl_hdl, &adv7482_cp_ctrl_ops,
 			  V4L2_CID_HUE, ADV7482_CP_HUE_MIN,
 			  ADV7482_CP_HUE_MAX, 1, ADV7482_CP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&state->hdmi.ctrl_hdl, &adv7482_cp_ctrl_ops,
+	ctrl = v4l2_ctrl_new_std(&state->cp.ctrl_hdl, &adv7482_cp_ctrl_ops,
 				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
-	state->hdmi.sd.ctrl_handler = &state->hdmi.ctrl_hdl;
-	if (state->hdmi.ctrl_hdl.error) {
-		v4l2_ctrl_handler_free(&state->hdmi.ctrl_hdl);
-		return state->hdmi.ctrl_hdl.error;
+	state->cp.sd.ctrl_handler = &state->cp.ctrl_hdl;
+	if (state->cp.ctrl_hdl.error) {
+		v4l2_ctrl_handler_free(&state->cp.ctrl_hdl);
+		return state->cp.ctrl_hdl.error;
 	}
 
-	return v4l2_ctrl_handler_setup(&state->hdmi.ctrl_hdl);
+	return v4l2_ctrl_handler_setup(&state->cp.ctrl_hdl);
 }
 
 int adv7482_cp_probe(struct adv7482_state *state)
 {
 	static const struct v4l2_dv_timings cea720x480 =
 		V4L2_DV_BT_CEA_720X480I59_94;
+	unsigned int i;
 	int ret;
 
 	state->cp.timings = cea720x480;
 
 	/* TODO: KPB: We're passing i2c client here as the same for all subdevs */
-	v4l2_i2c_subdev_init(&state->hdmi.sd, state->client, &adv7482_ops_hdmi);
+	v4l2_i2c_subdev_init(&state->cp.sd, state->client, &adv7482_ops_hdmi);
 
 	/* TODO:KPB: Not yet implemented -
 	 * So apparently this must be *after? subdev_init?
 	 * Where should the 'entity's' be, and what's linked to where.
 	 */
-	state->hdmi.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
-	state->hdmi.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
-	state->hdmi.sd.entity.ops = &adv7482_media_ops;
+	state->cp.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
+	state->cp.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
+	state->cp.sd.entity.ops = &adv7482_media_ops;
 
-	ret = media_entity_pads_init(&state->hdmi.sd.entity, ADV7482_PAD_MAX,
-				     state->pads);
+
+	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
+		state->cp.pads[i].flags = MEDIA_PAD_FL_SINK;
+	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
+		state->cp.pads[i].flags = MEDIA_PAD_FL_SOURCE;
+
+	ret = media_entity_pads_init(&state->cp.sd.entity, ADV7482_PAD_MAX,
+				     state->cp.pads);
 	if (ret)
 		return ret;
 
@@ -678,7 +685,7 @@ int adv7482_cp_probe(struct adv7482_state *state)
 	if (ret)
 		return ret;
 
-	ret = v4l2_async_register_subdev(&state->hdmi.sd);
+	ret = v4l2_async_register_subdev(&state->cp.sd);
 	if (ret)
 		return ret;
 

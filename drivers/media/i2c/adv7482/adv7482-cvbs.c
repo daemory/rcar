@@ -508,7 +508,7 @@ static int __adv7482_sdp_s_ctrl(struct v4l2_ctrl *ctrl,
 static int adv7482_sdp_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, cvbs.ctrl_hdl);
+		container_of(ctrl->handler, struct adv7482_state, sdp.ctrl_hdl);
 	int ret;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -525,7 +525,7 @@ static int adv7482_sdp_s_ctrl(struct v4l2_ctrl *ctrl)
 static int adv7482_sdp_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct adv7482_state *state =
-		container_of(ctrl->handler, struct adv7482_state, cvbs.ctrl_hdl);
+		container_of(ctrl->handler, struct adv7482_state, sdp.ctrl_hdl);
 	unsigned int width, height, fps;
 	v4l2_std_id std;
 
@@ -558,59 +558,62 @@ static int adv7482_sdp_init_controls(struct adv7482_state *state)
 {
 	struct v4l2_ctrl *ctrl;
 
-	v4l2_ctrl_handler_init(&state->cvbs.ctrl_hdl, 5);
+	v4l2_ctrl_handler_init(&state->sdp.ctrl_hdl, 5);
 
-	v4l2_ctrl_new_std(&state->cvbs.ctrl_hdl, &adv7482_sdp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->sdp.ctrl_hdl, &adv7482_sdp_ctrl_ops,
 			  V4L2_CID_BRIGHTNESS, ADV7482_SDP_BRI_MIN,
 			  ADV7482_SDP_BRI_MAX, 1, ADV7482_SDP_BRI_DEF);
-	v4l2_ctrl_new_std(&state->cvbs.ctrl_hdl, &adv7482_sdp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->sdp.ctrl_hdl, &adv7482_sdp_ctrl_ops,
 			  V4L2_CID_CONTRAST, ADV7482_SDP_CON_MIN,
 			  ADV7482_SDP_CON_MAX, 1, ADV7482_SDP_CON_DEF);
-	v4l2_ctrl_new_std(&state->cvbs.ctrl_hdl, &adv7482_sdp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->sdp.ctrl_hdl, &adv7482_sdp_ctrl_ops,
 			  V4L2_CID_SATURATION, ADV7482_SDP_SAT_MIN,
 			  ADV7482_SDP_SAT_MAX, 1, ADV7482_SDP_SAT_DEF);
-	v4l2_ctrl_new_std(&state->cvbs.ctrl_hdl, &adv7482_sdp_ctrl_ops,
+	v4l2_ctrl_new_std(&state->sdp.ctrl_hdl, &adv7482_sdp_ctrl_ops,
 			  V4L2_CID_HUE, ADV7482_SDP_HUE_MIN,
 			  ADV7482_SDP_HUE_MAX, 1, ADV7482_SDP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&state->cvbs.ctrl_hdl, &adv7482_sdp_ctrl_ops,
+	ctrl = v4l2_ctrl_new_std(&state->sdp.ctrl_hdl, &adv7482_sdp_ctrl_ops,
 				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
-	state->cvbs.sd.ctrl_handler = &state->cvbs.ctrl_hdl;
-	if (state->cvbs.ctrl_hdl.error) {
-		v4l2_ctrl_handler_free(&state->cvbs.ctrl_hdl);
-		return state->cvbs.ctrl_hdl.error;
+	state->sdp.sd.ctrl_handler = &state->sdp.ctrl_hdl;
+	if (state->sdp.ctrl_hdl.error) {
+		v4l2_ctrl_handler_free(&state->sdp.ctrl_hdl);
+		return state->sdp.ctrl_hdl.error;
 	}
 
-	return v4l2_ctrl_handler_setup(&state->cvbs.ctrl_hdl);
+	return v4l2_ctrl_handler_setup(&state->sdp.ctrl_hdl);
 }
 
 int adv7482_sdp_probe(struct adv7482_state *state)
 {
+	unsigned int i;
 	int ret;
 
 	state->sdp.streaming = false;
 	state->sdp.curr_norm = V4L2_STD_ALL;
 
 	/* TODO: KPB: We're passing i2c client here as the same for all subdevs */
-	v4l2_i2c_subdev_init(&state->cvbs.sd, state->client, &adv7482_ops_cvbs);
+	v4l2_i2c_subdev_init(&state->sdp.sd, state->client, &adv7482_ops_cvbs);
 
-	/* TODO:KPB: Not yet implemented -
-	 * Where should the 'entity's' be, and what's linked to where.
-	 */
-	state->cvbs.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
-	state->cvbs.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
-	state->cvbs.sd.entity.ops = &adv7482_media_ops;
+	state->sdp.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
+	state->sdp.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
+	state->sdp.sd.entity.ops = &adv7482_media_ops;
+
+	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
+		state->sdp.pads[i].flags = MEDIA_PAD_FL_SINK;
+	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
+		state->sdp.pads[i].flags = MEDIA_PAD_FL_SOURCE;
+
+	ret = media_entity_pads_init(&state->sdp.sd.entity, ADV7482_PAD_MAX,
+				     state->sdp.pads);
 
 	ret = adv7482_sdp_init_controls(state);
 	if (ret)
 		return ret;
 
-	ret = media_entity_pads_init(&state->cvbs.sd.entity, ADV7482_PAD_MAX,
-				     state->pads);
-
-	ret = v4l2_async_register_subdev(&state->cvbs.sd);
+	ret = v4l2_async_register_subdev(&state->sdp.sd);
 	if (ret)
 		return ret;
 

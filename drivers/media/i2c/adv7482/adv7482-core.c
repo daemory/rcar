@@ -485,7 +485,7 @@ static int adv7482_probe(struct i2c_client *client,
 {
 	struct adv7482_state *state;
 
-	int i, ret;
+	int ret;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
@@ -509,11 +509,6 @@ static int adv7482_probe(struct i2c_client *client,
 	ret = adv7482_print_info(state);
 	if (ret)
 		return ret;
-
-	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
-		state->pads[i].flags = MEDIA_PAD_FL_SINK;
-	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
-		state->pads[i].flags = MEDIA_PAD_FL_SOURCE;
 
 #ifdef HDMI_HACK_FIXED
 	/* Initialise HDMI */
