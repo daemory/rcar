@@ -481,6 +481,25 @@ void adv7482_subdev_init(struct v4l2_subdev *sd, struct adv7482_state *state,
 	sd->entity.ops = &adv7482_media_ops;
 }
 
+struct adv7482_reg_pages {
+	const char *name;
+	u8 addr;
+};
+
+static const struct adv7482_reg_pages adv7482_registers[] = {
+		[ADV7482_PAGE_IO] = { "io", 0x70 },
+		[ADV7482_PAGE_DPLL] = { "dpll", 0x26 },
+		[ADV7482_PAGE_CP] = { "cp", 0x22 },
+		[ADV7482_PAGE_HDMI] = { "hdmi", 0x34 },
+		[ADV7482_PAGE_EDID] = { "edid", 0x36 },
+		[ADV7482_PAGE_REPEATER] = { "repeater", 0x32 },
+		[ADV7482_PAGE_INFOFRAME] = { "infoframe", 0x31 },
+		[ADV7482_PAGE_CEC] = { "cec", 0x41 },
+		[ADV7482_PAGE_SDP] = { "sdp", 0x79 },
+		[ADV7482_PAGE_TXB] = { "txb", 0x48 },
+		[ADV7482_PAGE_TXA] = { "txa", 0x4A },
+};
+
 static int adv7482_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -502,6 +521,9 @@ static int adv7482_probe(struct i2c_client *client,
 	state->dev = &client->dev;
 	state->client = client;
 	i2c_set_clientdata(client, state);
+
+	state->clients[ADV7482_PAGE_IO] = client;
+
 	/* SW reset ADV7482 to its default values */
 	ret = adv7482_reset(state);
 	if (ret) {

@@ -34,6 +34,21 @@
 #define ADV7482_I2C_WAIT		0xFE	/* Wait x mesec */
 #define ADV7482_I2C_EOR			0xFF	/* End Mark */
 
+enum adv7482_pages {
+	ADV7482_PAGE_IO,
+	ADV7482_PAGE_DPLL,
+	ADV7482_PAGE_CP,
+	ADV7482_PAGE_HDMI,
+	ADV7482_PAGE_EDID,
+	ADV7482_PAGE_REPEATER,
+	ADV7482_PAGE_INFOFRAME,
+	ADV7482_PAGE_CEC,
+	ADV7482_PAGE_SDP,
+	ADV7482_PAGE_TXB,
+	ADV7482_PAGE_TXA,
+	ADV7482_PAGE_MAX,
+};
+
 /**
  * enum adv7482_ports - Device tree port number definitions
  *
@@ -98,6 +113,11 @@ struct adv7482_state {
 	struct device *dev;
 	struct i2c_client *client;
 
+	/* i2c clients */
+	struct i2c_client *clients[ADV7482_PAGE_MAX];
+
+	/* Regmaps */
+	struct regmap *regmap[ADV7482_PAGE_MAX];
 
 	struct mutex mutex;
 
