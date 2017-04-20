@@ -594,12 +594,7 @@ int adv7482_sdp_probe(struct adv7482_state *state)
 	state->sdp.streaming = false;
 	state->sdp.curr_norm = V4L2_STD_ALL;
 
-	/* TODO: KPB: We're passing i2c client here as the same for all subdevs */
-	v4l2_i2c_subdev_init(&state->sdp.sd, state->client, &adv7482_ops_cvbs);
-
-	state->sdp.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
-	state->sdp.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
-	state->sdp.sd.entity.ops = &adv7482_media_ops;
+	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_ops_cvbs, "cvbs");
 
 	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
 		state->sdp.pads[i].flags = MEDIA_PAD_FL_SINK;
@@ -618,4 +613,11 @@ int adv7482_sdp_probe(struct adv7482_state *state)
 		return ret;
 
 	return 0;
+}
+
+void adv7482_sdp_remove(struct adv7482_state *state)
+{
+	v4l2_async_unregister_subdev(&state->sdp.sd);
+	media_entity_cleanup(&state->sdp.sd.entity);
+	v4l2_ctrl_handler_free(&state->sdp.ctrl_hdl);
 }

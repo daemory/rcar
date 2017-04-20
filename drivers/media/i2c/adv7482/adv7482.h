@@ -151,10 +151,14 @@ int adv7482_write(struct adv7482_state *state, u8 addr, u8 reg, u8 value);
 #define txb_write(s, r, v) adv7482_write(s, ADV7482_I2C_TXB, r, v)
 #define txb_clrset(s, r, m, v) txb_write(s, r, (txb_read(s, r) & ~m) | v)
 
-extern const struct media_entity_operations adv7482_media_ops;
+void adv7482_subdev_init(struct v4l2_subdev *sd, struct adv7482_state *state,
+		const struct v4l2_subdev_ops *ops, const char * ident);
 
 int adv7482_cp_probe(struct adv7482_state *state);
+void adv7482_cp_remove(struct adv7482_state *state);
+
 int adv7482_sdp_probe(struct adv7482_state *state);
+void adv7482_sdp_remove(struct adv7482_state *state);
 
 int adv7482_txa_power(struct adv7482_state *state, bool on);
 int adv7482_txb_power(struct adv7482_state *state, bool on);

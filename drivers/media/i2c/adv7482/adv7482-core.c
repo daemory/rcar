@@ -249,7 +249,7 @@ static bool adv7482_media_has_route(struct media_entity *entity,
 	return false;
 }
 
-const struct media_entity_operations adv7482_media_ops = {
+static const struct media_entity_operations adv7482_media_ops = {
 	.has_route =  adv7482_media_has_route,
 	.link_validate = v4l2_subdev_link_validate,
 };
@@ -480,6 +480,27 @@ static int hack_is_hdmi(struct adv7482_state *state) {
 	return state->client->addr == 0x70;
 }
 
+void adv7482_subdev_init(struct v4l2_subdev *sd, struct adv7482_state *state,
+		const struct v4l2_subdev_ops *ops, const char * ident)
+{
+	v4l2_subdev_init(sd, ops);
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+
+	/* the owner is the same as the i2c_client's driver owner */
+	sd->owner = state->dev->driver->owner;
+	sd->dev = state->dev;
+
+	v4l2_set_subdevdata(sd, state);
+
+	/* initialize name */
+	snprintf(sd->name, sizeof(sd->name), "%s %d-%04x %s",
+		state->dev->driver->name, i2c_adapter_id(state->client->adapter),
+		state->client->addr, ident);
+
+	sd->entity.function = MEDIA_ENT_F_ATV_DECODER;
+	sd->entity.ops = &adv7482_media_ops;
+}
+
 static int adv7482_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -500,7 +521,7 @@ static int adv7482_probe(struct i2c_client *client,
 
 	state->dev = &client->dev;
 	state->client = client;
-
+	i2c_set_clientdata(client, state);
 	/* SW reset ADV7482 to its default values */
 	ret = adv7482_reset(state);
 	if (ret) {
@@ -552,24 +573,27 @@ static int adv7482_probe(struct i2c_client *client,
 
 static int adv7482_remove(struct i2c_client *client)
 {
-#ifdef ADV7482_MULTI_SUBDEV
-
-#error - OH Dear - a giant fixme, and blocker !
+	struct adv7482_state *state = i2c_get_clientdata(client);
 
 	/* These need to call down into each of the subdevs and allow them
 	 * to do any removal of controls and unregister their subdevs.
 	 */
 
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct adv7482_state *state = to_state(sd);
-
-	v4l2_async_unregister_subdev(sd);
-
-	media_entity_cleanup(&sd->entity);
-
-	v4l2_ctrl_handler_free(&state->ctrl_hdl);
-	mutex_destroy(&state->mutex);
+#ifdef HDMI_HACK_FIXED
+	adv7482_sdp_remove(state);
+	adv7482_cp_remove(state);
+#else
+	/* FIXME:
+	 *  Hack to expose CVBS and HDMI as different subdevs based on i2c addr
+	 */
+	if (hack_is_hdmi(state)) {
+		adv7482_cp_remove(state);
+	} else {
+		adv7482_sdp_remove(state);
+	}
 #endif
+
+	mutex_destroy(&state->mutex);
 
 	return 0;
 }

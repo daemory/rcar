@@ -659,17 +659,7 @@ int adv7482_cp_probe(struct adv7482_state *state)
 
 	state->cp.timings = cea720x480;
 
-	/* TODO: KPB: We're passing i2c client here as the same for all subdevs */
-	v4l2_i2c_subdev_init(&state->cp.sd, state->client, &adv7482_ops_hdmi);
-
-	/* TODO:KPB: Not yet implemented -
-	 * So apparently this must be *after? subdev_init?
-	 * Where should the 'entity's' be, and what's linked to where.
-	 */
-	state->cp.sd.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
-	state->cp.sd.entity.function = MEDIA_ENT_F_ATV_DECODER;
-	state->cp.sd.entity.ops = &adv7482_media_ops;
-
+	adv7482_subdev_init(&state->cp.sd, state, &adv7482_ops_hdmi, "hdmi");
 
 	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
 		state->cp.pads[i].flags = MEDIA_PAD_FL_SINK;
@@ -690,4 +680,11 @@ int adv7482_cp_probe(struct adv7482_state *state)
 		return ret;
 
 	return 0;
+}
+
+void adv7482_cp_remove(struct adv7482_state *state)
+{
+	v4l2_async_unregister_subdev(&state->cp.sd);
+	media_entity_cleanup(&state->cp.sd.entity);
+	v4l2_ctrl_handler_free(&state->cp.ctrl_hdl);
 }
