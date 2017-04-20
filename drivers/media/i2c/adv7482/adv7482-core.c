@@ -503,8 +503,10 @@ static int adv7482_probe(struct i2c_client *client,
 
 	/* SW reset ADV7482 to its default values */
 	ret = adv7482_reset(state);
-	if (ret)
+	if (ret) {
+		adv_err(state, "Failed to reset hardware");
 		return ret;
+	}
 
 	ret = adv7482_print_info(state);
 	if (ret)
@@ -513,13 +515,17 @@ static int adv7482_probe(struct i2c_client *client,
 #ifdef HDMI_HACK_FIXED
 	/* Initialise HDMI */
 	ret = adv7482_cp_probe(state);
-	if (ret)
+	if (ret) {
+		adv_err(state, "Failed to probe CP");
 		return ret;
+	}
 
 	/* Initialise CVBS */
 	ret = adv7482_sdp_probe(state);
-	if (ret)
+	if (ret) {
+		adv_err(state, "Failed to probe SDP");
 		return ret;
+	}
 #else
 	/* FIXME:
 	 *  Hack to expose CVBS and HDMI as different subdevs based on i2c addr
@@ -527,13 +533,17 @@ static int adv7482_probe(struct i2c_client *client,
 	if (hack_is_hdmi(state)) {
 		adv_info(state, "HACK tweak for HDMI\n");
 		ret = adv7482_cp_probe(state);
-		if (ret)
+		if (ret) {
+			adv_err(state, "Failed to probe CP");
 			return ret;
+		}
 	} else {
 		adv_info(state, "HACK tweak for CVBS\n");
 		ret = adv7482_sdp_probe(state);
-		if (ret)
+		if (ret) {
+			adv_err(state, "Failed to probe SDP");
 			return ret;
+		}
 	}
 #endif
 
