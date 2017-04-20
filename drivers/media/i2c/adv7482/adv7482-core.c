@@ -476,10 +476,6 @@ static int adv7482_print_info(struct adv7482_state *state)
  * i2c driver
  */
 
-static int hack_is_hdmi(struct adv7482_state *state) {
-	return state->client->addr == 0x70;
-}
-
 void adv7482_subdev_init(struct v4l2_subdev *sd, struct adv7482_state *state,
 		const struct v4l2_subdev_ops *ops, const char * ident)
 {
@@ -533,7 +529,6 @@ static int adv7482_probe(struct i2c_client *client,
 	if (ret)
 		return ret;
 
-#ifdef HDMI_HACK_FIXED
 	/* Initialise HDMI */
 	ret = adv7482_cp_probe(state);
 	if (ret) {
@@ -547,26 +542,6 @@ static int adv7482_probe(struct i2c_client *client,
 		adv_err(state, "Failed to probe SDP");
 		return ret;
 	}
-#else
-	/* FIXME:
-	 *  Hack to expose CVBS and HDMI as different subdevs based on i2c addr
-	 */
-	if (hack_is_hdmi(state)) {
-		adv_info(state, "HACK tweak for HDMI\n");
-		ret = adv7482_cp_probe(state);
-		if (ret) {
-			adv_err(state, "Failed to probe CP");
-			return ret;
-		}
-	} else {
-		adv_info(state, "HACK tweak for CVBS\n");
-		ret = adv7482_sdp_probe(state);
-		if (ret) {
-			adv_err(state, "Failed to probe SDP");
-			return ret;
-		}
-	}
-#endif
 
 	return 0;
 }
@@ -579,19 +554,8 @@ static int adv7482_remove(struct i2c_client *client)
 	 * to do any removal of controls and unregister their subdevs.
 	 */
 
-#ifdef HDMI_HACK_FIXED
 	adv7482_sdp_remove(state);
 	adv7482_cp_remove(state);
-#else
-	/* FIXME:
-	 *  Hack to expose CVBS and HDMI as different subdevs based on i2c addr
-	 */
-	if (hack_is_hdmi(state)) {
-		adv7482_cp_remove(state);
-	} else {
-		adv7482_sdp_remove(state);
-	}
-#endif
 
 	mutex_destroy(&state->mutex);
 
