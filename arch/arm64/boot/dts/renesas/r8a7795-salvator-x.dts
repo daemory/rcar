@@ -196,6 +196,22 @@
 			};
 		};
 	};
+
+	hdmi {
+		port {
+			hdmi_in: endpoint {
+				remote-endpoint = <&adv7482_hdmi>;
+			};
+		};
+	};
+
+	cvbs {
+		port {
+			cvbs_in: endpoint {
+				remote-endpoint = <&adv7482_ain8>;
+			};
+		};
+	};
 };
 
 &du {
@@ -398,6 +414,18 @@
 
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		port@0 {
+			adv7482_hdmi: endpoint@1 {
+				remote-endpoint = <&hdmi_in>;
+			};
+		};
+
+		port@8 {
+			adv7482_ain8: endpoint@1 {
+				remote-endpoint = <&cvbs_in>;
+			};
+		};
 
 		port@10 {
 			reg = <10>;
