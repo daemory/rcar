@@ -588,21 +588,17 @@ static int adv7482_sdp_init_controls(struct adv7482_state *state)
 
 int adv7482_sdp_probe(struct adv7482_state *state)
 {
-	unsigned int i;
 	int ret;
 
 	state->sdp.streaming = false;
 	state->sdp.curr_norm = V4L2_STD_ALL;
 
-	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_ops_cvbs, "cvbs");
+	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_ops_cvbs, "cvbs/txb");
 
-	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
-		state->sdp.pads[i].flags = MEDIA_PAD_FL_SINK;
-	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
-		state->sdp.pads[i].flags = MEDIA_PAD_FL_SOURCE;
+	state->sdp.pads[0].flags = MEDIA_PAD_FL_SINK;
+	state->sdp.pads[1].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&state->sdp.sd.entity, ADV7482_PAD_MAX,
-				     state->sdp.pads);
+	ret = media_entity_pads_init(&state->sdp.sd.entity, 2, state->sdp.pads);
 
 	ret = adv7482_sdp_init_controls(state);
 	if (ret)

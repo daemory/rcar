@@ -59,7 +59,7 @@ struct adv7482_hdmi_cp {
 	struct v4l2_ctrl_handler ctrl_hdl;
 	struct v4l2_dv_timings timings;
 	struct v4l2_subdev sd;
-	struct media_pad pads[ADV7482_PAD_MAX];
+	struct media_pad pads[2];
 };
 
 /**
@@ -68,7 +68,7 @@ struct adv7482_hdmi_cp {
  * @curr_norm:		Current video standard
  */
 struct adv7482_sdp {
-	struct media_pad pads[ADV7482_PAD_MAX];
+	struct media_pad pads[2];
 	struct v4l2_ctrl_handler ctrl_hdl;
 	struct v4l2_subdev sd;
 

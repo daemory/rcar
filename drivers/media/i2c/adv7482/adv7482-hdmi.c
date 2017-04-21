@@ -654,20 +654,16 @@ int adv7482_cp_probe(struct adv7482_state *state)
 {
 	static const struct v4l2_dv_timings cea720x480 =
 		V4L2_DV_BT_CEA_720X480I59_94;
-	unsigned int i;
 	int ret;
 
 	state->cp.timings = cea720x480;
 
-	adv7482_subdev_init(&state->cp.sd, state, &adv7482_ops_hdmi, "hdmi");
+	adv7482_subdev_init(&state->cp.sd, state, &adv7482_ops_hdmi, "hdmi/txa");
 
-	for (i = ADV7482_SINK_HDMI; i < ADV7482_SOURCE_TXA; i++)
-		state->cp.pads[i].flags = MEDIA_PAD_FL_SINK;
-	for (i = ADV7482_SOURCE_TXA; i <= ADV7482_SOURCE_TXB; i++)
-		state->cp.pads[i].flags = MEDIA_PAD_FL_SOURCE;
+	state->cp.pads[0].flags = MEDIA_PAD_FL_SINK;
+	state->cp.pads[1].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&state->cp.sd.entity, ADV7482_PAD_MAX,
-				     state->cp.pads);
+	ret = media_entity_pads_init(&state->cp.sd.entity, 2, state->cp.pads);
 	if (ret)
 		return ret;
 
