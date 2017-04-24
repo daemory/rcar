@@ -738,12 +738,11 @@ static void rvin_group_notify_unbind(struct v4l2_async_notifier *notifier,
 				     struct v4l2_async_subdev *asd)
 {
 	struct rvin_dev *vin = notifier_to_vin(notifier);
+	struct device_node *del = subdev->of_node;
 	unsigned int i;
 
 	mutex_lock(&vin->group->lock);
 	for (i = 0; i < RVIN_CSI_MAX; i++) {
-		struct device_node *del = subdev->dev->of_node;
-
 		if (vin->group->bridge[i].asd.match.of.node == del) {
 			vin_dbg(vin, "Unbind bridge %s\n", subdev->name);
 			vin->group->bridge[i].subdev = NULL;
@@ -768,13 +767,13 @@ static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
 				   struct v4l2_async_subdev *asd)
 {
 	struct rvin_dev *vin = notifier_to_vin(notifier);
+	struct device_node *new = subdev->of_node;
 	unsigned int i;
 
 	v4l2_set_subdev_hostdata(subdev, vin);
 
 	mutex_lock(&vin->group->lock);
 	for (i = 0; i < RVIN_CSI_MAX; i++) {
-		struct device_node *new = subdev->dev->of_node;
 
 		if (vin->group->bridge[i].asd.match.of.node == new) {
 			vin_dbg(vin, "Bound bridge %s\n", subdev->name);
