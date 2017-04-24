@@ -584,6 +584,18 @@ static int rvin_group_add_link(struct rvin_dev *vin,
 	struct media_pad *source_pad, *sink_pad;
 	int ret = 0;
 
+	if (source_idx >= source->num_pads) {
+		vin_err(vin, "Source pad idx %d is greater than pad count %d\n",
+			source_idx, source->num_pads);
+		return -EINVAL;
+	}
+
+	if (sink_idx >= sink->num_pads) {
+		vin_err(vin, "Sink pad idx %d is greater than pad count %d\n",
+			source_idx, source->num_pads);
+		return -EINVAL;
+	}
+
 	source_pad = &source->pads[source_idx];
 	sink_pad = &sink->pads[sink_idx];
 
