@@ -660,6 +660,8 @@ int adv7482_cp_probe(struct adv7482_state *state)
 
 	adv7482_subdev_init(&state->cp.sd, state, &adv7482_ops_hdmi, "hdmi/txa");
 
+	state->cp.sd.grp_id = 10; /* This SD represents the TXA port (10) */
+
 	state->cp.pads[0].flags = MEDIA_PAD_FL_SINK;
 	state->cp.pads[1].flags = MEDIA_PAD_FL_SOURCE;
 

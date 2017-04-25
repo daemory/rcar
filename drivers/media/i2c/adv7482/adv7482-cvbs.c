@@ -595,6 +595,8 @@ int adv7482_sdp_probe(struct adv7482_state *state)
 
 	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_ops_cvbs, "cvbs/txb");
 
+	state->sdp.sd.grp_id = 11; /* This SD represents the TXB port (11) */
+
 	state->sdp.pads[0].flags = MEDIA_PAD_FL_SINK;
 	state->sdp.pads[1].flags = MEDIA_PAD_FL_SOURCE;
 

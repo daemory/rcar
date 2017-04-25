@@ -795,7 +795,8 @@ static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
 			return 0;
 		}
 
-		if (vin->group->source[i].asd.match.of.node == new) {
+		if (vin->group->source[i].asd.match.of.node == new
+			&& subdev->grp_id == vin->group->source[i].source_pad) {
 			vin_dbg(vin, "Bound source %s\n", subdev->name);
 			vin->group->source[i].subdev = subdev;
 			mutex_unlock(&vin->group->lock);
