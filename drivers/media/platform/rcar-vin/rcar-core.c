@@ -668,6 +668,11 @@ static int rvin_group_update_links(struct rvin_dev *vin)
 			idx = vin->info->chsels[n][i].chan + 1;
 			flags = i == chsel ? MEDIA_LNK_FL_ENABLED : 0;
 
+			vin_dbg(vin, "Parsing link %s[%d]->%s[0]\n",
+						source->name,
+						idx,
+						sink->name);
+
 			ret = rvin_group_add_link(vin, source, idx, sink, 0,
 						  flags);
 			if (ret)
