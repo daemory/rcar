@@ -20,6 +20,12 @@
 #define _ADV7482_H_
 
 /* I2C slave addresses */
+/*
+ * TODO: Use 'i2c_new_secondary_device' from patch
+ * '[PATCH v2] i2c: Add generic support passing secondary devices addresses'
+ * # 0f614d834bccd3537881c5d0933803b407ce3283
+ * to be able to set all addresses in DT.
+ */
 #define ADV7482_I2C_IO			0x70	/* IO Map */
 #define ADV7482_I2C_DPLL		0x26	/* DPLL Map */
 #define ADV7482_I2C_CP			0x22	/* CP Map */

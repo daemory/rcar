@@ -410,7 +410,8 @@
 
 	video_receiver@70 {
 		compatible = "adi,adv7482";
-		reg = <0x70>;
+		reg = <0x70 0x4a 0x48>;
+		reg-names = "io txa txb";
 
 		#address-cells = <1>;
 		#size-cells = <0>;
