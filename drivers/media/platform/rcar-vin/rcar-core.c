@@ -662,9 +662,16 @@ static int rvin_group_update_links(struct rvin_dev *vin)
 		idx = vin->group->source[i].source_pad;
 		flags = MEDIA_LNK_FL_ENABLED | MEDIA_LNK_FL_IMMUTABLE;
 
+		vin_dbg(vin, "Parsing link %s[%d]->%s[0]\n",
+				source->name,
+				idx,
+				sink->name);
+
 		ret = rvin_group_add_link(vin, source, idx, sink, 0, flags);
-		if (ret)
+		if (ret) {
+			vin_dbg(vin, "rvin_group_add_link failed %d", ret);
 			goto out;
+		}
 	}
 
 	/* Update Bridge -> VIN */
@@ -774,6 +781,12 @@ static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
 
 	mutex_lock(&vin->group->lock);
 	for (i = 0; i < RVIN_CSI_MAX; i++) {
+
+		vin_dbg(vin, "CSI[%d] Trying to bind: %s with %s (source_pad is %d:%d)\n",
+				i,
+				subdev->name,
+				of_node_full_name(vin->group->source[i].asd.match.of.node),
+				subdev->port, vin->group->source[i].asd.match.of.port);
 
 		if (vin->group->bridge[i].asd.match.of.node == new) {
 			vin_dbg(vin, "Bound bridge %s\n", subdev->name);
