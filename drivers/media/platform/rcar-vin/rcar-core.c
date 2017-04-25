@@ -469,7 +469,7 @@ static int rvin_digital_notify_bound(struct v4l2_async_notifier *notifier,
 
 	v4l2_set_subdev_hostdata(subdev, vin);
 
-	if (vin->digital.asd.match.of.node == subdev->dev->of_node) {
+	if (vin->digital.asd.match.of.node == subdev->of_node) {
 		/* Find surce and sink pad of remote subdevice */
 
 		ret = rvin_find_pad(subdev, MEDIA_PAD_FL_SOURCE);
