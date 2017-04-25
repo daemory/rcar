@@ -136,12 +136,12 @@ static void v4l2_async_cleanup(struct v4l2_subdev *sd)
 	sd->dev = NULL;
 }
 
-int v4l2_async_notifier_register(struct v4l2_device *v4l2_dev,
+int __v4l2_async_notifier_register(struct v4l2_device *v4l2_dev,
 				 struct v4l2_async_notifier *notifier)
 {
 	struct v4l2_subdev *sd, *tmp;
 	struct v4l2_async_subdev *asd;
-	int i;
+	int found, i;
 
 	if (!notifier->num_subdevs || notifier->num_subdevs > V4L2_MAX_SUBDEVS)
 		return -EINVAL;
@@ -168,28 +168,48 @@ int v4l2_async_notifier_register(struct v4l2_device *v4l2_dev,
 		list_add_tail(&asd->list, &notifier->waiting);
 	}
 
-	mutex_lock(&list_lock);
+	/*
+	 * This function can be called recursively so the list
+	 * might be modified in a recursive call. Start from the
+	 * top of the list each iteration.
+	 */
+	found = 1;
+	while (found) {
+		found = 0;
 
-	list_for_each_entry_safe(sd, tmp, &subdev_list, async_list) {
-		int ret;
+		list_for_each_entry_safe(sd, tmp, &subdev_list, async_list) {
+			int ret;
 
-		asd = v4l2_async_belongs(notifier, sd);
-		if (!asd)
-			continue;
+			asd = v4l2_async_belongs(notifier, sd);
+			if (!asd)
+				continue;
 
-		ret = v4l2_async_test_notify(notifier, sd, asd);
-		if (ret < 0) {
-			mutex_unlock(&list_lock);
-			return ret;
+			ret = v4l2_async_test_notify(notifier, sd, asd);
+			if (ret < 0)
+				return ret;
+
+			found = 1;
+			break;
 		}
 	}
 
 	/* Keep also completed notifiers on the list */
 	list_add(&notifier->list, &notifier_list);
 
+	return 0;
+}
+EXPORT_SYMBOL(__v4l2_async_notifier_register);
+
+int v4l2_async_notifier_register(struct v4l2_device *v4l2_dev,
+				 struct v4l2_async_notifier *notifier)
+{
+	int ret;
+
+	mutex_lock(&list_lock);
+	ret = __v4l2_async_notifier_register(v4l2_dev, notifier);
 	mutex_unlock(&list_lock);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(v4l2_async_notifier_register);
 
