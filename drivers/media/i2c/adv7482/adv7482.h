@@ -35,22 +35,6 @@
 #define ADV7482_I2C_WAIT		0xFE	/* Wait x mesec */
 #define ADV7482_I2C_EOR			0xFF	/* End Mark */
 
-enum adv7482_pads {
-	ADV7482_SINK_HDMI,
-	ADV7482_SINK_AIN1,
-	ADV7482_SINK_AIN2,
-	ADV7482_SINK_AIN3,
-	ADV7482_SINK_AIN4,
-	ADV7482_SINK_AIN5,
-	ADV7482_SINK_AIN6,
-	ADV7482_SINK_AIN7,
-	ADV7482_SINK_AIN8,
-	ADV7482_SINK_TTL,
-	ADV7482_SOURCE_TXA,
-	ADV7482_SOURCE_TXB,
-	ADV7482_PAD_MAX,
-};
-
 /**
  * struct adv7482_hdmi_cp - State of HDMI CP sink
  * @timings:		Timings for {g,s}_dv_timings

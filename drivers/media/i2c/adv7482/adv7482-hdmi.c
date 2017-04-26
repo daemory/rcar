@@ -449,9 +449,6 @@ static bool adv7482_hdmi_check_dv_timings(const struct v4l2_dv_timings *timings,
 static int adv7482_hdmi_enum_dv_timings(struct v4l2_subdev *sd,
 					struct v4l2_enum_dv_timings *timings)
 {
-	if (timings->pad != ADV7482_SINK_HDMI)
-		return -ENOTTY;
-
 	return v4l2_enum_dv_timings_cap(timings, &adv7482_cp_timings_cap,
 					adv7482_hdmi_check_dv_timings, NULL);
 }
@@ -459,9 +456,6 @@ static int adv7482_hdmi_enum_dv_timings(struct v4l2_subdev *sd,
 static int adv7482_hdmi_dv_timings_cap(struct v4l2_subdev *sd,
 				       struct v4l2_dv_timings_cap *cap)
 {
-	if (cap->pad != ADV7482_SINK_HDMI)
-		return -EINVAL;
-
 	*cap = adv7482_cp_timings_cap;
 	return 0;
 }
