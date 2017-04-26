@@ -21,6 +21,11 @@
 
 #include "adv7482.h"
 
+enum adv7482_hdmi_pads {
+	ADV7482_HDMI_SINK = 0,
+	ADV7482_HDMI_SOURCE = 1,
+};
+
 /* -----------------------------------------------------------------------------
  * HDMI and CP
  */
@@ -366,11 +371,10 @@ static int adv7482_hdmi_enum_mbus_code(struct v4l2_subdev *sd,
 		return -EINVAL;
 
 	switch (code->pad) {
-	case ADV7482_SOURCE_TXA:
+	case ADV7482_HDMI_SOURCE:
+	case ADV7482_HDMI_SINK:
 		code->code = MEDIA_BUS_FMT_RGB888_1X24;
 		break;
-	case ADV7482_SOURCE_TXB:
-		/* HDMI is only supported on TXA currently */
 	default:
 		return -EINVAL;
 	}
@@ -385,11 +389,10 @@ static int adv7482_hdmi_get_pad_format(struct v4l2_subdev *sd,
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 
 	switch (format->pad) {
-	case ADV7482_SOURCE_TXA:
+	case ADV7482_HDMI_SOURCE:
+	case ADV7482_HDMI_SINK:
 		adv7482_hdmi_fill_format(state, &format->format);
 		break;
-	case ADV7482_SOURCE_TXB:
-		/* HDMI is only supported on TXA currently */
 	default:
 		return -EINVAL;
 	}
@@ -411,11 +414,10 @@ static int adv7482_hdmi_set_pad_format(struct v4l2_subdev *sd,
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 
 	switch (format->pad) {
-	case ADV7482_SOURCE_TXA:
+	case ADV7482_HDMI_SOURCE:
+	case ADV7482_HDMI_SINK:
 		adv7482_hdmi_fill_format(state, &format->format);
 		break;
-	case ADV7482_SOURCE_TXB:
-		/* HDMI is only supported on TXA currently */
 	default:
 		return -EINVAL;
 	}
@@ -662,8 +664,8 @@ int adv7482_cp_probe(struct adv7482_state *state)
 
 	state->cp.sd.grp_id = 10; /* This SD represents the TXA port (10) */
 
-	state->cp.pads[0].flags = MEDIA_PAD_FL_SINK;
-	state->cp.pads[1].flags = MEDIA_PAD_FL_SOURCE;
+	state->cp.pads[ADV7482_HDMI_SINK].flags = MEDIA_PAD_FL_SINK;
+	state->cp.pads[ADV7482_HDMI_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
 	ret = media_entity_pads_init(&state->cp.sd.entity, 2, state->cp.pads);
 	if (ret)
