@@ -186,8 +186,8 @@ static int adv7482_hdmi_set_video_timings(struct adv7482_state *state,
  * v4l2_subdev_video_ops
  */
 
-static int adv7482_s_dv_timings(struct v4l2_subdev *sd,
-				struct v4l2_dv_timings *timings)
+static int adv7482_hdmi_s_dv_timings(struct v4l2_subdev *sd,
+				     struct v4l2_dv_timings *timings)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 	struct v4l2_bt_timings *bt;
@@ -218,8 +218,8 @@ static int adv7482_s_dv_timings(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_g_dv_timings(struct v4l2_subdev *sd,
-				struct v4l2_dv_timings *timings)
+static int adv7482_hdmi_g_dv_timings(struct v4l2_subdev *sd,
+				     struct v4l2_dv_timings *timings)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 
@@ -228,8 +228,8 @@ static int adv7482_g_dv_timings(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_query_dv_timings(struct v4l2_subdev *sd,
-				    struct v4l2_dv_timings *timings)
+static int adv7482_hdmi_query_dv_timings(struct v4l2_subdev *sd,
+					 struct v4l2_dv_timings *timings)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 	struct v4l2_bt_timings *bt = &timings->bt;
@@ -296,7 +296,7 @@ static int adv7482_query_dv_timings(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_g_input_status(struct v4l2_subdev *sd, u32 *status)
+static int adv7482_hdmi_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 	int ret;
@@ -312,7 +312,7 @@ static int adv7482_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	return ret;
 }
 
-static int adv7482_s_stream(struct v4l2_subdev *sd, int enable)
+static int adv7482_hdmi_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 	int ret;
@@ -335,8 +335,8 @@ error:
 	return ret;
 }
 
-static int adv7482_g_pixelaspect(struct v4l2_subdev *sd,
-				 struct v4l2_fract *aspect)
+static int adv7482_hdmi_g_pixelaspect(struct v4l2_subdev *sd,
+				      struct v4l2_fract *aspect)
 {
 	/* TODO:KPB: Is this it? */
 	aspect->numerator = 1;
@@ -346,19 +346,19 @@ static int adv7482_g_pixelaspect(struct v4l2_subdev *sd,
 }
 
 static const struct v4l2_subdev_video_ops adv7482_video_ops_hdmi = {
-	.s_dv_timings = adv7482_s_dv_timings,
-	.g_dv_timings = adv7482_g_dv_timings,
-	.query_dv_timings = adv7482_query_dv_timings,
-	.g_input_status = adv7482_g_input_status,
-	.s_stream = adv7482_s_stream,
-	.g_pixelaspect = adv7482_g_pixelaspect,
+	.s_dv_timings = adv7482_hdmi_s_dv_timings,
+	.g_dv_timings = adv7482_hdmi_g_dv_timings,
+	.query_dv_timings = adv7482_hdmi_query_dv_timings,
+	.g_input_status = adv7482_hdmi_g_input_status,
+	.s_stream = adv7482_hdmi_s_stream,
+	.g_pixelaspect = adv7482_hdmi_g_pixelaspect,
 };
 
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_pad_ops
  */
 
-static int adv7482_enum_mbus_code(struct v4l2_subdev *sd,
+static int adv7482_hdmi_enum_mbus_code(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_mbus_code_enum *code)
 {
@@ -378,7 +378,7 @@ static int adv7482_enum_mbus_code(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_get_pad_format(struct v4l2_subdev *sd,
+static int adv7482_hdmi_get_pad_format(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_format *format)
 {
@@ -404,9 +404,9 @@ static int adv7482_get_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_set_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
+static int adv7482_hdmi_set_pad_format(struct v4l2_subdev *sd,
+				       struct v4l2_subdev_pad_config *cfg,
+				       struct v4l2_subdev_format *format)
 {
 	struct adv7482_state *state = adv7482_hdmi_to_state(sd);
 
@@ -430,8 +430,8 @@ static int adv7482_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static bool adv7482_check_dv_timings(const struct v4l2_dv_timings *timings,
-				     void *hdl)
+static bool adv7482_hdmi_check_dv_timings(const struct v4l2_dv_timings *timings,
+					  void *hdl)
 {
 	const struct adv7482_cp_video_standards *stds =
 		adv7482_cp_video_standards;
@@ -444,18 +444,18 @@ static bool adv7482_check_dv_timings(const struct v4l2_dv_timings *timings,
 	return false;
 }
 
-static int adv7482_enum_dv_timings(struct v4l2_subdev *sd,
-				   struct v4l2_enum_dv_timings *timings)
+static int adv7482_hdmi_enum_dv_timings(struct v4l2_subdev *sd,
+					struct v4l2_enum_dv_timings *timings)
 {
 	if (timings->pad != ADV7482_SINK_HDMI)
 		return -ENOTTY;
 
 	return v4l2_enum_dv_timings_cap(timings, &adv7482_cp_timings_cap,
-					adv7482_check_dv_timings, NULL);
+					adv7482_hdmi_check_dv_timings, NULL);
 }
 
-static int adv7482_dv_timings_cap(struct v4l2_subdev *sd,
-				  struct v4l2_dv_timings_cap *cap)
+static int adv7482_hdmi_dv_timings_cap(struct v4l2_subdev *sd,
+				       struct v4l2_dv_timings_cap *cap)
 {
 	if (cap->pad != ADV7482_SINK_HDMI)
 		return -EINVAL;
@@ -465,11 +465,11 @@ static int adv7482_dv_timings_cap(struct v4l2_subdev *sd,
 }
 
 static const struct v4l2_subdev_pad_ops adv7482_pad_ops_hdmi = {
-	.enum_mbus_code = adv7482_enum_mbus_code,
-	.set_fmt = adv7482_set_pad_format,
-	.get_fmt = adv7482_get_pad_format,
-	.dv_timings_cap = adv7482_dv_timings_cap,
-	.enum_dv_timings = adv7482_enum_dv_timings,
+	.enum_mbus_code = adv7482_hdmi_enum_mbus_code,
+	.set_fmt = adv7482_hdmi_set_pad_format,
+	.get_fmt = adv7482_hdmi_get_pad_format,
+	.dv_timings_cap = adv7482_hdmi_dv_timings_cap,
+	.enum_dv_timings = adv7482_hdmi_enum_dv_timings,
 };
 
 /* -----------------------------------------------------------------------------
@@ -596,7 +596,7 @@ static int adv7482_cp_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		struct v4l2_dv_timings timings;
 		struct v4l2_bt_timings *bt = &timings.bt;
 
-		adv7482_query_dv_timings(&state->cp.sd, &timings);
+		adv7482_hdmi_query_dv_timings(&state->cp.sd, &timings);
 
 		width = bt->width;
 		height = bt->height;
