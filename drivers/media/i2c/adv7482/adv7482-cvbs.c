@@ -22,6 +22,11 @@
 
 #include "adv7482.h"
 
+enum adv7482_sdp_pads {
+	ADV7482_SDP_SINK = 0,
+	ADV7482_SDP_SOURCE = 1,
+};
+
 /* -----------------------------------------------------------------------------
  * SDP
  */
@@ -332,16 +337,11 @@ static int adv7482_sdp_enum_mbus_code(struct v4l2_subdev *sd,
 	if (code->index != 0)
 		return -EINVAL;
 
-	trace_printk("Subdev: %s, Pad %u (%s)",
-			sd->name, code->pad, (code->pad == ADV7482_SOURCE_TXA) ? "HDMI" :
-					     (code->pad == ADV7482_SOURCE_TXB) ? "CVBS" : "Other");
-
 	switch (code->pad) {
-	case ADV7482_SOURCE_TXB:
+	case ADV7482_SDP_SOURCE:
+	case ADV7482_SDP_SINK:
 		code->code = MEDIA_BUS_FMT_UYVY8_2X8;
 		break;
-	case ADV7482_SOURCE_TXA:
-		/* CVBS does not currently support outputting on TXA */
 	default:
 		return -EINVAL;
 	}
@@ -356,17 +356,11 @@ static int adv7482_sdp_get_pad_format(struct v4l2_subdev *sd,
 {
 	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 
-
-	trace_printk("Subdev: %s, Pad %u (%s)",
-			sd->name, format->pad, (format->pad == ADV7482_SOURCE_TXA) ? "HDMI" :
-					       (format->pad == ADV7482_SOURCE_TXB) ? "CVBS" : "Other");
-
 	switch (format->pad) {
-	case ADV7482_SOURCE_TXB:
+	case ADV7482_SDP_SOURCE:
+	case ADV7482_SDP_SINK:
 		adv7482_sdp_fill_format(state, &format->format);
 		break;
-	case ADV7482_SOURCE_TXA:
-		/* CVBS does not currently support outputting on TXA */
 	default:
 		return -EINVAL;
 	}
@@ -388,11 +382,10 @@ static int adv7482_sdp_set_pad_format(struct v4l2_subdev *sd,
 	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 
 	switch (format->pad) {
-	case ADV7482_SOURCE_TXB:
+	case ADV7482_SDP_SOURCE:
+	case ADV7482_SDP_SINK:
 		adv7482_sdp_fill_format(state, &format->format);
 		break;
-	case ADV7482_SOURCE_TXA:
-		/* CVBS does not currently support outputting on TXA */
 	default:
 		return -EINVAL;
 	}
