@@ -229,28 +229,7 @@ int adv7482_txb_power(struct adv7482_state *state, bool on)
  * Media Operations
  */
 
-static bool adv7482_media_has_route(struct media_entity *entity,
-				    unsigned int pad0, unsigned int pad1)
-{
-	/* TODO: hard coded */
-
-	if (pad0 == ADV7482_SINK_HDMI && pad1 == ADV7482_SOURCE_TXA)
-		return true;
-
-	if (pad1 == ADV7482_SINK_HDMI && pad0 == ADV7482_SOURCE_TXA)
-		return true;
-
-	if (pad0 == ADV7482_SINK_AIN8 && pad1 == ADV7482_SOURCE_TXB)
-		return true;
-
-	if (pad1 == ADV7482_SINK_AIN8 && pad0 == ADV7482_SOURCE_TXB)
-		return true;
-
-	return false;
-}
-
 static const struct media_entity_operations adv7482_media_ops = {
-	.has_route =  adv7482_media_has_route,
 	.link_validate = v4l2_subdev_link_validate,
 };
 
