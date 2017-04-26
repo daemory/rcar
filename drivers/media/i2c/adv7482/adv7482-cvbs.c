@@ -1,5 +1,5 @@
 /*
- * Driver for Analog Devices ADV7482 HDMI receiver
+ * Driver for Analog Devices ADV7482 8 Channel SDP receiver
  *
  * Copyright (C) 2017 Renesas Electronics Corp.
  *
@@ -175,14 +175,11 @@ static int adv7482_sdp_set_video_standard(struct adv7482_state *state,
 	return 0;
 }
 
-static int adv7482_g_pixelaspect(struct v4l2_subdev *sd,
-				 struct v4l2_fract *aspect)
+static int adv7482_sdp_g_pixelaspect(struct v4l2_subdev *sd,
+				     struct v4l2_fract *aspect)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 	v4l2_std_id std;
-
-	/* TODO:KPB: Is this still true? */
-	/* TODO: this needs to be sink pad aware */
 
 	if (state->sdp.curr_norm == V4L2_STD_ALL)
 		adv7482_sdp_status(state, NULL,  &std);
@@ -204,9 +201,9 @@ static int adv7482_g_pixelaspect(struct v4l2_subdev *sd,
  * v4l2_subdev_video_ops
  */
 
-static int adv7482_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
+static int adv7482_sdp_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 
 	if (state->sdp.curr_norm == V4L2_STD_ALL)
 		adv7482_sdp_status(state, NULL,  norm);
@@ -217,9 +214,9 @@ static int adv7482_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
 }
 
 
-static int adv7482_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
+static int adv7482_sdp_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 	int ret;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -237,9 +234,9 @@ out:
 	return ret;
 }
 
-static int adv7482_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
+static int adv7482_sdp_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 	int ret;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -266,16 +263,16 @@ unlock:
 	return ret;
 }
 
-static int adv7482_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *norm)
+static int adv7482_sdp_g_tvnorms(struct v4l2_subdev *sd, v4l2_std_id *norm)
 {
 	*norm = V4L2_STD_ALL;
 
 	return 0;
 }
 
-static int adv7482_g_input_status(struct v4l2_subdev *sd, u32 *status)
+static int adv7482_sdp_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 	int ret;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -288,9 +285,9 @@ static int adv7482_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	return ret;
 }
 
-static int adv7482_s_stream(struct v4l2_subdev *sd, int enable)
+static int adv7482_sdp_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 	int ret, signal = V4L2_IN_ST_NO_SIGNAL;
 
 	ret = mutex_lock_interruptible(&state->mutex);
@@ -314,23 +311,23 @@ error:
 	return ret;
 }
 
-static const struct v4l2_subdev_video_ops adv7482_video_ops_cvbs = {
-	.g_std = adv7482_g_std,
-	.s_std = adv7482_s_std,
-	.querystd = adv7482_querystd,
-	.g_tvnorms = adv7482_g_tvnorms,
-	.g_input_status = adv7482_g_input_status,
-	.s_stream = adv7482_s_stream,
-	.g_pixelaspect = adv7482_g_pixelaspect,
+static const struct v4l2_subdev_video_ops adv7482_sdp_video_ops = {
+	.g_std = adv7482_sdp_g_std,
+	.s_std = adv7482_sdp_s_std,
+	.querystd = adv7482_sdp_querystd,
+	.g_tvnorms = adv7482_sdp_g_tvnorms,
+	.g_input_status = adv7482_sdp_g_input_status,
+	.s_stream = adv7482_sdp_s_stream,
+	.g_pixelaspect = adv7482_sdp_g_pixelaspect,
 };
 
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_pad_ops
  */
 
-static int adv7482_enum_mbus_code_cvbs(struct v4l2_subdev *sd,
-				       struct v4l2_subdev_pad_config *cfg,
-				       struct v4l2_subdev_mbus_code_enum *code)
+static int adv7482_sdp_enum_mbus_code(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->index != 0)
 		return -EINVAL;
@@ -353,11 +350,11 @@ static int adv7482_enum_mbus_code_cvbs(struct v4l2_subdev *sd,
 }
 
 
-static int adv7482_get_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
+static int adv7482_sdp_get_pad_format(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_format *format)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 
 
 	trace_printk("Subdev: %s, Pad %u (%s)",
@@ -384,11 +381,11 @@ static int adv7482_get_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv7482_set_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
+static int adv7482_sdp_set_pad_format(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_format *format)
 {
-	struct adv7482_state *state = adv7482_cvbs_to_state(sd);
+	struct adv7482_state *state = adv7482_sdp_to_state(sd);
 
 	switch (format->pad) {
 	case ADV7482_SOURCE_TXB:
@@ -410,19 +407,19 @@ static int adv7482_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static const struct v4l2_subdev_pad_ops adv7482_pad_ops_cvbs = {
-	.enum_mbus_code = adv7482_enum_mbus_code_cvbs,
-	.set_fmt = adv7482_set_pad_format,
-	.get_fmt = adv7482_get_pad_format,
+static const struct v4l2_subdev_pad_ops adv7482_sdp_pad_ops = {
+	.enum_mbus_code = adv7482_sdp_enum_mbus_code,
+	.set_fmt = adv7482_sdp_set_pad_format,
+	.get_fmt = adv7482_sdp_get_pad_format,
 };
 
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_ops
  */
 
-static const struct v4l2_subdev_ops adv7482_ops_cvbs= {
-	.video = &adv7482_video_ops_cvbs,
-	.pad = &adv7482_pad_ops_cvbs,
+static const struct v4l2_subdev_ops adv7482_sdp_ops= {
+	.video = &adv7482_sdp_video_ops,
+	.pad = &adv7482_sdp_pad_ops,
 };
 
 /* -----------------------------------------------------------------------------
@@ -593,7 +590,7 @@ int adv7482_sdp_probe(struct adv7482_state *state)
 	state->sdp.streaming = false;
 	state->sdp.curr_norm = V4L2_STD_ALL;
 
-	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_ops_cvbs, "cvbs/txb");
+	adv7482_subdev_init(&state->sdp.sd, state, &adv7482_sdp_ops, "cvbs/txb");
 
 	state->sdp.sd.grp_id = 11; /* This SD represents the TXB port (11) */
 

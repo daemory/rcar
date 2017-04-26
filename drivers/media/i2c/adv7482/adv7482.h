@@ -116,7 +116,7 @@ struct adv7482_state {
 };
 
 #define adv7482_hdmi_to_state(a) container_of(a, struct adv7482_state, cp.sd)
-#define adv7482_cvbs_to_state(a) container_of(a, struct adv7482_state, sdp.sd)
+#define adv7482_sdp_to_state(a) container_of(a, struct adv7482_state, sdp.sd)
 
 #define adv_err(a, fmt, arg...)	dev_err(a->dev, fmt, ##arg)
 #define adv_info(a, fmt, arg...) dev_info(a->dev, fmt, ##arg)
