@@ -782,7 +782,8 @@ static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
 			return 0;
 		}
 
-		if (vin->group->source[i].asd.match.of.node == new) {
+		if (vin->group->source[i].asd.match.of.node == new &&
+		    subdev->port == vin->group->source[i].asd.match.of.port) {
 			vin_dbg(vin, "Bound source %s\n", subdev->name);
 			vin->group->source[i].subdev = subdev;
 			mutex_unlock(&vin->group->lock);
@@ -820,7 +821,7 @@ static struct device_node *rvin_group_get_bridge(struct rvin_dev *vin,
 static struct device_node *
 rvin_group_get_source(struct rvin_dev *vin,
 		      struct device_node *bridge,
-		      unsigned int *remote_pad)
+		      unsigned int *remote_port)
 {
 	struct device_node *source, *ep, *rp;
 	struct v4l2_mbus_config mbus_cfg;
@@ -844,7 +845,7 @@ rvin_group_get_source(struct rvin_dev *vin,
 	rp = of_graph_get_remote_port(ep);
 	of_graph_parse_endpoint(rp, &endpoint);
 	of_node_put(rp);
-	*remote_pad = endpoint.id;
+	*remote_port = endpoint.id;
 
 	source = of_graph_get_remote_port_parent(ep);
 	of_node_put(ep);
@@ -861,7 +862,7 @@ rvin_group_get_source(struct rvin_dev *vin,
 static int rvin_group_graph_parse(struct rvin_dev *vin, unsigned long *bitmap)
 {
 	struct device_node *ep, *bridge, *source;
-	unsigned int i, remote_pad = 0;
+	unsigned int i, remote_port = 0;
 	u32 val;
 	int ret;
 
@@ -910,7 +911,7 @@ static int rvin_group_graph_parse(struct rvin_dev *vin, unsigned long *bitmap)
 		if (bridge == NULL)
 			continue;
 
-		source = rvin_group_get_source(vin, bridge, &remote_pad);
+		source = rvin_group_get_source(vin, bridge, &remote_port);
 		of_node_put(bridge);
 		if (IS_ERR(source))
 			return PTR_ERR(source);
@@ -922,14 +923,14 @@ static int rvin_group_graph_parse(struct rvin_dev *vin, unsigned long *bitmap)
 		vin->group->bridge[i].asd.match.of.node = bridge;
 		vin->group->bridge[i].asd.match_type = V4L2_ASYNC_MATCH_OF;
 		vin->group->source[i].asd.match.of.node = source;
+		vin->group->source[i].asd.match.of.port = remote_port;
 		vin->group->source[i].asd.match_type = V4L2_ASYNC_MATCH_OF;
-		vin->group->source[i].source_pad = remote_pad;
 
 		*bitmap |= BIT(i);
 
 		vin_dbg(vin, "Handle bridge %s and source %s pad %d\n",
 			of_node_full_name(bridge), of_node_full_name(source),
-			remote_pad);
+			remote_port);
 	}
 
 	/* All our sources are CSI-2 */
