@@ -56,6 +56,7 @@ struct v4l2_async_subdev {
 	union {
 		struct {
 			const struct device_node *node;
+			u32 port;
 		} of;
 		struct {
 			const char *name;

@@ -42,6 +42,13 @@ static bool match_devname(struct v4l2_subdev *sd,
 
 static bool match_of(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 {
+	/*
+	 * If set, we must match the device tree port, with the subdev port.
+	 * This is a fast match, so do this first
+	 */
+	if (sd->port && sd->port != asd->match.of.port)
+		return -1;
+
 	return !of_node_cmp(of_node_full_name(sd->of_node),
 			    of_node_full_name(asd->match.of.node));
 }

@@ -782,6 +782,7 @@ struct v4l2_subdev_platform_data {
  * @ctrl_handler: The control handler of this subdev. May be NULL.
  * @name: Name of the sub-device. Please notice that the name must be unique.
  * @grp_id: can be used to group similar subdevs. Value is driver-specific
+ * @port: driver-specific value to bind multiple subdevs with a single DT node.
  * @dev_priv: pointer to private data
  * @host_priv: pointer to private data used by the device where the subdev
  *	is attached.
@@ -814,6 +815,7 @@ struct v4l2_subdev {
 	struct v4l2_ctrl_handler *ctrl_handler;
 	char name[V4L2_SUBDEV_NAME_SIZE];
 	u32 grp_id;
+	u32 port;
 	void *dev_priv;
 	void *host_priv;
 	struct video_device *devnode;
