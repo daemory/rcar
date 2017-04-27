@@ -1116,7 +1116,6 @@ static int rvin_set_stream(struct rvin_dev *vin, int on)
 
 		return ret == -ENOIOCTLCMD ? 0 : ret;
 	}
-	mutex_lock(&vin->group->lock);
 
 	pad = media_entity_remote_pad(&vin->pad);
 	if (!pad)
@@ -1160,7 +1159,6 @@ static int rvin_set_stream(struct rvin_dev *vin, int on)
 		ret = v4l2_subdev_call(sd, video, s_stream, 0);
 	}
 out:
-	mutex_unlock(&vin->group->lock);
 
 	return ret;
 }
