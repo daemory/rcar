@@ -102,6 +102,17 @@ struct adv7482_sdp {
 };
 
 /**
+ * struct adv7482_csi2 - State of MIPI CSI-2 transmitter
+ *
+ */
+struct adv7482_csi2 {
+	struct media_pad pads[2];
+	struct v4l2_subdev sd;
+
+	unsigned int lanes;
+};
+
+/**
  * struct adv7482_state - State of ADV7482
  * @dev:		(OF) device
  * @client:		I2C client
@@ -129,6 +140,9 @@ struct adv7482_state {
 
 	struct adv7482_hdmi_cp cp;
 	struct adv7482_sdp sdp;
+
+	struct adv7482_csi2 txa;
+	struct adv7482_csi2 txb;
 };
 
 #define adv7482_hdmi_to_state(a) container_of(a, struct adv7482_state, cp.sd)
@@ -175,6 +189,9 @@ void adv7482_cp_remove(struct adv7482_state *state);
 
 int adv7482_sdp_probe(struct adv7482_state *state);
 void adv7482_sdp_remove(struct adv7482_state *state);
+
+int adv7482_csi2_probe(struct adv7482_state *state, struct adv7482_csi2 *tx);
+void adv7482_csi2_remove(struct adv7482_state *state, struct adv7482_csi2 *tx);
 
 int adv7482_txa_power(struct adv7482_state *state, bool on);
 int adv7482_txb_power(struct adv7482_state *state, bool on);

@@ -549,6 +549,20 @@ static int adv7482_probe(struct i2c_client *client,
 		return ret;
 	}
 
+#ifdef ADVCSI
+	ret = adv7482_csi2_probe(&state->txa);
+	if (ret) {
+		adv_err(state, "Failed to probe CSI2-TXA");
+		return ret;
+	}
+
+	ret = adv7482_csi2_probe(&state->txb);
+	if (ret) {
+		adv_err(state, "Failed to probe CSI2-TXB");
+		return ret;
+	}
+#endif
+
 	return 0;
 }
 
@@ -562,6 +576,11 @@ static int adv7482_remove(struct i2c_client *client)
 
 	adv7482_sdp_remove(state);
 	adv7482_cp_remove(state);
+
+#ifdef ADVCSI
+	adv7482_csi2_remove(&state->txa);
+	adv7482_csi2_remove(&state->txb);
+#endif
 
 	mutex_destroy(&state->mutex);
 
