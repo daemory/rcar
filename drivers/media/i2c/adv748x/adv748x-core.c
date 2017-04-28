@@ -521,6 +521,8 @@ static int adv748x_probe(struct i2c_client *client,
 	ep = of_graph_get_endpoint_by_regs(state->dev->of_node,
 			ADV748X_PORT_TXA, -1);
 	if (ep) {
+		adv_info(state, "Got TXA/HDMI EP: %s\n", of_node_full_name(ep));
+
 		/* Initialise HDMI */
 		ret = adv748x_hdmi_probe(state, ep);
 		if (ret) {
@@ -532,11 +534,12 @@ static int adv748x_probe(struct i2c_client *client,
 				of_node_full_name(state->dev->of_node));
 	}
 
-
 	/* Process AFE/TXB */
 	ep = of_graph_get_endpoint_by_regs(state->dev->of_node,
 			ADV748X_PORT_TXB, -1);
 	if (ep) {
+		adv_info(state, "Got TXB/AFE EP: %s\n", of_node_full_name(ep));
+
 		/* Initialise HDMI */
 		ret = adv748x_afe_probe(state, ep);
 		if (ret) {
