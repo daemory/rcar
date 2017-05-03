@@ -812,8 +812,9 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 	priv->subdev.dev = &pdev->dev;
 	v4l2_subdev_init(&priv->subdev, &rcar_csi2_subdev_ops);
 	v4l2_set_subdevdata(&priv->subdev, &pdev->dev);
-	snprintf(priv->subdev.name, V4L2_SUBDEV_NAME_SIZE, "%s %s",
-		 KBUILD_MODNAME, dev_name(&pdev->dev));
+	snprintf(priv->subdev.name, V4L2_SUBDEV_NAME_SIZE, "%s %s %d lane",
+		 KBUILD_MODNAME, dev_name(&pdev->dev), priv->lanes);
+
 	priv->subdev.flags = V4L2_SUBDEV_FL_HAS_DEVNODE;
 	priv->subdev.internal_ops = &rcar_csi2_internal_ops;
 
