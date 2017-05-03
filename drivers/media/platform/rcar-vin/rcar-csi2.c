@@ -565,9 +565,9 @@ static int rcar_csi2_notify_complete(struct v4l2_async_notifier *notifier)
 		return ret;
 	}
 
-	ret = media_create_pad_link(&priv->subdev.entity, 0,
-				    &priv->remote.subdev->entity,
+	ret = media_create_pad_link(&priv->remote.subdev->entity,
 				    priv->remote.source_pad,
+				    &priv->subdev.entity, 0,
 				    MEDIA_LNK_FL_ENABLED |
 				    MEDIA_LNK_FL_IMMUTABLE);
 
