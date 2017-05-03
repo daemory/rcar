@@ -52,6 +52,8 @@ static int adv748x_write_regs(struct adv748x_state *state,
 	u8 data_buf[2];
 	int ret = -EINVAL;
 
+	lockdep_assert_held(&state->mutex);
+
 	if (!state->client->adapter) {
 		adv_err(state, "No adapter for regs write\n");
 		return -ENODEV;
@@ -89,6 +91,8 @@ int adv748x_write(struct adv748x_state *state, u8 addr, u8 reg, u8 value)
 	struct adv748x_reg_value regs[2];
 	int ret;
 
+	lockdep_assert_held(&state->mutex);
+
 	regs[0].addr = addr;
 	regs[0].reg = reg;
 	regs[0].value = value;
@@ -106,6 +110,8 @@ int adv748x_read(struct adv748x_state *state, u8 addr, u8 reg)
 	struct i2c_msg msg[2];
 	u8 reg_buf, data_buf;
 	int ret;
+
+	lockdep_assert_held(&state->mutex);
 
 	if (!state->client->adapter) {
 		adv_err(state, "No adapter reading addr: 0x%02x reg: 0x%02x\n",
@@ -585,16 +591,23 @@ static int adv748x_probe(struct i2c_client *client,
 	state->client = client;
 	i2c_set_clientdata(client, state);
 
+	mutex_lock(&state->mutex);
+
 	/* SW reset ADV748X to its default values */
 	ret = adv748x_reset(state);
 	if (ret) {
 		adv_err(state, "Failed to reset hardware");
+		mutex_unlock(&state->mutex);
 		return ret;
 	}
 
 	ret = adv748x_print_info(state);
-	if (ret)
+	if (ret) {
+		mutex_unlock(&state->mutex);
 		return ret;
+	}
+
+	mutex_unlock(&state->mutex);
 
 	/* Discover and process ports declared by the Device tree endpoints */
 	ret = adv748x_parse_dt(state);
