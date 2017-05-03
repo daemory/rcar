@@ -56,6 +56,22 @@ enum adv748x_ports {
 	ADV748X_PORT_MAX = 12,
 };
 
+/* CSI2 transmitters can have 3 internal connections, HDMI/AFE/TTL */
+#define ADV748X_CSI2_MAX_SUBDEVS 3
+
+struct adv748x_csi2 {
+	struct adv748x_state *state;
+
+	struct media_pad pads[2];
+	struct v4l2_ctrl_handler ctrl_hdl;
+	struct v4l2_subdev sd;
+	struct v4l2_async_subdev subdevs[ADV748X_CSI2_MAX_SUBDEVS];
+	struct v4l2_async_subdev *subdev_p[ADV748X_CSI2_MAX_SUBDEVS];
+	struct v4l2_async_notifier notifier;
+};
+
+#define notifier_to_csi2(n) container_of(n, struct adv748x_csi2, notifier)
+
 /**
  * struct adv748x_hdmi - State of HDMI entity
  * @timings:		Timings for {g,s}_dv_timings
@@ -92,6 +108,8 @@ struct adv748x_afe {
  *
  * @hdmi:		state of HDMI receiver context
  * @sdp:		state of AFE receiver context
+ * @txa:		state of TXA transmitter context
+ * @txb:		state of TXB transmitter context
  */
 struct adv748x_state {
 	struct device *dev;
@@ -102,6 +120,9 @@ struct adv748x_state {
 
 	struct adv748x_hdmi hdmi;
 	struct adv748x_afe afe;
+
+	struct adv748x_csi2 txa;
+	struct adv748x_csi2 txb;
 };
 
 #define adv748x_hdmi_to_state(a) container_of(a, struct adv748x_state, hdmi.sd)
@@ -143,11 +164,16 @@ int adv748x_write(struct adv748x_state *state, u8 addr, u8 reg, u8 value);
 void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 		const struct v4l2_subdev_ops *ops, const char *ident);
 
+int adv748x_setup_links(struct adv748x_state *state);
+
 int adv748x_txa_power(struct adv748x_state *state, bool on);
 int adv748x_txb_power(struct adv748x_state *state, bool on);
 
 int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep);
 void adv748x_afe_remove(struct adv748x_state *state);
+
+int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx);
+void adv748x_csi2_remove(struct adv748x_csi2 *tx);
 
 int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep);
 void adv748x_hdmi_remove(struct adv748x_state *state);

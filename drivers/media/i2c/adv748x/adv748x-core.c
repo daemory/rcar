@@ -515,6 +515,38 @@ static int adv748x_parse_dt(struct adv748x_state *state)
 	return found ? 0 : -ENODEV;
 }
 
+int adv748x_setup_links(struct adv748x_state *state)
+{
+	int ret;
+
+	/* TXA - Default link is with HDMI */
+	ret = media_create_pad_link(&state->hdmi.sd.entity, 1,
+				    &state->txa.sd.entity, 0,
+				    MEDIA_LNK_FL_ENABLED);
+	if (ret) {
+		adv_err(state, "Failed to create HDMI-TXA pad links");
+		return ret;
+	}
+
+	ret = media_create_pad_link(&state->afe.sd.entity, ADV748X_AFE_SOURCE,
+				    &state->txa.sd.entity, 0, 0);
+	if (ret) {
+		adv_err(state, "Failed to create AFE-TXA pad links");
+		return ret;
+	}
+
+	/* TXB - Can only output from the AFE */
+	ret = media_create_pad_link(&state->afe.sd.entity, ADV748X_AFE_SOURCE,
+				    &state->txb.sd.entity, 0,
+				    MEDIA_LNK_FL_ENABLED);
+	if (ret) {
+		adv_err(state, "Failed to create AFE-TXB pad links");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int adv748x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -554,8 +586,8 @@ static int adv748x_probe(struct i2c_client *client,
 		return ret;
 
 	/* Process HDMI/TXA */
-	if (state->endpoints[ADV748X_PORT_TXA]) {
-		ep = state->endpoints[ADV748X_PORT_TXA];
+	if (state->endpoints[ADV748X_PORT_HDMI]) {
+		ep = state->endpoints[ADV748X_PORT_HDMI];
 		adv_info(state, "Got TXA/HDMI EP: %s\n", of_node_full_name(ep));
 
 		/* Initialise HDMI */
@@ -570,8 +602,9 @@ static int adv748x_probe(struct i2c_client *client,
 	}
 
 	/* Process AFE/TXB */
-	if (state->endpoints[ADV748X_PORT_TXB]) {
-		ep = state->endpoints[ADV748X_PORT_TXB];
+	/* TODO: EEP - HARDWARED AFE */
+	if (state->endpoints[ADV748X_PORT_AIN8]) {
+		ep = state->endpoints[ADV748X_PORT_AIN8];
 		adv_info(state, "Got TXB/AFE EP: %s\n", of_node_full_name(ep));
 
 		/* Initialise AFE */
@@ -586,6 +619,21 @@ static int adv748x_probe(struct i2c_client *client,
 				of_node_full_name(state->dev->of_node));
 	}
 
+
+	/* Initialise TXA */
+	ret = adv748x_csi2_probe(state, &state->txa);
+	if (ret) {
+		adv_err(state, "Failed to probe TXA");
+		return ret;
+	}
+
+	/* Initialise TXB  (Not 7480) */
+	ret = adv748x_csi2_probe(state, &state->txb);
+	if (ret) {
+		adv_err(state, "Failed to probe TXB");
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -595,6 +643,9 @@ static int adv748x_remove(struct i2c_client *client)
 
 	adv748x_afe_remove(state);
 	adv748x_hdmi_remove(state);
+
+	adv748x_csi2_remove(&state->txa);
+	adv748x_csi2_remove(&state->txb);
 
 	mutex_destroy(&state->mutex);
 
