@@ -658,7 +658,7 @@ static const struct v4l2_subdev_internal_ops rcar_csi2_internal_ops = {
 
 static int rcar_csi2_parse_dt_subdevice(struct rcar_csi2 *priv)
 {
-	struct device_node *remote, *ep, *rp;
+	struct device_node *ep, *rp;
 	struct v4l2_fwnode_endpoint v4l2_ep;
 	int ret;
 
@@ -685,18 +685,10 @@ static int rcar_csi2_parse_dt_subdevice(struct rcar_csi2 *priv)
 	rp = of_parse_phandle(ep, "remote-endpoint", 0);
 	of_graph_parse_endpoint(rp, &priv->remote.endpoint);
 
-	remote = of_graph_get_remote_port_parent(ep);
-	of_node_put(ep);
-	if (!remote) {
-		dev_err(priv->dev, "No subdevice found for endpoint '%s'\n",
-			of_node_full_name(ep));
-		return -EINVAL;
-	}
-
-	priv->remote.asd.match.fwnode.fwnode = of_fwnode_handle(remote);
+	priv->remote.asd.match.fwnode.fwnode = of_fwnode_handle(rp);
 	priv->remote.asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
 
-	dev_dbg(priv->dev, "Found '%s'\n", of_node_full_name(remote));
+	dev_dbg(priv->dev, "Found '%s'\n", of_node_full_name(rp));
 
 	return 0;
 }
