@@ -681,17 +681,10 @@ static int rcar_csi2_parse_dt_subdevice(struct rcar_csi2 *priv)
 	priv->remote.fwnode =
 		fwnode_graph_get_remote_endpoint(of_fwnode_handle(ep));
 
-	remote = of_graph_get_remote_port_parent(ep);
-	of_node_put(ep);
-	if (!remote) {
-		dev_err(priv->dev, "No subdevice found for endpoint '%s'\n",
-			of_node_full_name(ep));
-		return -EINVAL;
-	}
-
-	priv->remote.asd.match.fwnode.fwnode = of_fwnode_handle(remote);
+	priv->remote.asd.match.fwnode.fwnode = priv->remote.fwnode;
 	priv->remote.asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
 
+	remote = to_of_node(priv->remote.fwnode);
 	dev_dbg(priv->dev, "Found '%s'\n", of_node_full_name(remote));
 
 	return 0;
