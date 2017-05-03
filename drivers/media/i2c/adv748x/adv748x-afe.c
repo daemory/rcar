@@ -586,8 +586,8 @@ int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep)
 	adv748x_subdev_init(&state->afe.sd, state, &adv748x_afe_ops,
 			    "cvbs/txb");
 
-	/* CVBS is currently statically routed to TXB */
-	state->afe.sd.of_node = ep;
+	/* Ensure that matching is based upon the endpoint fwnodes */
+	state->afe.sd.fwnode = &ep->fwnode;
 
 	state->afe.pads[ADV748X_AFE_SINK].flags = MEDIA_PAD_FL_SINK;
 	state->afe.pads[ADV748X_AFE_SOURCE].flags = MEDIA_PAD_FL_SOURCE;

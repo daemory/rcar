@@ -482,6 +482,36 @@ void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 	sd->entity.ops = &adv748x_media_ops;
 }
 
+static int adv748x_parse_dt(struct adv748x_state *state)
+{
+	struct device_node *ep_np = NULL;
+	struct of_endpoint ep;
+	unsigned int found = 0;
+	int ret;
+
+	for_each_endpoint_of_node(state->dev->of_node, ep_np) {
+		ret = of_graph_parse_endpoint(ep_np, &ep);
+		if (!ret) {
+			adv_info(state, "Endpoint %s on port %d",
+					of_node_full_name(ep.local_node),
+					ep.port);
+
+			if (ep.port > ADV748X_PORT_MAX) {
+				adv_err(state, "Invalid endpoint %s on port %d",
+					of_node_full_name(ep.local_node),
+					ep.port);
+
+				continue;
+			}
+
+			state->endpoints[ep.port] = ep_np;
+			found++;
+		}
+	}
+
+	return found ? 0 : -ENODEV;
+}
+
 static int adv748x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -516,11 +546,13 @@ static int adv748x_probe(struct i2c_client *client,
 		return ret;
 
 	/* Discover and process ports declared by the Device tree endpoints */
+	ret = adv748x_parse_dt(state);
+	if (ret)
+		return ret;
 
 	/* Process HDMI/TXA */
-	ep = of_graph_get_endpoint_by_regs(state->dev->of_node,
-			ADV748X_PORT_TXA, -1);
-	if (ep) {
+	if (state->endpoints[ADV748X_PORT_TXA]) {
+		ep = state->endpoints[ADV748X_PORT_TXA];
 		adv_info(state, "Got TXA/HDMI EP: %s\n", of_node_full_name(ep));
 
 		/* Initialise HDMI */
@@ -535,12 +567,11 @@ static int adv748x_probe(struct i2c_client *client,
 	}
 
 	/* Process AFE/TXB */
-	ep = of_graph_get_endpoint_by_regs(state->dev->of_node,
-			ADV748X_PORT_TXB, -1);
-	if (ep) {
+	if (state->endpoints[ADV748X_PORT_TXB]) {
+		ep = state->endpoints[ADV748X_PORT_TXB];
 		adv_info(state, "Got TXB/AFE EP: %s\n", of_node_full_name(ep));
 
-		/* Initialise HDMI */
+		/* Initialise AFE */
 		ret = adv748x_afe_probe(state, ep);
 		if (ret) {
 			adv_err(state, "Failed to probe AFE");

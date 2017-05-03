@@ -660,7 +660,7 @@ int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep)
 			    "hdmi/txa");
 
 	/* HDMI is currently statically routed to TXA */
-	state->hdmi.sd.of_node = ep;
+	state->hdmi.sd.fwnode = &ep->fwnode;
 
 	state->hdmi.pads[ADV748X_HDMI_SINK].flags = MEDIA_PAD_FL_SINK;
 	state->hdmi.pads[ADV748X_HDMI_SOURCE].flags = MEDIA_PAD_FL_SOURCE;

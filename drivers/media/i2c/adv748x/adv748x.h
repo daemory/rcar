@@ -53,6 +53,7 @@ enum adv748x_ports {
 	ADV748X_PORT_TTL = 9,
 	ADV748X_PORT_TXA = 10,
 	ADV748X_PORT_TXB = 11,
+	ADV748X_PORT_MAX = 12,
 };
 
 /**
@@ -85,22 +86,19 @@ struct adv748x_afe {
  * struct adv748x_state - State of ADV748X
  * @dev:		(OF) device
  * @client:		I2C client
- * @sd:			v4l2 subdevice
- * @mutex:		protect against sink state changes while streaming
+ * @mutex:		protect global state
  *
- * @pads:		media pads exposed
+ * @endpoints:		parsed device node endpoints for each port
  *
- * @cp:			state of CP HDMI
- * @sdp:		state of SDP
- *
- * @ctrl_hdl		control handler
+ * @hdmi:		state of HDMI receiver context
+ * @sdp:		state of AFE receiver context
  */
 struct adv748x_state {
 	struct device *dev;
 	struct i2c_client *client;
-
-
 	struct mutex mutex;
+
+	struct device_node *endpoints[ADV748X_PORT_MAX];
 
 	struct adv748x_hdmi hdmi;
 	struct adv748x_afe afe;
@@ -145,13 +143,13 @@ int adv748x_write(struct adv748x_state *state, u8 addr, u8 reg, u8 value);
 void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 		const struct v4l2_subdev_ops *ops, const char *ident);
 
-int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep);
-void adv748x_hdmi_remove(struct adv748x_state *state);
+int adv748x_txa_power(struct adv748x_state *state, bool on);
+int adv748x_txb_power(struct adv748x_state *state, bool on);
 
 int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep);
 void adv748x_afe_remove(struct adv748x_state *state);
 
-int adv748x_txa_power(struct adv748x_state *state, bool on);
-int adv748x_txb_power(struct adv748x_state *state, bool on);
+int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep);
+void adv748x_hdmi_remove(struct adv748x_state *state);
 
 #endif /* _ADV748X_H_ */
