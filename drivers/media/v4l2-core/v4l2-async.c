@@ -43,12 +43,23 @@ static bool match_devname(struct v4l2_subdev *sd,
 
 static bool match_fwnode(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 {
+	bool ret;
+
 	if (!is_of_node(sd->fwnode) || !is_of_node(asd->match.fwnode.fwnode))
 		return sd->fwnode == asd->match.fwnode.fwnode;
 
-	return !of_node_cmp(of_node_full_name(to_of_node(sd->fwnode)),
+
+	ret = !of_node_cmp(of_node_full_name(to_of_node(sd->fwnode)),
 			    of_node_full_name(
 				    to_of_node(asd->match.fwnode.fwnode)));
+
+	if (ret) {
+		printk("Found: %s : %s:%s\n", sd->name,
+			of_node_full_name(to_of_node(sd->fwnode)),
+			of_node_full_name(to_of_node(asd->match.fwnode.fwnode)));
+	}
+
+	return ret;
 }
 
 static bool match_custom(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
@@ -160,6 +171,8 @@ static int v4l2_async_do_notifier_register(struct v4l2_device *v4l2_dev,
 	if (!notifier->num_subdevs || notifier->num_subdevs > V4L2_MAX_SUBDEVS)
 		return -EINVAL;
 
+	printk("Do notify\n");
+
 	notifier->v4l2_dev = v4l2_dev;
 	INIT_LIST_HEAD(&notifier->waiting);
 	INIT_LIST_HEAD(&notifier->done);
@@ -168,10 +181,12 @@ static int v4l2_async_do_notifier_register(struct v4l2_device *v4l2_dev,
 		asd = notifier->subdevs[i];
 
 		switch (asd->match_type) {
+		case V4L2_ASYNC_MATCH_FWNODE:
+			printk("FWNode match notifier for %s\n",
+					of_node_full_name(to_of_node(asd->match.fwnode.fwnode)));
 		case V4L2_ASYNC_MATCH_CUSTOM:
 		case V4L2_ASYNC_MATCH_DEVNAME:
 		case V4L2_ASYNC_MATCH_I2C:
-		case V4L2_ASYNC_MATCH_FWNODE:
 			break;
 		default:
 			dev_err(notifier->v4l2_dev ? notifier->v4l2_dev->dev : NULL,
@@ -193,13 +208,16 @@ static int v4l2_async_do_notifier_register(struct v4l2_device *v4l2_dev,
 	found = 1;
 	while (found) {
 		found = 0;
-
 		list_for_each_entry_safe(sd, tmp, &subdev_list, async_list) {
 			int ret;
+
+
 
 			asd = v4l2_async_belongs(notifier, sd);
 			if (!asd)
 				continue;
+
+			printk("%s 'belongs' in the notifier\n", sd->name);
 
 			ret = v4l2_async_test_notify(notifier, sd, asd);
 			if (ret < 0) {
