@@ -571,6 +571,15 @@ static int rcar_csi2_notify_complete(struct v4l2_async_notifier *notifier)
 		return ret;
 	}
 
+	if (priv->remote.source_pad > priv->remote.subdev->entity.num_pads) {
+		dev_err(priv->dev, "Source pad %d, pads %d\n",
+				priv->remote.source_pad,
+				priv->remote.subdev->entity.num_pads);
+		dev_err(priv->dev, "Invalid source pad. Finding alternative\n");
+
+		priv->remote.source_pad = 1;
+	}
+
 	return media_create_pad_link(&priv->remote.subdev->entity,
 				     priv->remote.source_pad,
 				     &priv->subdev.entity, 0,
