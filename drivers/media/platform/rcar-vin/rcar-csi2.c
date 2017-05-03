@@ -588,13 +588,14 @@ static int rcar_csi2_notify_bound(struct v4l2_async_notifier *notifier,
 					    priv->remote.endpoint.id,
 					    &priv->remote.source_pad);
 	if (ret) {
-		dev_err(priv->dev, "Failt to find pad for %s\n",
+		dev_err(priv->dev, "Failed to find pad for %s\n",
 			subdev->name);
 		return ret;
 	}
 
 	dev_dbg(priv->dev, "Bound %s\n", subdev->name);
 	priv->remote.subdev = subdev;
+
 	return 0;
 }
 static void rcar_csi2_notify_unbind(struct v4l2_async_notifier *notifier,
