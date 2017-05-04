@@ -18,11 +18,6 @@
 
 #include "adv748x.h"
 
-enum adv748x_csi2_pads {
-	ADV748X_CSI2_SINK = 0,
-	ADV748X_CSI2_SOURCE = 1,
-};
-
 static bool is_txa(struct adv748x_csi2 *tx)
 {
 	return (tx == &tx->state->txa);
@@ -167,7 +162,8 @@ int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx)
 	tx->pads[ADV748X_CSI2_SINK].flags = MEDIA_PAD_FL_SINK;
 	tx->pads[ADV748X_CSI2_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&tx->sd.entity, 2, tx->pads);
+	ret = media_entity_pads_init(&tx->sd.entity, ADV748X_CSI2_NR_PADS,
+				     tx->pads);
 	if (ret)
 		return ret;
 

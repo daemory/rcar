@@ -22,11 +22,6 @@
 
 #include "adv748x.h"
 
-enum adv748x_afe_pads {
-	ADV748X_AFE_SINK = 0,
-	ADV748X_AFE_SOURCE = 1,
-};
-
 /* -----------------------------------------------------------------------------
  * SDP
  */
@@ -338,14 +333,10 @@ static int adv748x_afe_enum_mbus_code(struct v4l2_subdev *sd,
 	if (code->index != 0)
 		return -EINVAL;
 
-	switch (code->pad) {
-	case ADV748X_AFE_SINK:
-	case ADV748X_AFE_SOURCE:
-		code->code = MEDIA_BUS_FMT_UYVY8_2X8;
-		break;
-	default:
+	if (code->pad >= ADV748X_AFE_NR_PADS)
 		return -EINVAL;
-	}
+
+	code->code = MEDIA_BUS_FMT_UYVY8_2X8;
 
 	return 0;
 }
@@ -357,14 +348,10 @@ static int adv748x_afe_get_pad_format(struct v4l2_subdev *sd,
 {
 	struct adv748x_state *state = adv748x_afe_to_state(sd);
 
-	switch (format->pad) {
-	case ADV748X_AFE_SINK:
-	case ADV748X_AFE_SOURCE:
-		adv748x_afe_fill_format(state, &format->format);
-		break;
-	default:
+	if (format->pad >= ADV748X_AFE_NR_PADS)
 		return -EINVAL;
-	}
+
+	adv748x_afe_fill_format(state, &format->format);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *fmt;
@@ -382,14 +369,10 @@ static int adv748x_afe_set_pad_format(struct v4l2_subdev *sd,
 {
 	struct adv748x_state *state = adv748x_afe_to_state(sd);
 
-	switch (format->pad) {
-	case ADV748X_AFE_SINK:
-	case ADV748X_AFE_SOURCE:
-		adv748x_afe_fill_format(state, &format->format);
-		break;
-	default:
+	if (format->pad >= ADV748X_AFE_NR_PADS)
 		return -EINVAL;
-	}
+
+	adv748x_afe_fill_format(state, &format->format);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *fmt;
@@ -579,6 +562,7 @@ static int adv748x_afe_init_controls(struct adv748x_state *state)
 int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep)
 {
 	int ret;
+	unsigned int i;
 
 	state->afe.streaming = false;
 	state->afe.curr_norm = V4L2_STD_ALL;
@@ -589,10 +573,13 @@ int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep)
 	/* Ensure that matching is based upon the endpoint fwnodes */
 	state->afe.sd.fwnode = &ep->fwnode;
 
-	state->afe.pads[ADV748X_AFE_SINK].flags = MEDIA_PAD_FL_SINK;
+	for (i = ADV748X_AFE_SINK_AIN0; i <= ADV748X_AFE_SINK_AIN7; i++)
+		state->afe.pads[i].flags = MEDIA_PAD_FL_SINK;
+
 	state->afe.pads[ADV748X_AFE_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&state->afe.sd.entity, 2, state->afe.pads);
+	ret = media_entity_pads_init(&state->afe.sd.entity, ADV748X_AFE_NR_PADS,
+			state->afe.pads);
 
 	ret = adv748x_afe_init_controls(state);
 	if (ret)

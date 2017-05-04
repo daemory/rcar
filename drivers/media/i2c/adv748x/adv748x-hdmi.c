@@ -20,11 +20,6 @@
 
 #include "adv748x.h"
 
-enum adv748x_hdmi_pads {
-	ADV748X_HDMI_SINK = 0,
-	ADV748X_HDMI_SOURCE = 1,
-};
-
 /* -----------------------------------------------------------------------------
  * HDMI and CP
  */
@@ -371,14 +366,10 @@ static int adv748x_hdmi_enum_mbus_code(struct v4l2_subdev *sd,
 	if (code->index != 0)
 		return -EINVAL;
 
-	switch (code->pad) {
-	case ADV748X_HDMI_SINK:
-	case ADV748X_HDMI_SOURCE:
-		code->code = MEDIA_BUS_FMT_RGB888_1X24;
-		break;
-	default:
+	if (code->pad >= ADV748X_HDMI_NR_PADS)
 		return -EINVAL;
-	}
+
+	code->code = MEDIA_BUS_FMT_RGB888_1X24;
 
 	return 0;
 }
@@ -389,14 +380,10 @@ static int adv748x_hdmi_get_pad_format(struct v4l2_subdev *sd,
 {
 	struct adv748x_state *state = adv748x_hdmi_to_state(sd);
 
-	switch (format->pad) {
-	case ADV748X_HDMI_SINK:
-	case ADV748X_HDMI_SOURCE:
-		adv748x_hdmi_fill_format(state, &format->format);
-		break;
-	default:
+	if (format->pad >= ADV748X_HDMI_NR_PADS)
 		return -EINVAL;
-	}
+
+	adv748x_hdmi_fill_format(state, &format->format);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *fmt;
@@ -414,14 +401,10 @@ static int adv748x_hdmi_set_pad_format(struct v4l2_subdev *sd,
 {
 	struct adv748x_state *state = adv748x_hdmi_to_state(sd);
 
-	switch (format->pad) {
-	case ADV748X_HDMI_SINK:
-	case ADV748X_HDMI_SOURCE:
-		adv748x_hdmi_fill_format(state, &format->format);
-		break;
-	default:
+	if (format->pad >= ADV748X_HDMI_NR_PADS)
 		return -EINVAL;
-	}
+
+	adv748x_hdmi_fill_format(state, &format->format);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *fmt;
@@ -665,8 +648,8 @@ int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep)
 	state->hdmi.pads[ADV748X_HDMI_SINK].flags = MEDIA_PAD_FL_SINK;
 	state->hdmi.pads[ADV748X_HDMI_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&state->hdmi.sd.entity, 2,
-				     state->hdmi.pads);
+	ret = media_entity_pads_init(&state->hdmi.sd.entity,
+				     ADV748X_HDMI_NR_PADS, state->hdmi.pads);
 	if (ret)
 		return ret;
 
