@@ -252,16 +252,16 @@ static const struct adv748x_reg_value adv748x_sw_reset[] = {
 };
 
 static const struct adv748x_reg_value adv748x_set_slave_address[] = {
-	{ADV748X_I2C_IO, 0xF3, ADV748X_I2C_DPLL * 2},	/* DPLL */
-	{ADV748X_I2C_IO, 0xF4, ADV748X_I2C_CP * 2},	/* CP */
-	{ADV748X_I2C_IO, 0xF5, ADV748X_I2C_HDMI * 2},	/* HDMI */
-	{ADV748X_I2C_IO, 0xF6, ADV748X_I2C_EDID * 2},	/* EDID */
-	{ADV748X_I2C_IO, 0xF7, ADV748X_I2C_REPEATER * 2}, /* HDMI RX Repeater */
-	{ADV748X_I2C_IO, 0xF8, ADV748X_I2C_INFOFRAME * 2},/* HDMI RX InfoFrame*/
-	{ADV748X_I2C_IO, 0xFA, ADV748X_I2C_CEC * 2},	/* CEC */
-	{ADV748X_I2C_IO, 0xFB, ADV748X_I2C_SDP * 2},	/* SDP */
-	{ADV748X_I2C_IO, 0xFC, ADV748X_I2C_TXB * 2},	/* CSI-TXB */
-	{ADV748X_I2C_IO, 0xFD, ADV748X_I2C_TXA * 2},	/* CSI-TXA */
+	{ADV748X_I2C_IO, 0xF3, ADV748X_I2C_DPLL << 1},	/* DPLL */
+	{ADV748X_I2C_IO, 0xF4, ADV748X_I2C_CP << 1},	/* CP */
+	{ADV748X_I2C_IO, 0xF5, ADV748X_I2C_HDMI << 1},	/* HDMI */
+	{ADV748X_I2C_IO, 0xF6, ADV748X_I2C_EDID << 1},	/* EDID */
+	{ADV748X_I2C_IO, 0xF7, ADV748X_I2C_REPEATER << 1}, /* HDMI RX Repeater */
+	{ADV748X_I2C_IO, 0xF8, ADV748X_I2C_INFOFRAME << 1},/* HDMI RX InfoFrame*/
+	{ADV748X_I2C_IO, 0xFA, ADV748X_I2C_CEC << 1},	/* CEC */
+	{ADV748X_I2C_IO, 0xFB, ADV748X_I2C_SDP << 1},	/* SDP */
+	{ADV748X_I2C_IO, 0xFC, ADV748X_I2C_TXB << 1},	/* CSI-TXB */
+	{ADV748X_I2C_IO, 0xFD, ADV748X_I2C_TXA << 1},	/* CSI-TXA */
 	{ADV748X_I2C_EOR, 0xFF, 0xFF}	/* End of register table */
 };
 
@@ -414,6 +414,7 @@ static int adv748x_reset(struct adv748x_state *state)
 	ret = adv748x_write_regs(state, adv748x_init_txa_4lane);
 	if (ret)
 		return ret;
+
 	adv748x_txa_power(state, 0);
 	/* Set VC 0 */
 	txa_clrset(state, 0x0d, 0xc0, 0x00);
@@ -422,7 +423,9 @@ static int adv748x_reset(struct adv748x_state *state)
 	ret = adv748x_write_regs(state, adv748x_init_txb_1lane);
 	if (ret)
 		return ret;
+
 	adv748x_txb_power(state, 0);
+
 	/* Set VC 0 */
 	txb_clrset(state, 0x0d, 0xc0, 0x00);
 
