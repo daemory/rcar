@@ -567,8 +567,7 @@ int adv748x_afe_probe(struct adv748x_state *state, struct device_node *ep)
 	state->afe.streaming = false;
 	state->afe.curr_norm = V4L2_STD_ALL;
 
-	adv748x_subdev_init(&state->afe.sd, state, &adv748x_afe_ops,
-			    "cvbs/txb");
+	adv748x_subdev_init(&state->afe.sd, state, &adv748x_afe_ops, "afe");
 
 	/* Ensure that matching is based upon the endpoint fwnodes */
 	state->afe.sd.fwnode = &ep->fwnode;

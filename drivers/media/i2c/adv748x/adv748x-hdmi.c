@@ -639,8 +639,7 @@ int adv748x_hdmi_probe(struct adv748x_state *state, struct device_node *ep)
 
 	state->hdmi.timings = cea720x480;
 
-	adv748x_subdev_init(&state->hdmi.sd, state, &adv748x_ops_hdmi,
-			    "hdmi/txa");
+	adv748x_subdev_init(&state->hdmi.sd, state, &adv748x_ops_hdmi, "hdmi");
 
 	/* HDMI is currently statically routed to TXA */
 	state->hdmi.sd.fwnode = &ep->fwnode;
