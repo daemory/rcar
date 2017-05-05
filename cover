@@ -11,6 +11,9 @@ Patches 2,3 and 4 clean up the calculation of the partition sizes such that they
 are only calculated once at streamon - and the partition windows are stored in
 the vsp1_pipeline object.
 
+v2:
+ - Rebased to v4.12-rc1
+
 Kieran Bingham (4):
   v4l: vsp1: Implement partition algorithm restrictions
   v4l: vsp1: Move vsp1_video_pipeline_setup_partitions() function
