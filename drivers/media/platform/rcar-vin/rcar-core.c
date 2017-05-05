@@ -40,6 +40,8 @@ static unsigned int rvin_group_csi_pad_to_chan(unsigned int pad)
 	return pad - 1;
 }
 
+#define kprint(a...) trace_printk(a); printk(a)
+
 /* group lock should be held when calling this function */
 static int rvin_group_entity_to_vin_num(struct rvin_group *group,
 					struct media_entity *entity)
@@ -47,18 +49,24 @@ static int rvin_group_entity_to_vin_num(struct rvin_group *group,
 	struct video_device *vdev;
 	int i;
 
-	if (!is_media_entity_v4l2_video_device(entity))
+	if (!is_media_entity_v4l2_video_device(entity)) {
+		kprint("entity %s is not a v4l2 device", entity->name);
 		return -ENODEV;
+	}
 
 	vdev = media_entity_to_video_device(entity);
 
 	for (i = 0; i < RCAR_VIN_NUM; i++) {
-		if (!group->vin[i])
+		if (!group->vin[i]) {
+			kprint("group->vin[%d] is null", i);
 			continue;
+		}
 
 		if (group->vin[i]->vdev == vdev)
 			return i;
 	}
+
+	kprint("-Enodev...");
 
 	return -ENODEV;
 }
@@ -180,8 +188,11 @@ static int rvin_group_link_notify(struct media_link *link, u32 flags,
 	vin_master = vin_num < 4 ? 0 : 4;
 
 	/* If not all devices exists something is horribly wrong */
-	if (vin_num < 0 || csi_num < 0 || !group->vin[vin_master])
+	if (vin_num < 0 || csi_num < 0 || !group->vin[vin_master]) {
+		trace_printk("%d : %d %d %p[%d]", __LINE__,
+				vin_num, csi_num, group->vin[vin_master], vin_master);
 		goto error;
+	}
 
 	/* Special checking only needed for links which are to be enabled */
 	if (notification != MEDIA_DEV_NOTIFY_PRE_LINK_CH ||
@@ -189,12 +200,16 @@ static int rvin_group_link_notify(struct media_link *link, u32 flags,
 		goto out;
 
 	/* If any link in the group are in use, no new link can be enabled */
-	if (rvin_group_in_use(group))
+	if (rvin_group_in_use(group)) {
+		trace_printk("%d", __LINE__);
 		goto error;
+	}
 
 	/* If the VIN already have a active link it's busy */
-	if (media_entity_remote_pad(&link->sink->entity->pads[0]))
+	if (media_entity_remote_pad(&link->sink->entity->pads[0])) {
+		trace_printk("%d", __LINE__);
 		goto error;
+	}
 
 	/* Build list of active links */
 	__rvin_group_build_link_list(group, chsel_map, vin_master, 4);
@@ -207,12 +222,16 @@ static int rvin_group_link_notify(struct media_link *link, u32 flags,
 	chsel = __rvin_group_try_get_chsel(group, chsel_map, vin_master, 4);
 
 	/* No chsel can provide the request links */
-	if (chsel == -1)
+	if (chsel == -1) {
+		trace_printk("%d", __LINE__);
 		goto error;
+	}
 
 	/* Update chsel value at group master */
-	if (rvin_set_chsel(group->vin[vin_master], chsel))
+	if (rvin_set_chsel(group->vin[vin_master], chsel)) {
+		trace_printk("%d", __LINE__);
 		goto error;
+	}
 
 out:
 	mutex_unlock(&group->lock);

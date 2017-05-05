@@ -43,6 +43,18 @@ static int adv748x_csi2_notify_complete(struct v4l2_async_notifier *notifier)
 	if (is_txa(tx))
 		return ret;
 
+	if (!is_media_entity_v4l2_video_device(&state->txa.sd.entity))
+		adv_err(state, "TXA is not a v4l2_video device yet");
+
+	if (!is_media_entity_v4l2_video_device(&state->txb.sd.entity))
+		adv_err(state, "TXB is not a v4l2_video device yet");
+
+	if (!is_media_entity_v4l2_video_device(&state->hdmi.sd.entity))
+		adv_err(state, "HDMI is not a v4l2_video device yet");
+
+	if (!is_media_entity_v4l2_video_device(&state->afe.sd.entity))
+		adv_err(state, "AFE is not a v4l2_video device yet");
+
 	ret = adv748x_setup_links(state);
 	if (ret) {
 		adv_err(state, "Failed to setup entity links");
