@@ -15,7 +15,7 @@ These patches have been tested by introducing artificial delays in the commit
 code paths and verifying that no visual tearing or flickering occurs.
 
 Extensive testing around the race window has been performed by dynamically
-adapting the artificial delay between 10, and 17 seconds in 100uS increments
+adapting the artificial delay between 15, and 17 seconds in 100uS increments
 for periods of 5 seconds on each delay test. These tests have successfully run
 for 3 hours.
 
@@ -23,7 +23,7 @@ Manual start/stop testing has also been performed.
 
 Mauro: As this patchset covers two subsystems, and the DRM/DU side is dependant
 upon the media/VSP side, If you are happy with these patches, could you ack for
-integration through the DRM tree please.
+integration through the DRM tree please?
 
 Regards
 
