@@ -191,7 +191,12 @@ static int rvin_group_link_notify(struct media_link *link, u32 flags,
 	if (vin_num < 0 || csi_num < 0 || !group->vin[vin_master]) {
 		trace_printk("%d : %d %d %p[%d]", __LINE__,
 				vin_num, csi_num, group->vin[vin_master], vin_master);
-		goto error;
+
+		trace_printk("Can't map link %s->%s in RVin\n",
+				link->source->entity->name,
+				link->sink->entity->name);
+
+		goto out;
 	}
 
 	/* Special checking only needed for links which are to be enabled */
