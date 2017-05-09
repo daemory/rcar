@@ -4,19 +4,16 @@ This small patchset helps rework the VSP1 driver to repair an issue on
 suspend/resume operations whereby the pipeline does not get reconfigured after
 it has been re-initialised following a resume operation.
 
-Along side this, there was an intrinsic race in the vsp1_video_start_streaming()
-function whereby multiple streams operating through a BRU, could find themselves
-commencing an operation before the pipeline has been configured, or worse -
-commencing, just as the pipeline is being configured resulting in a null pointer
-dereference on pipe->dl.
-
-Patch [1/4] fixes the multiple stream BRU race
-Patch [2/4] is a code move only, with no functional change.
-Patch [3/4] fixes the suspend/resume operations for video pipelines by marking
+Patch [1/2] is a code move only, with no functional change.
+Patch [2/2] fixes the suspend/resume operations for video pipelines by marking
             the new pipe configured flag as false, and configuring the pipe
             during the vsp1_video_pipeline_run() call.
-Patch [4/4] removes the context scoped 'pipe->dl' from vsp1_drm.c which is only
-            used in a single function
+
+v5:
+ - Rebased for v4.12-rc1
+ - Dropped two patches from v4 as they are integrated already:
+    - BRU streamon race
+    - DRM scoped pipe->dl removal
 
 v4:
  - Rework and separate out the BRU race back to v1 style implementation
