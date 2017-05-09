@@ -13,6 +13,8 @@ the vsp1_pipeline object.
 
 v2:
  - Rebased to v4.12-rc1
+ - Partition tables dynamically allocated
+ - minor review fixups
 
 Kieran Bingham (4):
   v4l: vsp1: Implement partition algorithm restrictions
