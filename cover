@@ -23,8 +23,15 @@ And of course ideas on anything that could be done generically to support other
 targets as well would be worth considering - though currently this
 implementation is very RCar/VSP1 specific.
 
-v2:
+v3:
  - Rebased to v4.12-rc1
+
+v2:
+ - Fix checkpatch.pl warnings
+ - Adapt to use a single source pad for the Writeback and LIF
+ - Use WPF properties to determine when to create links instead of VSP
+ - Remove incorrect vsp1_video_verify_format() changes
+ - Spelling and grammar fixes
 
 Kieran Bingham (2):
   Revert "[media] v4l: vsp1: Supply frames to the DU continuously"
