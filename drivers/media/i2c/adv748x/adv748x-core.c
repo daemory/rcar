@@ -335,7 +335,7 @@ static const struct adv748x_reg_value adv748x_init_txa_4lane[] = {
 	{ADV748X_I2C_EOR, 0xFF, 0xFF}	/* End of register table */
 };
 
-/* TODO:KPB: This may be 'private' to CVBS?, and is currently duplicated! */
+/* TODO:KPB: Need to work out how to provide AFE port select! More entities? */
 #define ADV748X_SDP_INPUT_CVBS_AIN8 0x07
 
 /* 02-01 Analog CVBS to MIPI TX-B CSI 1-Lane - */
@@ -369,6 +369,7 @@ static const struct adv748x_reg_value adv748x_init_txb_1lane[] = {
 	{ADV748X_I2C_SDP, 0x31, 0x12},	/* ADI Required Write */
 	{ADV748X_I2C_SDP, 0xE6, 0x4F},  /* V bit end pos manually in NTSC */
 
+	/* TODO: Convert this to a control option */
 #ifdef REL_DGB_FORCE_TO_SEND_COLORBAR
 	{ADV748X_I2C_SDP, 0x0C, 0x01},	/* ColorBar */
 	{ADV748X_I2C_SDP, 0x14, 0x01},	/* ColorBar */
