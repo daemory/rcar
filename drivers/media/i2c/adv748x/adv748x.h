@@ -56,6 +56,45 @@ enum adv748x_ports {
 	ADV748X_PORT_MAX = 12,
 };
 
+enum adv748x_csi2_pads {
+	ADV748X_CSI2_SINK,
+	ADV748X_CSI2_SOURCE,
+	ADV748X_CSI2_NR_PADS,
+};
+
+/* CSI2 transmitters can have 3 internal connections, HDMI/AFE/TTL */
+#define ADV748X_CSI2_MAX_SUBDEVS 3
+
+struct adv748x_csi2 {
+	struct adv748x_state *state;
+	struct v4l2_mbus_framefmt format;
+
+	struct media_pad pads[ADV748X_CSI2_NR_PADS];
+	struct v4l2_ctrl_handler ctrl_hdl;
+	struct v4l2_subdev sd;
+
+	/* Incremental async - not used now */
+	struct v4l2_async_subdev subdevs[ADV748X_CSI2_MAX_SUBDEVS];
+	struct v4l2_async_subdev *subdev_p[ADV748X_CSI2_MAX_SUBDEVS];
+	struct v4l2_async_notifier notifier;
+};
+
+#define notifier_to_csi2(n) container_of(n, struct adv748x_csi2, notifier)
+
+enum adv748x_hdmi_pads {
+	ADV748X_HDMI_SINK,
+	ADV748X_HDMI_SOURCE,
+	ADV748X_HDMI_NR_PADS,
+};
+
+struct adv748x_hdmi {
+	struct media_pad pads[ADV748X_HDMI_NR_PADS];
+	struct v4l2_ctrl_handler ctrl_hdl;
+	struct v4l2_subdev sd;
+
+	struct v4l2_dv_timings timings;
+};
+
 enum adv748x_afe_pads {
 	ADV748X_AFE_SINK_AIN0,
 	ADV748X_AFE_SINK_AIN1,
@@ -69,51 +108,6 @@ enum adv748x_afe_pads {
 	ADV748X_AFE_NR_PADS,
 };
 
-enum adv748x_csi2_pads {
-	ADV748X_CSI2_SINK,
-	ADV748X_CSI2_SOURCE,
-	ADV748X_CSI2_NR_PADS,
-};
-
-enum adv748x_hdmi_pads {
-	ADV748X_HDMI_SINK,
-	ADV748X_HDMI_SOURCE,
-	ADV748X_HDMI_NR_PADS,
-};
-
-/* CSI2 transmitters can have 3 internal connections, HDMI/AFE/TTL */
-#define ADV748X_CSI2_MAX_SUBDEVS 3
-
-struct adv748x_csi2 {
-	struct adv748x_state *state;
-
-	struct media_pad pads[ADV748X_CSI2_NR_PADS];
-	struct v4l2_ctrl_handler ctrl_hdl;
-	struct v4l2_subdev sd;
-	struct v4l2_async_subdev subdevs[ADV748X_CSI2_MAX_SUBDEVS];
-	struct v4l2_async_subdev *subdev_p[ADV748X_CSI2_MAX_SUBDEVS];
-	struct v4l2_async_notifier notifier;
-};
-
-#define notifier_to_csi2(n) container_of(n, struct adv748x_csi2, notifier)
-
-/**
- * struct adv748x_hdmi - State of HDMI entity
- * @timings:		Timings for {g,s}_dv_timings
- */
-struct adv748x_hdmi {
-	struct media_pad pads[ADV748X_HDMI_NR_PADS];
-	struct v4l2_ctrl_handler ctrl_hdl;
-	struct v4l2_subdev sd;
-
-	struct v4l2_dv_timings timings;
-};
-
-/**
- * struct adv748x_afe - State of AFE sink
- * @streaming:		Flag if AFE is currently streaming
- * @curr_norm:		Current video standard
- */
 struct adv748x_afe {
 	struct media_pad pads[ADV748X_AFE_NR_PADS];
 	struct v4l2_ctrl_handler ctrl_hdl;

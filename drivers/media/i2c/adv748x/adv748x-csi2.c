@@ -74,7 +74,6 @@ static int adv748x_csi2_notify_bound(struct v4l2_async_notifier *notifier,
 	v4l2_set_subdev_hostdata(subdev, tx);
 
 	adv_info(state, "Bind %s -> %s", is_txa(tx)? "TXA":"TXB", subdev->name);
-	//tx->remote.subdev = subdev;
 
 	return 0;
 }
@@ -87,8 +86,6 @@ static void adv748x_csi2_notify_unbind(struct v4l2_async_notifier *notifier,
 
 	adv_info(state, "Unbind %s -> %s", is_txa(tx)? "TXA":"TXB",
 			subdev->name);
-	//tx->remote.subdev = NULL;
-
 }
 
 static int adv748x_csi2_registered(struct v4l2_subdev *sd)
