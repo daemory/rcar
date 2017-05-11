@@ -146,10 +146,21 @@ static const struct v4l2_subdev_internal_ops adv748x_csi2_internal_ops = {
 };
 
 /* -----------------------------------------------------------------------------
- * v4l2_subdev_ops
+ * v4l2_subdev_pad_ops
  */
 
-/*
+static int adv748x_csi2_s_stream(struct v4l2_subdev *sd, int enable)
+{
+	return 0;
+}
+
+static const struct v4l2_subdev_video_ops adv748x_csi2_video_ops = {
+	.s_stream = adv748x_csi2_s_stream,
+};
+
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_pad_ops
+ *
  * The CSI2 bus pads, are ignorant to the data sizes or formats.
  * But we must support setting the pad formats for format propagation.
  * It would be nice if 'pass-through entities' could be handled generically in
@@ -226,7 +237,12 @@ static const struct v4l2_subdev_pad_ops adv748x_csi2_pad_ops = {
 	.set_fmt = adv748x_csi2_set_format,
 };
 
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_ops
+ */
+
 static const struct v4l2_subdev_ops adv748x_csi2_ops = {
+	.video = &adv748x_csi2_video_ops,
 	.pad = &adv748x_csi2_pad_ops,
 };
 
