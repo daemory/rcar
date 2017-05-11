@@ -80,6 +80,7 @@ struct adv748x_csi2 {
 };
 
 #define notifier_to_csi2(n) container_of(n, struct adv748x_csi2, notifier)
+#define adv748x_sd_to_csi2(a) container_of(a, struct adv748x_csi2, sd)
 
 enum adv748x_hdmi_pads {
 	ADV748X_HDMI_SINK,

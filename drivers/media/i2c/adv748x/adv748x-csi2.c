@@ -24,7 +24,11 @@ static bool is_txa(struct adv748x_csi2 *tx)
 }
 
 /* -----------------------------------------------------------------------------
- * v4l2_subdev_internal_ops : async incremental subdevice discovery
+ * v4l2_subdev_internal_ops
+ *
+ * We use the internal registered operation to be able to ensure that our
+ * incremental subdevices (not connected in the forward path) can be registered
+ * against the resulting video path and media device.
  */
 
 static int adv748x_csi2_notify_complete(struct v4l2_async_notifier *notifier)
@@ -90,7 +94,7 @@ static void adv748x_csi2_notify_unbind(struct v4l2_async_notifier *notifier,
 
 static int adv748x_csi2_registered(struct v4l2_subdev *sd)
 {
-	struct adv748x_csi2 *tx = container_of(sd, struct adv748x_csi2, sd);
+	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
 	struct adv748x_state *state = tx->state;
 	int ret;
 
@@ -145,8 +149,85 @@ static const struct v4l2_subdev_internal_ops adv748x_csi2_internal_ops = {
  * v4l2_subdev_ops
  */
 
+/*
+ * The CSI2 bus pads, are ignorant to the data sizes or formats.
+ * But we must support setting the pad formats for format propagation.
+ * It would be nice if 'pass-through entities' could be handled generically in
+ * core
+ */
+
+static struct v4l2_mbus_framefmt *
+adv748x_csi2_get_pad_format(struct v4l2_subdev *sd,
+			    struct v4l2_subdev_pad_config *cfg,
+			    unsigned int pad, u32 which)
+{
+	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
+
+	switch (which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		return v4l2_subdev_get_try_format(sd, cfg, pad);
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		return &tx->format;
+	default:
+		return NULL;
+	}
+}
+
+static int adv748x_csi2_get_format(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_format *sdformat)
+{
+	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
+	struct adv748x_state *state = tx->state;
+	struct v4l2_mbus_framefmt *mbusformat;
+
+	mbusformat = adv748x_csi2_get_pad_format(sd, cfg, sdformat->pad,
+						 sdformat->which);
+	if (!mbusformat)
+		return -EINVAL;
+
+	mutex_lock(&state->mutex);
+
+	sdformat->format = *mbusformat;
+
+	mutex_unlock(&state->mutex);
+
+	return 0;
+}
+
+static int adv748x_csi2_set_format(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_format *sdformat)
+{
+	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
+	struct adv748x_state *state = tx->state;
+	struct media_pad *pad = &tx->pads[sdformat->pad];
+	struct v4l2_mbus_framefmt *mbusformat;
+
+	mbusformat = adv748x_csi2_get_pad_format(sd, cfg, sdformat->pad,
+						 sdformat->which);
+	if (!mbusformat)
+		return -EINVAL;
+
+	mutex_lock(&state->mutex);
+
+	if (pad->flags & MEDIA_PAD_FL_SOURCE)
+		sdformat->format = tx->format;
+
+	*mbusformat = sdformat->format;
+
+	mutex_unlock(&state->mutex);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_pad_ops adv748x_csi2_pad_ops = {
+	.get_fmt = adv748x_csi2_get_format,
+	.set_fmt = adv748x_csi2_set_format,
+};
+
 static const struct v4l2_subdev_ops adv748x_csi2_ops = {
-	//.pad = &adv748x_csi2_pad_ops,
+	.pad = &adv748x_csi2_pad_ops,
 };
 
 int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx)
