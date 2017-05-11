@@ -4,16 +4,23 @@ This is an RFC for the Analog Devices ADV748x driver, and follows on from a
 previous posting by Niklas Söderlund [0] of an earlier incarnation of this
 driver.
 
-This is an early posting of the driver following the release early, release
-often method after quite a bit of refactoring in an attempt to bring it
-closer to mainline.
-
 Aside from a few bug fixes, and considerable refactoring this driver:
  - is refactored to multiple object files
  - defines multiple sub devices for the output paths.
  - has independent controls for both HDMI and Analog video paths
- - extends V4L2 async matching to support 'ports' on V4L2_ASYNC_MATCH_OF
 
+ - Specifies 'endpoint' matching instead of 'device' in async framework
+
+These patches are based up on Niklas' pending RVin work [1] and Sakari's fwnode
+series [2]
+
+TLDR:
+ This series uses the fwnode for the 'endpoint' as a matching for the async
+ notifier framework.  If accepted, I propose changing all async notifier users
+ to use this method of matching, rather than the fwnode of the root device node
+
+ADV748x
+=======
 The ADV7481 and ADV7482 support two video pipelines which can run independently
 of each other, with each pipeline terminating in a CSI-2 output: TXA (4-Lane)
 and TXB (1-Lane)
@@ -27,11 +34,17 @@ with the following features
  ADV7481      X        X    X     X       X
  ADV7482      X        X          X       X
 
-This RFC statically routes the HDMI in through the TXA and the CVBS through the
-TXB for early development, though I anticipate splitting the TXA/HDMI and
-TXB/AFE (Analog Front End) into distinct sub devices, allowing configurable
-routing. This split is dependant upon on-going 'incremental binding' work being
-done and thus is not yet included in this RFC.
+Implementation
+==============
+
+This RFC creates 4 entities. AFE (CVBS/Analog In), HDMI, TXA and TXB.  At probe
+time, the DT is parsed to identify the endpoints for each of these nodes, and
+those are used for async matching of the CSI2 (TXA/TXB) entities in the master
+driver. The HDMI and AFE entities are then registered after a successful
+registration of both the CSI2 entities.
+
+(Known) Todo's
+==============
 
 Further potential development areas include:
  - ADV7480 Support (No AFE)
@@ -40,55 +53,37 @@ Further potential development areas include:
  - CEC Support
  - Configurable I2C addressing
  - Interrupt handling for format changes and hotplug detect.
+ - Entity locking, rather than global state locking
+   - Including making sure the I2C paths are serialised correctly!
 
 However, this driver and series is functional without the above, though if
 there are mandatory areas which block mainline integration please let me know
 and I will prioritise that in development.
 
-Particular topics for discussion and review requested here include:
-
- - Device tree bindings specification and port listings review
-
- - Async Subdev port matching on V4L2_ASYNC_MATCH_OF
-
-There are two implementations possible for the subdevice matching:
-   A) Matching on a root dev-node, with a port specification
-   B) Creating a new V4L2_ASYNC_MATCH_OF_ENDPOINT
-
-This series posts an initial version utilising Method A.
-
-Here we extend the subdevice and allow the drivers to assign defined 'port'
-numbers to subdevices so that they can be distinguished against a common root
-of_node.
-
-This method involves the least change overall, and doesn't require the ADV7482
-to parse it's device tree in advance.
-
-Method B) is an option I have also considered, but requires as stated that the
-driver must parse it's device tree, and instead of passing a root of_node, would
-pass the endpoint for matching.
-
-The difficulty here will be in communicating to the consumer / async-notifier
-that instead of the V4L2_ASYNC_MATCH_OF, a V4L2_ASYNC_MATCH_OF_ENDPOINT should
-be used. Thoughts on this would be appreciated.
-
-This series presents the following patches:
-
- [PATCH 1/5] v4l2-subdev: Provide a port mapping for asynchronous
- [PATCH 2/5] rcar-vin: Match sources against ports if specified.
- [PATCH 3/5] media: i2c: adv748x: add adv748x driver
- [PATCH 4/5] arm64: dts: r8a7795: salvator-x: enable VIN, CSI and ADV7482
- [PATCH 5/5] arm64: dts: r8a7796: salvator-x: enable VIN, CSI and ADV7482
-
-Patch 1 provides V4L2 support for the 'Method A' mentioned above.
-Patch 2 is dependant upon Niklas' rcar-vin series [1], and adds support to the
- binding multiple subdevices from a single DT node.
-Patch 3 is the new driver
-Patch 4 and 5 add support to the Salvator-X platforms where this code has been
- tested
-
 I appreciate that there are still some 'rough edges' in the driver, which is
 still under development, but all comments are welcome.
 
+Discussion Topics
+=================
+
+Async Subdev endpoint matching
+
+   This series sets the subdevice fwnode in adv748x_csi2_probe() as the handle
+   to the endpoint for the specific port used to map the phandles.
+
+   This differs to the standard/default use of the device fwnode.
+
+   This change is required as we have 2 CSI entities which must be matched
+   based on their endpoint and port from the same device-tree device.
+
+   The RVin driver is thus modified not to register it's notifier to look for
+   phandle endpoint, rather than the endpoints port parent.
+
+   This is a critical change, and if deemed the 'correct' way forward, I would
+   propose changing all users of the async framework to use this matching.
+
+References
+==========
 [0] http://www.mail-archive.com/linux-renesas-soc@vger.kernel.org/msg05196.html
 [1] https://git.ragnatech.se/linux rcar-vin-elinux-v7
+[2] https://www.mail-archive.com/linux-media@vger.kernel.org/msg111332.html
