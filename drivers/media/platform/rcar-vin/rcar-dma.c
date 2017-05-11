@@ -1128,8 +1128,10 @@ static int rvin_set_stream(struct rvin_dev *vin, int on)
 
 	if (on) {
 		fmt.pad = pad->index;
-		if (v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt))
+		if (v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt)) {
+			trace_printk("Failed to 'get_fmt' on %s\n", sd->name);
 			return -EPIPE;
+		}
 
 		switch (fmt.format.code) {
 		case MEDIA_BUS_FMT_YUYV8_1X16:
@@ -1139,16 +1141,24 @@ static int rvin_set_stream(struct rvin_dev *vin, int on)
 			vin->code = fmt.format.code;
 			break;
 		default:
+			trace_printk("invalid mbus on %s\n", sd->name);
 			return -EPIPE;
 		}
 
 		if (fmt.format.width != vin->format.width ||
-		    fmt.format.height != vin->format.height)
+		    fmt.format.height != vin->format.height) {
+			trace_printk("%s: invalid framesizes (%dx%d != %dx%d\n",
+					sd->name,
+					fmt.format.width, fmt.format.height,
+					vin->format.width, vin->format.height);
 			return -EPIPE;
+		}
 
 		pipe = sd->entity.pipe ? sd->entity.pipe : &vin->vdev.pipe;
-		if (media_pipeline_start(&vin->vdev.entity, pipe))
+		if (media_pipeline_start(&vin->vdev.entity, pipe)) {
+			trace_printk("pipeline start failed\n");
 			return -EPIPE;
+		}
 
 		ret = v4l2_subdev_call(sd, video, s_stream, 1);
 		if (ret == -ENOIOCTLCMD)
@@ -1174,6 +1184,9 @@ static int rvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 		spin_lock_irqsave(&vin->qlock, flags);
 		return_all_buffers(vin, VB2_BUF_STATE_QUEUED);
 		spin_unlock_irqrestore(&vin->qlock, flags);
+
+		trace_printk("start streaming failed");
+
 		return ret;
 	}
 
@@ -1185,6 +1198,9 @@ static int rvin_start_streaming(struct vb2_queue *vq, unsigned int count)
 	if (ret) {
 		return_all_buffers(vin, VB2_BUF_STATE_QUEUED);
 		rvin_set_stream(vin, 0);
+
+		trace_printk("rvin_capture_start failed");
+
 	}
 
 	spin_unlock_irqrestore(&vin->qlock, flags);
