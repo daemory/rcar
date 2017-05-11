@@ -23,6 +23,18 @@ static bool is_txa(struct adv748x_csi2 *tx)
 	return (tx == &tx->state->txa);
 }
 
+static struct v4l2_subdev *adv748x_csi2_get_remote_sd(struct media_pad *local)
+{
+	struct media_pad *pad;
+
+	pad = media_entity_remote_pad(local);
+	if (!pad) {
+		return NULL;
+	}
+
+	return media_entity_to_v4l2_subdev(pad->entity);
+}
+
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_internal_ops
  *
@@ -151,7 +163,17 @@ static const struct v4l2_subdev_internal_ops adv748x_csi2_internal_ops = {
 
 static int adv748x_csi2_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	return 0;
+	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
+	struct v4l2_subdev *src;
+	int ret;
+
+	src = adv748x_csi2_get_remote_sd(&tx->pads[ADV748X_CSI2_SINK]);
+	if (!src)
+		return -ENODEV;
+
+	ret = v4l2_subdev_call(src, video, s_stream, enable);
+
+	return ret;
 }
 
 static const struct v4l2_subdev_video_ops adv748x_csi2_video_ops = {
@@ -163,8 +185,6 @@ static const struct v4l2_subdev_video_ops adv748x_csi2_video_ops = {
  *
  * The CSI2 bus pads, are ignorant to the data sizes or formats.
  * But we must support setting the pad formats for format propagation.
- * It would be nice if 'pass-through entities' could be handled generically in
- * core
  */
 
 static struct v4l2_mbus_framefmt *
@@ -260,10 +280,14 @@ static int adv748x_csi2_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_PIXEL_RATE:
 	{
 		/* Direct control pass through */
-		struct v4l2_ctrl_handler *sub_ctrl_hdl;
 		struct v4l2_ext_controls ctrls;
 		struct v4l2_ext_control ectrl;
+		struct v4l2_subdev *src;
 		int ret;
+
+		src = adv748x_csi2_get_remote_sd(&tx->pads[ADV748X_CSI2_SINK]);
+		if (!src)
+			return -ENODEV;
 
 		memset(&ctrls, 0, sizeof(ctrls));
 		memset(&ectrl, 0, sizeof(ectrl));
@@ -273,13 +297,7 @@ static int adv748x_csi2_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		ctrls.count = 1;
 		ctrls.controls = &ectrl;
 
-		/* TODO: Handle routing when supported */
-		if (is_txa(tx))
-			sub_ctrl_hdl = &state->hdmi.ctrl_hdl;
-		else
-			sub_ctrl_hdl = &state->afe.ctrl_hdl;
-
-		ret = v4l2_g_ext_ctrls(sub_ctrl_hdl, &ctrls);
+		ret = v4l2_g_ext_ctrls(src->ctrl_handler, &ctrls);
 		if (ret < 0) {
 			adv_err(state, "%s: subdev link freq control failed\n",
 				tx->sd.name);
