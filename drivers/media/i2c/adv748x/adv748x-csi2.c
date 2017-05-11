@@ -246,6 +246,81 @@ static const struct v4l2_subdev_ops adv748x_csi2_ops = {
 	.pad = &adv748x_csi2_pad_ops,
 };
 
+/* -----------------------------------------------------------------------------
+ * Subdev module and controls
+ */
+
+static int adv748x_csi2_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct adv748x_csi2 *tx = container_of(ctrl->handler,
+					struct adv748x_csi2, ctrl_hdl);
+	struct adv748x_state *state = tx->state;
+
+	switch (ctrl->id) {
+	case V4L2_CID_PIXEL_RATE:
+	{
+		/* Direct control pass through */
+		struct v4l2_ctrl_handler *sub_ctrl_hdl;
+		struct v4l2_ext_controls ctrls;
+		struct v4l2_ext_control ectrl;
+		int ret;
+
+		memset(&ctrls, 0, sizeof(ctrls));
+		memset(&ectrl, 0, sizeof(ectrl));
+
+		ectrl.id = V4L2_CID_PIXEL_RATE;
+
+		ctrls.count = 1;
+		ctrls.controls = &ectrl;
+
+		/* TODO: Handle routing when supported */
+		if (is_txa(tx))
+			sub_ctrl_hdl = &state->hdmi.ctrl_hdl;
+		else
+			sub_ctrl_hdl = &state->afe.ctrl_hdl;
+
+		ret = v4l2_g_ext_ctrls(sub_ctrl_hdl, &ctrls);
+		if (ret < 0) {
+			adv_err(state, "%s: subdev link freq control failed\n",
+				tx->sd.name);
+			return ret;
+		}
+
+		*ctrl->p_new.p_s64 = ectrl.value64;
+
+		break;
+	}
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static const struct v4l2_ctrl_ops adv748x_csi2_ctrl_ops = {
+	.g_volatile_ctrl = adv748x_csi2_g_volatile_ctrl,
+};
+
+static int adv748x_csi2_init_controls(struct adv748x_csi2 *tx)
+{
+	struct v4l2_ctrl *ctrl;
+
+	v4l2_ctrl_handler_init(&tx->ctrl_hdl, 1);
+
+	ctrl = v4l2_ctrl_new_std(&tx->ctrl_hdl, &adv748x_csi2_ctrl_ops,
+				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
+	if (ctrl)
+		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
+
+	tx->sd.ctrl_handler = &tx->ctrl_hdl;
+	if (tx->ctrl_hdl.error) {
+		v4l2_ctrl_handler_free(&tx->ctrl_hdl);
+		return tx->ctrl_hdl.error;
+	}
+
+	return v4l2_ctrl_handler_setup(&tx->ctrl_hdl);
+}
+
 int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx)
 {
 	struct device_node *ep;
@@ -270,6 +345,10 @@ int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx)
 
 	ret = media_entity_pads_init(&tx->sd.entity, ADV748X_CSI2_NR_PADS,
 				     tx->pads);
+	if (ret)
+		return ret;
+
+	ret = adv748x_csi2_init_controls(tx);
 	if (ret)
 		return ret;
 
