@@ -162,7 +162,8 @@ struct adv748x_afe {
  * @dev:		(OF) device
  * @client:		I2C client
  * @mutex:		protect global state
- *
+ * @intrq1		INTRQ1 IRQ number
+ * @intrq2		INTRQ2 IRQ number
  * @endpoints:		parsed device node endpoints for each port
  *
  * @i2c_addresses	I2C Page addresses
@@ -178,6 +179,9 @@ struct adv748x_state {
 	struct device *dev;
 	struct i2c_client *client;
 	struct mutex mutex;
+
+	int intrq1;
+	int intrq2;
 
 	struct device_node *endpoints[ADV748X_PORT_MAX];
 

@@ -17,9 +17,11 @@
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/i2c.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of_graph.h>
+#include <linux/of_irq.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/v4l2-dv-timings.h>
@@ -681,6 +683,46 @@ static void adv748x_dt_cleanup(struct adv748x_state *state)
 		of_node_put(state->endpoints[i]);
 }
 
+static irqreturn_t adv748x_irq(int irq, void *devid)
+{
+	struct adv748x_state *state = devid;
+
+	adv_info(state, "Received an IRQ for IRQ %d\n", irq);
+
+	return IRQ_HANDLED;
+}
+
+static int adv748x_setup_irqs(struct adv748x_state *state)
+{
+	int ret;
+
+	state->intrq1 = of_irq_get_byname(state->dev->of_node, "intrq1");
+	state->intrq2 = of_irq_get_byname(state->dev->of_node, "intrq2");
+
+	adv_info(state, "IntRq1 = %d\n", state->intrq1);
+	adv_info(state, "IntRq2 = %d\n", state->intrq2);
+
+	if (state->intrq1 > 0) {
+		ret = devm_request_threaded_irq(state->dev, state->intrq1, NULL,
+					adv748x_irq,
+					IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+					KBUILD_MODNAME, state);
+		if (ret)
+			return ret;
+	}
+
+	if (state->intrq2 > 0) {
+		ret = devm_request_threaded_irq(state->dev, state->intrq2, NULL,
+					adv748x_irq,
+					IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+					KBUILD_MODNAME, state);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int adv748x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -733,6 +775,13 @@ static int adv748x_probe(struct i2c_client *client,
 	ret = adv748x_reset(state);
 	if (ret) {
 		adv_err(state, "Failed to reset hardware");
+		goto err_cleanup_clients;
+	}
+
+	/* Handle IRQ's */
+	ret = adv748x_setup_irqs(state);
+	if (ret) {
+		adv_err(state, "Failed to map IRQs");
 		goto err_cleanup_clients;
 	}
 
