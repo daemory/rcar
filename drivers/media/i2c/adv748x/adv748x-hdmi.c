@@ -406,6 +406,16 @@ static int adv748x_hdmi_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int adv748x_hdmi_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+{
+	return -EINVAL;
+}
+
+static int adv748x_hdmi_set_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+{
+	return -EINVAL;
+}
+
 static bool adv748x_hdmi_check_dv_timings(const struct v4l2_dv_timings *timings,
 					  void *hdl)
 {
@@ -438,6 +448,8 @@ static const struct v4l2_subdev_pad_ops adv748x_pad_ops_hdmi = {
 	.enum_mbus_code = adv748x_hdmi_enum_mbus_code,
 	.set_fmt = adv748x_hdmi_set_pad_format,
 	.get_fmt = adv748x_hdmi_get_pad_format,
+	.get_edid = adv748x_hdmi_get_edid,
+	.set_edid = adv748x_hdmi_set_edid,
 	.dv_timings_cap = adv748x_hdmi_dv_timings_cap,
 	.enum_dv_timings = adv748x_hdmi_enum_dv_timings,
 };
