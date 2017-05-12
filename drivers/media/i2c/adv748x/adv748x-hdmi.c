@@ -431,6 +431,78 @@ static int adv748x_hdmi_set_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int adv748x_hdmi_get_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+{
+	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
+
+	memset(edid->reserved, 0, sizeof(edid->reserved));
+
+	if (!hdmi->edid.present)
+		return -ENODATA;
+
+	if (edid->start_block == 0 && edid->blocks == 0) {
+		edid->blocks = hdmi->edid.blocks;
+		return 0;
+	}
+
+	if (edid->start_block >= hdmi->edid.blocks)
+		return -EINVAL;
+
+	if (edid->start_block + edid->blocks > hdmi->edid.blocks)
+		edid->blocks = hdmi->edid.blocks - edid->start_block;
+
+	memcpy(edid->edid, hdmi->edid.edid + edid->start_block * 128,
+			edid->blocks * 128);
+
+	return 0;
+}
+
+static int adv748x_hdmi_set_edid(struct v4l2_subdev *sd, struct v4l2_edid *edid)
+{
+	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
+
+	memset(edid->reserved, 0, sizeof(edid->reserved));
+
+	if (edid->start_block != 0)
+		return -EINVAL;
+
+	if (edid->blocks == 0) {
+		hdmi->edid.blocks = 0;
+		hdmi->edid.present = 0;
+
+		/* Fall back to a 16:9 aspect ratio */
+		hdmi->aspect_ratio.numerator = 16;
+		hdmi->aspect_ratio.denominator = 9;
+
+		return 0;
+	}
+
+	if (edid->blocks > 4) {
+		edid->blocks = 4;
+		return -E2BIG;
+	}
+
+	memcpy(hdmi->edid.edid, edid->edid, 128 * edid->blocks);
+	hdmi->edid.blocks = edid->blocks;
+	hdmi->edid.present = true;
+
+	hdmi->aspect_ratio = v4l2_calc_aspect_ratio(edid->edid[0x15],
+			edid->edid[0x16]);
+
+#if 0
+	// Do some magic to write the data to the hardware
+	err = edid_write_block(sd, 128 * edid->blocks, state->edid.edid);
+	if (err < 0) {
+		v4l2_err(sd, "error %d writing edid pad %d\n", err, edid->pad);
+		return err;
+	}
+#endif
+
+	return 0;
+}
+
 static bool adv748x_hdmi_check_dv_timings(const struct v4l2_dv_timings *timings,
 					  void *hdl)
 {
@@ -463,6 +535,8 @@ static const struct v4l2_subdev_pad_ops adv748x_pad_ops_hdmi = {
 	.enum_mbus_code = adv748x_hdmi_enum_mbus_code,
 	.set_fmt = adv748x_hdmi_set_pad_format,
 	.get_fmt = adv748x_hdmi_get_pad_format,
+	.get_edid = adv748x_hdmi_get_edid,
+	.set_edid = adv748x_hdmi_set_edid,
 	.dv_timings_cap = adv748x_hdmi_dv_timings_cap,
 	.enum_dv_timings = adv748x_hdmi_enum_dv_timings,
 };
@@ -659,11 +733,15 @@ static int adv748x_hdmi_init_controls(struct adv748x_hdmi *hdmi)
 int adv748x_hdmi_init(struct adv748x_hdmi *hdmi)
 {
 	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
-	static const struct v4l2_dv_timings cea720x480 =
-		V4L2_DV_BT_CEA_720X480I59_94;
+	static const struct v4l2_dv_timings cea1280x720 =
+		V4L2_DV_BT_CEA_1280X720P30;
 	int ret;
 
-	hdmi->timings = cea720x480;
+	hdmi->timings = cea1280x720;
+
+	/* Initialise a default 16:9 aspect ratio */
+	hdmi->aspect_ratio.numerator = 16;
+	hdmi->aspect_ratio.denominator = 9;
 
 	adv748x_subdev_init(&hdmi->sd, state, &adv748x_ops_hdmi,
 			    MEDIA_ENT_F_IO_DTV, "hdmi");
