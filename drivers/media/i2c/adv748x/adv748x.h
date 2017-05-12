@@ -12,6 +12,14 @@
  *	Koji Matsuoka <koji.matsuoka.xm@renesas.com>
  *	Niklas Söderlund <niklas.soderlund@ragnatech.se>
  *	Kieran Bingham <kieran.bingham@ideasonboard.com>
+ *
+ * The ADV748x range of receivers have the following configurations:
+ *
+ *                  Analog   HDMI  MHL  4-Lane  1-Lane
+ *                    In      In         CSI     CSI
+ *       ADV7480               X    X     X
+ *       ADV7481      X        X    X     X       X
+ *       ADV7482      X        X          X       X
  */
 
 #include <linux/i2c.h>
