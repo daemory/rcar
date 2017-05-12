@@ -115,6 +115,13 @@ struct adv748x_hdmi {
 	struct v4l2_subdev sd;
 
 	struct v4l2_dv_timings timings;
+	struct v4l2_fract aspect_ratio;
+
+	struct {
+		u8 edid[512];
+		u32 present;
+		unsigned int blocks;
+	} edid;
 };
 
 #define adv748x_ctrl_to_hdmi(ctrl) \
