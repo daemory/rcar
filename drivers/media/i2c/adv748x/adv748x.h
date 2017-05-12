@@ -39,7 +39,7 @@
 #define ADV748X_I2C_SDP			0x79	/* SDP Map */
 #define ADV748X_I2C_TXB			0x48	/* CSI-TXB Map */
 #define ADV748X_I2C_TXA			0x4A	/* CSI-TXA Map */
-#define ADV748X_I2C_WAIT		0xFE	/* Wait x mesec */
+#define ADV748X_I2C_WAIT		0xFE	/* Wait x msec */
 #define ADV748X_I2C_EOR			0xFF	/* End Mark */
 
 /**
