@@ -391,6 +391,30 @@ static int rcar_gen3_r8a7795_thermal_init(struct rcar_thermal_priv *priv)
 	return 0;
 }
 
+/* @@ transitional */
+static int rcar_gen3_r8a7797_thermal_init(struct rcar_thermal_priv *priv)
+{
+#if 0
+	unsigned long flags;
+	unsigned long reg_val;
+
+	spin_lock_irqsave(&priv->lock, flags);
+	rcar_thermal_write(priv, REG_GEN3_THCTR,  0x0);
+	udelay(1000);
+	rcar_thermal_write(priv, REG_GEN3_IRQCTL, 0x3F);
+	rcar_thermal_write(priv, REG_GEN3_IRQEN,
+			   IRQ_TEMP1_BIT | IRQ_TEMPD2_BIT);
+	rcar_thermal_write(priv, REG_GEN3_THCTR, CTCTL | THCNTSEN(BIT_LEN_12));
+	reg_val = rcar_thermal_read(priv, REG_GEN3_THCTR);
+	reg_val &= ~CTCTL;
+	reg_val |= THSST;
+	rcar_thermal_write(priv, REG_GEN3_THCTR, reg_val);
+
+	spin_unlock_irqrestore(&priv->lock, flags);
+#endif
+	return 0;
+}
+
 /*
  *		Interrupt
  */
@@ -472,10 +496,15 @@ static const struct rcar_thermal_data r8a7796_data = {
 	.thermal_init = rcar_gen3_r8a7796_thermal_init,
 };
 
+static const struct rcar_thermal_data r8a7797_data = {
+	.thermal_init = rcar_gen3_r8a7797_thermal_init,
+};
+
 static const struct of_device_id rcar_thermal_dt_ids[] = {
 	{ .compatible = "renesas,thermal-r8a7795", .data = &r8a7795_data},
 	{ .compatible = "renesas,thermal-r8a7796", .data = &r8a7796_data},
 	{ .compatible = "renesas,thermal-r8a77965", .data = &r8a7796_data},
+	{ .compatible = "renesas,thermal-r8a7797", .data = &r8a7797_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, rcar_thermal_dt_ids);

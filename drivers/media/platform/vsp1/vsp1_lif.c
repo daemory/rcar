@@ -13,6 +13,7 @@
 
 #include <linux/device.h>
 #include <linux/gfp.h>
+#include <linux/sys_soc.h>
 
 #include <media/v4l2-subdev.h>
 
@@ -22,6 +23,11 @@
 
 #define LIF_MIN_SIZE				2U
 #define LIF_MAX_SIZE				8190U
+
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
 
 /* -----------------------------------------------------------------------------
  * Device Access
@@ -145,7 +151,7 @@ static void lif_configure(struct vsp1_entity *entity,
 	format = vsp1_entity_get_pad_format(&lif->entity, lif->entity.config,
 					    LIF_PAD_SOURCE);
 
-	if (vsp1_gen3_vspdl_check(vsp1))
+	if (vsp1_gen3_vspdl_check(vsp1) || soc_device_match(r8a7797))
 		obth = 1500;
 	else
 		obth = 3000;
@@ -158,6 +164,10 @@ static void lif_configure(struct vsp1_entity *entity,
 			(obth << VI6_LIF_CTRL_OBTH_SHIFT) |
 			(format->code == 0 ? VI6_LIF_CTRL_CFMT : 0) |
 			VI6_LIF_CTRL_REQSEL | VI6_LIF_CTRL_LIF_EN);
+
+	if (soc_device_match(r8a7797))
+		vsp1_lif_write(lif, dl, VI6_LIF_LBA, VI6_LIF_LBA_LBA0 |
+						     VI6_LIF_LBA_LBA1);
 }
 
 static const struct vsp1_entity_operations lif_entity_ops = {

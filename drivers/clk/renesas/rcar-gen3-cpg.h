@@ -19,6 +19,8 @@ enum rcar_gen3_clk_types {
 	CLK_TYPE_GEN3_PLL3,
 	CLK_TYPE_GEN3_PLL4,
 	CLK_TYPE_GEN3_SD,
+	CLK_TYPE_GEN3_SD0,
+	CLK_TYPE_GEN3_SD0H,
 	CLK_TYPE_GEN3_R,
 	CLK_TYPE_GEN3_Z,
 	CLK_TYPE_GEN3_Z2,
@@ -29,6 +31,10 @@ enum rcar_gen3_clk_types {
 
 #define DEF_GEN3_SD(_name, _id, _parent, _offset)	\
 	DEF_BASE(_name, _id, CLK_TYPE_GEN3_SD, _parent, .offset = _offset)
+#define DEF_GEN3_SD0(_name, _id, _parent, _offset)	\
+	DEF_BASE(_name, _id, CLK_TYPE_GEN3_SD0, _parent, .offset = _offset)
+#define DEF_GEN3_SD0H(_name, _id, _parent, _offset)	\
+	DEF_BASE(_name, _id, CLK_TYPE_GEN3_SD0H, _parent, .offset = _offset)
 
 struct rcar_gen3_cpg_pll_config {
 	unsigned int extal_div;

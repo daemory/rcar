@@ -789,6 +789,12 @@
 #define VI6_LIF_CSBTH_LBTH_MASK		(0x7ff << 0)
 #define VI6_LIF_CSBTH_LBTH_SHIFT	0
 
+
+#define VI6_LIF_LBA			0x3b0c
+#define VI6_LIF_LBA_LBA0		(1 << 31)
+#define VI6_LIF_LBA_LBA1		(0x600 << 16)
+
+
 /* -----------------------------------------------------------------------------
  * Security Control Registers
  */
@@ -812,6 +818,7 @@
 #define VI6_IP_VERSION_MODEL_VSPBD_GEN3	(0x15 << 8)
 #define VI6_IP_VERSION_MODEL_VSPBC_GEN3	(0x16 << 8)
 #define VI6_IP_VERSION_MODEL_VSPD_GEN3	(0x17 << 8)
+#define VI6_IP_VERSION_MODEL_VSPD_V3M	(0x18 << 8)
 #define VI6_IP_VERSION_MODEL_VSPDL_GEN3	(0x19 << 8)
 
 #define VI6_IP_VERSION_SOC_MASK		(0xff << 0)

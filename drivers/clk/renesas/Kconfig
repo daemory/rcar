@@ -5,6 +5,7 @@ config CLK_RENESAS_CPG_MSSR
 	default y if ARCH_R8A7795
 	default y if ARCH_R8A7796
 	default y if ARCH_R8A77965
+	default y if ARCH_R8A7797
 
 config CLK_RENESAS_CPG_MSTP
 	bool

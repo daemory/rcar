@@ -26,6 +26,13 @@
 #include "renesas-cpg-mssr.h"
 #include "rcar-gen3-cpg.h"
 
+static spinlock_t cpg_lock;
+
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ /* sentinel */ }
+};
+
 #define CPG_PLL0CR		0x00d8
 #define CPG_PLL2CR		0x002c
 #define CPG_PLL4CR		0x01f4
@@ -228,7 +235,10 @@ static unsigned long cpg_z2_clk_recalc_rate(struct clk_hw *hw,
 	unsigned int val;
 	unsigned long rate;
 
-	val = (clk_readl(zclk->reg) & CPG_FRQCRC_Z2FC_MASK);
+	if (!soc_device_match(r8a7797))
+		val = (clk_readl(zclk->reg) & CPG_FRQCRC_Z2FC_MASK);
+	else
+		val = 0;
 	mult = 32 - val;
 
 	rate = div_u64((u64)parent_rate * mult + 16, 32);
@@ -371,6 +381,11 @@ static int cpg_z2_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 	unsigned int mult;
 	u32 val, kick;
 	unsigned int i;
+
+	if (soc_device_match(r8a7797)){
+		pr_info("Do not support V3M's Z2 clock changing\n");
+		return 0;
+	}
 
 	mult = div_u64((u64)rate * 32 + parent_rate/2, parent_rate);
 	mult = clamp(mult, 1U, 32U);
@@ -566,6 +581,19 @@ static struct clk * __init cpg_zg_clk_register(const char *name,
 /*
  * SDn Clock
  */
+/* SDHI divisors */
+static const struct clk_div_table cpg_sdh_div_table[] = {
+	{  0,  2 }, {  1,  3 }, {  2,  4 }, {  3,  6 },
+	{  4,  8 }, {  5, 12 }, {  6, 16 }, {  7, 18 },
+	{  8, 24 }, { 10, 36 }, { 11, 48 }, {  0,  0 },
+};
+
+static const struct clk_div_table cpg_sd01_div_table[] = {
+	{  4,  8 },
+	{  5, 12 }, {  6, 16 }, {  7, 18 }, {  8, 24 },
+	{ 10, 36 }, { 11, 48 }, { 12, 10 }, {  0,  0 },
+};
+
 #define CPG_SD_STP_HCK		BIT(9)
 #define CPG_SD_STP_CK		BIT(8)
 
@@ -864,6 +892,14 @@ struct clk * __init rcar_gen3_cpg_clk_register(struct device *dev,
 	case CLK_TYPE_GEN3_SD:
 		return cpg_sd_clk_register(core, base, __clk_get_name(parent));
 
+	case CLK_TYPE_GEN3_SD0:
+		return clk_register_divider_table(NULL, core->name, __clk_get_name(parent), 0, base + 0x0074,
+						4, 4,0, cpg_sd01_div_table, &cpg_lock);
+
+	case CLK_TYPE_GEN3_SD0H:
+		return clk_register_divider_table(NULL, core->name, __clk_get_name(parent), 0, base + 0x0074,
+						8, 4,0, cpg_sdh_div_table, &cpg_lock);
+
 	case CLK_TYPE_GEN3_RINT:
 		div = cpg_pll_config->rint;
 		break;
@@ -917,5 +953,8 @@ int __init rcar_gen3_cpg_init(const struct rcar_gen3_cpg_pll_config *config,
 	if (attr)
 		cpg_quirks = (uintptr_t)attr->data;
 	pr_debug("%s: mode = 0x%x quirks = 0x%x\n", __func__, mode, cpg_quirks);
+
+	spin_lock_init(&cpg_lock);
+
 	return 0;
 }

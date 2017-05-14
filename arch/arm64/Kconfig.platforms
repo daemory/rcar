@@ -166,6 +166,12 @@ config ARCH_R8A77965
 	help
 	  This enables support for the Renesas R-Car M3N SoC.
 
+config ARCH_R8A7797
+	bool "Renesas R-Car V3M SoC Platform"
+	depends on ARCH_RENESAS
+	help
+	  This enables support for the Renesas R-Car V3M SoC.
+
 config ARCH_STRATIX10
 	bool "Altera's Stratix 10 SoCFPGA Family"
 	help

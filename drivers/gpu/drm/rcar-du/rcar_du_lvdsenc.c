@@ -17,11 +17,17 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/sys_soc.h>
 
 #include "rcar_du_drv.h"
 #include "rcar_du_encoder.h"
 #include "rcar_du_lvdsenc.h"
 #include "rcar_lvds_regs.h"
+
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
 
 struct rcar_du_lvdsenc {
 	struct rcar_du_device *dev;
@@ -96,14 +102,25 @@ static void rcar_du_lvdsenc_start_gen3(struct rcar_du_lvdsenc *lvds,
 	u32 pllcr;
 
 	/* PLL clock configuration */
-	if (freq < 42000)
-		pllcr = LVDPLLCR_PLLDIVCNT_42M;
-	else if (freq < 85000)
-		pllcr = LVDPLLCR_PLLDIVCNT_85M;
-	else if (freq < 128000)
-		pllcr = LVDPLLCR_PLLDIVCNT_128M;
-	else
-		pllcr = LVDPLLCR_PLLDIVCNT_148M;
+	if (soc_device_match(r8a7797)) {
+		if (freq < 39000)
+			pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_38M;
+		else if (freq < 61000)
+			pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_60M;
+		else if (freq < 121000)
+			pllcr = LVDPLLCR_CEEN | LVDPLLCR_COSEL | LVDPLLCR_PLLDLYCNT_121M;
+		else
+			pllcr = LVDPLLCR_PLLDLYCNT_150M;
+	} else {
+		if (freq < 42000)
+			pllcr = LVDPLLCR_PLLDIVCNT_42M;
+		else if (freq < 85000)
+			pllcr = LVDPLLCR_PLLDIVCNT_85M;
+		else if (freq < 128000)
+			pllcr = LVDPLLCR_PLLDIVCNT_128M;
+		else
+			pllcr = LVDPLLCR_PLLDIVCNT_148M;
+	}
 
 	rcar_lvds_write(lvds, LVDPLLCR, pllcr);
 
@@ -122,6 +139,11 @@ static void rcar_du_lvdsenc_start_gen3(struct rcar_du_lvdsenc *lvds,
 
 	lvdcr0 |= LVDCR0_PWD;
 	rcar_lvds_write(lvds, LVDCR0, lvdcr0);
+
+	if (soc_device_match(r8a7797)) {
+		lvdcr0 |= LVDCR0_LVEN;
+		rcar_lvds_write(lvds, LVDCR0, lvdcr0);
+	}
 
 	usleep_range(100, 150);
 

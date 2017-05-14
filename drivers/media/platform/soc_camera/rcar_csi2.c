@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <linux/module.h>
+#include <linux/sys_soc.h>
 
 #include <media/rcar_csi2.h>
 #include <media/soc_camera.h>
@@ -153,6 +154,11 @@
 #define RCAR_CSI2_INTSTATE_ERRSYNCESC		(1 << 1)
 #define RCAR_CSI2_INTSTATE_ERRCONTROL		(1 << 0)
 
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
+
 enum chip_id {
 	RCAR_GEN3,
 	RCAR_GEN2,
@@ -248,6 +254,17 @@ struct rcar_csi2 {
 
 static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 {
+	const uint32_t const hs_freq_range_v3m[43] = {
+		0x00, 0x00, 0x20, 0x40, 0x02,	/* 80M, 90M, 100M, 110M, 120M */
+		0x02, 0x22, 0x42, 0x04, 0x04,	/* 130M, 140M, 150M, 160M, 170M */
+		0x24, 0x44, 0x44, 0x06, 0x26,	/* 180M, 190M, 205M, 220M, 235M */
+		0x46, 0x08, 0x28, 0x0a, 0x2a,	/* 250M, 270M, 300M, 325M, 350M */
+		0x4a, 0x4a, 0x4a, 0x4a, 0x4a,	/* 400M, 450M, 500M, 550M, 600M */
+		0x10, 0x30, 0x12, 0x32, 0x52,	/* 650M, 700M, 750M, 800M, 950M */
+		0x72, 0x14, 0x34, 0x52, 0x74,	/* 900M, 950M, 1000M, 1050M, 1100M */
+		0x16, 0x36, 0x56, 0x76, 0x18,	/* 1150M, 1200M, 1250M, 1300M, 1350M */
+		0x38, 0x58, 0x78		/* 1400M, 1450M, 1500M */
+	};
 	const uint32_t const hs_freq_range[43] = {
 		0x00, 0x10, 0x20, 0x30, 0x01,  /* 0-4   */
 		0x11, 0x21, 0x31, 0x02, 0x12,  /* 5-9   */
@@ -304,7 +321,12 @@ static int rcar_csi2_set_phy_freq(struct rcar_csi2 *priv)
 
 	dev_dbg(&priv->pdev->dev, "bps_per_lane (%d)\n", bps_per_lane);
 
-	iowrite32((hs_freq_range[bps_per_lane] << 16),
+	if (soc_device_match(r8a7797))
+		iowrite32((hs_freq_range_v3m[bps_per_lane] << 16) |
+				RCAR_CSI2_PHTW_DWEN | RCAR_CSI2_PHTW_CWEN | 0x44,
+				priv->base + RCAR_CSI2_PHTW);
+	else
+		iowrite32(hs_freq_range[bps_per_lane] << 16,
 				priv->base + RCAR_CSI2_PHYPLL);
 	return 0;
 
@@ -488,6 +510,7 @@ static struct v4l2_subdev_ops rcar_csi2_subdev_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_csi2_of_table[] = {
+	{ .compatible = "renesas,r8a7797-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7796-csi2", .data = (void *)RCAR_GEN3 },
 	{ .compatible = "renesas,r8a7795-csi2", .data = (void *)RCAR_GEN3 },
 	{ },
@@ -496,6 +519,7 @@ MODULE_DEVICE_TABLE(of, rcar_csi2_of_table);
 #endif
 
 static struct platform_device_id rcar_csi2_id_table[] = {
+	{ "r8a7797-csi2",  RCAR_GEN3 },
 	{ "r8a7796-csi2",  RCAR_GEN3 },
 	{ "r8a7795-csi2",  RCAR_GEN3 },
 	{},

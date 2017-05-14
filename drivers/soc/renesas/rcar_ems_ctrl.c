@@ -24,10 +24,16 @@
 #include <linux/pm_runtime.h>
 #include <linux/spinlock.h>
 #include <linux/thermal.h>
+#include <linux/sys_soc.h>
 
 #include <linux/soc/renesas/rcar_ems_ctrl.h>
 
 #define EMS_THERMAL_ZONE_MAX	10
+
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
 
 static void rcar_ems_monitor(struct work_struct *ws);
 static DECLARE_DELAYED_WORK(rcar_ems_monitor_work, rcar_ems_monitor);
@@ -268,6 +274,10 @@ static int __init rcar_ems_cpu_shutdown_init(void)
 
 	for_each_online_cpu(cpu) {
 		tmp_node  = of_get_cpu_node(cpu, NULL);
+		if (soc_device_match(r8a7797)) {
+			if (!of_device_is_compatible(tmp_node, "arm,cortex-a53"))
+				continue;
+		}
 		if (!of_device_is_compatible(tmp_node, "arm,cortex-a57"))
 			continue;
 		for (i = 0; i < total_target_cpu; i++) {

@@ -288,6 +288,7 @@ extern const struct sh_pfc_soc_info r8a7795_pinmux_info;
 extern const struct sh_pfc_soc_info r8a7795_es1_pinmux_info;
 extern const struct sh_pfc_soc_info r8a7796_pinmux_info;
 extern const struct sh_pfc_soc_info r8a77965_pinmux_info;
+extern const struct sh_pfc_soc_info r8a7797_pinmux_info;
 extern const struct sh_pfc_soc_info sh7203_pinmux_info;
 extern const struct sh_pfc_soc_info sh7264_pinmux_info;
 extern const struct sh_pfc_soc_info sh7269_pinmux_info;
@@ -393,6 +394,11 @@ extern const struct sh_pfc_soc_info shx3_pinmux_info;
 	PORT_GP_CFG_1(bank, 3,  fn, sfx, cfg)
 #define PORT_GP_4(bank, fn, sfx)	PORT_GP_CFG_4(bank, fn, sfx, 0)
 
+#define PORT_GP_CFG_6(bank, fn, sfx, cfg)				\
+	PORT_GP_CFG_4(bank, fn, sfx, cfg),				\
+	PORT_GP_CFG_1(bank, 4,  fn, sfx, cfg), PORT_GP_CFG_1(bank, 5,  fn, sfx, cfg)
+#define PORT_GP_6(bank, fn, sfx)	PORT_GP_CFG_6(bank, fn, sfx, 0)
+
 #define PORT_GP_CFG_8(bank, fn, sfx, cfg)				\
 	PORT_GP_CFG_4(bank, fn, sfx, cfg),				\
 	PORT_GP_CFG_1(bank, 4,  fn, sfx, cfg),				\
@@ -438,6 +444,12 @@ extern const struct sh_pfc_soc_info shx3_pinmux_info;
 	PORT_GP_CFG_17(bank, fn, sfx, cfg),				\
 	PORT_GP_CFG_1(bank, 17, fn, sfx, cfg)
 #define PORT_GP_18(bank, fn, sfx)	PORT_GP_CFG_18(bank, fn, sfx, 0)
+
+#define PORT_GP_CFG_22(bank, fn, sfx, cfg)				\
+	PORT_GP_CFG_18(bank, fn, sfx, cfg),				\
+	PORT_GP_CFG_1(bank, 18, fn, sfx, cfg), PORT_GP_CFG_1(bank, 19, fn, sfx, cfg),	\
+	PORT_GP_CFG_1(bank, 20, fn, sfx, cfg), PORT_GP_CFG_1(bank, 21, fn, sfx, cfg)
+#define PORT_GP_22(bank, fn, sfx)	PORT_GP_CFG_22(bank, fn, sfx, 0)
 
 #define PORT_GP_CFG_23(bank, fn, sfx, cfg)				\
 	PORT_GP_CFG_18(bank, fn, sfx, cfg),				\

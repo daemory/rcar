@@ -29,10 +29,16 @@
 
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/sys_soc.h>
 
 #include "rcar_du_drv.h"
 #include "rcar_du_group.h"
 #include "rcar_du_regs.h"
+
+static const struct soc_device_attribute r8a7797[] = {
+	{ .soc_id = "r8a7797" },
+	{ }
+};
 
 u32 rcar_du_group_read(struct rcar_du_group *rgrp, u32 reg)
 {
@@ -155,8 +161,10 @@ static void rcar_du_group_setup(struct rcar_du_group *rgrp)
 
 	/* Apply planes to CRTCs association. */
 	mutex_lock(&rgrp->lock);
-	rcar_du_group_write(rgrp, DPTSR, (rgrp->dptsr_planes << 16) |
-			    rgrp->dptsr_planes);
+	if (!soc_device_match(r8a7797))
+		rcar_du_group_write(rgrp, DPTSR, (rgrp->dptsr_planes << 16) |
+				    rgrp->dptsr_planes);
+
 	mutex_unlock(&rgrp->lock);
 }
 
