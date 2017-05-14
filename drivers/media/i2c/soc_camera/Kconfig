@@ -6,6 +6,53 @@ config SOC_CAMERA_IMX074
 	help
 	  This driver supports IMX074 cameras from Sony
 
+config SOC_CAMERA_MAX9286_MAX9271
+	tristate "max9286-max9271 GMSL support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a MAXIM max9286-max9271 GMSL driver
+
+config SOC_CAMERA_OV106XX
+	tristate "ov106xx camera support"
+	depends on SOC_CAMERA && SOC_CAMERA_MAX9286_MAX9271 && I2C
+	help
+	  This is a runtime detected OmniVision ov10635 or ov490-ov10640
+	  or ov495-ov2775 sensors camera driver
+
+if !SOC_CAMERA_OV106XX
+
+config SOC_CAMERA_OV10635
+	tristate "ov10635 camera support"
+	depends on SOC_CAMERA && SOC_CAMERA_MAX9286_MAX9271 && I2C
+	help
+	  This is an OmniVision ov10635 sensor camera driver
+
+config SOC_CAMERA_OV490_OV10640
+	tristate "ov490-ov10640 camera support"
+	depends on SOC_CAMERA && SOC_CAMERA_MAX9286_MAX9271 && I2C
+	help
+	  This is an OmniVision ov490-ov10640 sensor camera driver
+
+config SOC_CAMERA_OV495_OV2775
+	tristate "ov495-ov2775 camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an OmniVision ov495-ov2775 sensor camera driver
+
+endif
+
+config SOC_CAMERA_TI964_TI9X3
+	tristate "ti964-ti9x3 FPDLinkIII support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an Texas Instruments ti964-ti9X3 FPDLinkIII driver
+
+config SOC_CAMERA_TI954_TI9X3
+	tristate "ti954-ti9X3 FPDLinkIII support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an Texas Instruments ti954-ti9X3 FPDLinkIII driver
+
 config SOC_CAMERA_MT9M001
 	tristate "mt9m001 support"
 	depends on SOC_CAMERA && I2C
