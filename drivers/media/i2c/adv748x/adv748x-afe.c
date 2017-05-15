@@ -475,6 +475,10 @@ static int adv748x_afe_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_PIXEL_RATE:
+		/*
+		 * TODO: Convert to non volatile control with updates through
+		 * v4l2_ctrl_s_ctrl_int64() instead.
+		 */
 		width = 720;
 		if (afe->curr_norm == V4L2_STD_ALL)
 			adv748x_afe_status(afe, NULL,  &std);

@@ -561,6 +561,11 @@ static int adv748x_hdmi_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		struct v4l2_dv_timings timings;
 		struct v4l2_bt_timings *bt = &timings.bt;
 
+		/*
+		 * TODO: Convert to non volatile control with updates through
+		 * v4l2_ctrl_s_ctrl_int64() instead.
+		 */
+
 		adv748x_hdmi_query_dv_timings(&hdmi->sd, &timings);
 
 		width = bt->width;
