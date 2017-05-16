@@ -127,14 +127,18 @@ static int v4l2_async_test_notify(struct v4l2_async_notifier *notifier,
 
 	if (notifier->bound) {
 		ret = notifier->bound(notifier, sd, asd);
-		if (ret < 0)
+		if (ret < 0) {
+			printk("notifier->bound failed %d", ret);
 			return ret;
+		}
 	}
 
 	ret = v4l2_device_register_subdev(notifier->v4l2_dev, sd);
 	if (ret < 0) {
 		if (notifier->unbind)
 			notifier->unbind(notifier, sd, asd);
+		printk("Register subdev failed:%d for %s (v4l2_dev %p)\n",
+				ret, sd->name, notifier->v4l2_dev);
 		return ret;
 	}
 
@@ -219,6 +223,7 @@ static int v4l2_async_do_notifier_register(struct v4l2_device *v4l2_dev,
 
 			ret = v4l2_async_test_notify(notifier, sd, asd);
 			if (ret < 0) {
+				printk("test_notify failed %d\n", ret);
 				if (!subnotifier)
 					mutex_unlock(&list_lock);
 				return ret;
