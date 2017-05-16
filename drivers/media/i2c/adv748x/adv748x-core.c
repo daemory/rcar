@@ -699,6 +699,8 @@ static int adv748x_probe(struct i2c_client *client,
 		goto err_free_txa;
 	}
 
+	adv_info(state, "Registered ADV748x");
+
 	return 0;
 
 err_free_txa:
