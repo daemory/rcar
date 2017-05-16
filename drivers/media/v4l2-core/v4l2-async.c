@@ -41,14 +41,26 @@ static bool match_devname(struct v4l2_subdev *sd,
 	return !strcmp(asd->match.device_name.name, dev_name(sd->dev));
 }
 
+static bool match_of(struct device_node *a, struct device_node *b)
+{
+	return !of_node_cmp(of_node_full_name(a), of_node_full_name(b));
+}
+
 static bool match_fwnode(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 {
-	if (!is_of_node(sd->fwnode) || !is_of_node(asd->match.fwnode.fwnode))
-		return sd->fwnode == asd->match.fwnode.fwnode;
+	struct device_node *sdnode;
+	struct fwnode_handle *async_device;
 
-	return !of_node_cmp(of_node_full_name(to_of_node(sd->fwnode)),
-			    of_node_full_name(
-				    to_of_node(asd->match.fwnode.fwnode)));
+	async_device = fwnode_graph_get_port_parent(asd->match.fwnode.fwnode);
+
+	if (!is_of_node(sd->fwnode) || !is_of_node(asd->match.fwnode.fwnode))
+		return sd->fwnode == asd->match.fwnode.fwnode ||
+		       sd->fwnode == async_device;
+
+	sdnode = to_of_node(sd->fwnode);
+
+	return match_of(sdnode, to_of_node(asd->match.fwnode.fwnode)) ||
+	       match_of(sdnode, to_of_node(async_device));
 }
 
 static bool match_custom(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
