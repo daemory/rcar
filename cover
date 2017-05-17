@@ -1,6 +1,6 @@
-RFC: ADV748x HDMI/Analog video receiver
+ADV748x HDMI/Analog video receiver
 
-This is an RFC for the Analog Devices ADV748x driver, and follows on from a
+This is a driver for the Analog Devices ADV748x device, and follows on from a
 previous posting by Niklas Söderlund [0] of an earlier incarnation of this
 driver.
 
@@ -14,10 +14,11 @@ Aside from a few bug fixes, and considerable refactoring this driver:
 These patches are based up on Niklas' pending RVin work [1] and Sakari's fwnode
 series [2]
 
-TLDR:
- This series uses the fwnode for the 'endpoint' as a matching for the async
- notifier framework.  If accepted, I propose changing all async notifier users
- to use this method of matching, rather than the fwnode of the root device node
+This version sees lots of review comments addressed from previous reviews, and
+the removal of the async notifiers to register the AFE/HDMI entities (which was
+functional - but overkill)
+
+Updates to the core to support matching will be provided in a separate series
 
 ADV748x
 =======
@@ -43,8 +44,8 @@ those are used for async matching of the CSI2 (TXA/TXB) entities in the master
 driver. The HDMI and AFE entities are then registered after a successful
 registration of both the CSI2 entities.
 
-(Known) Todo's
-==============
+(Known) Future Todo's
+=====================
 
 Further potential development areas include:
  - ADV7480 Support (No AFE)
@@ -53,34 +54,10 @@ Further potential development areas include:
  - CEC Support
  - Configurable I2C addressing
  - Interrupt handling for format changes and hotplug detect.
- - Entity locking, rather than global state locking
-   - Including making sure the I2C paths are serialised correctly!
 
 However, this driver and series is functional without the above, though if
 there are mandatory areas which block mainline integration please let me know
 and I will prioritise that in development.
-
-I appreciate that there are still some 'rough edges' in the driver, which is
-still under development, but all comments are welcome.
-
-Discussion Topics
-=================
-
-Async Subdev endpoint matching
-
-   This series sets the subdevice fwnode in adv748x_csi2_probe() as the handle
-   to the endpoint for the specific port used to map the phandles.
-
-   This differs to the standard/default use of the device fwnode.
-
-   This change is required as we have 2 CSI entities which must be matched
-   based on their endpoint and port from the same device-tree device.
-
-   The RVin driver is thus modified not to register it's notifier to look for
-   phandle endpoint, rather than the endpoints port parent.
-
-   This is a critical change, and if deemed the 'correct' way forward, I would
-   propose changing all users of the async framework to use this matching.
 
 References
 ==========
