@@ -23,6 +23,9 @@ And of course ideas on anything that could be done generically to support other
 targets as well would be worth considering - though currently this
 implementation is very RCar/VSP1 specific.
 
+v4:
+ - Fixed gcc 4.9.0 warnings - use memset to clear rwpf->mem
+
 v3:
  - Rebased to v4.12-rc1
 
