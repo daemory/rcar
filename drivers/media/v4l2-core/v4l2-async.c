@@ -59,6 +59,15 @@ static bool match_fwnode(struct v4l2_subdev *sd, struct v4l2_async_subdev *asd)
 
 	sdnode = to_of_node(sd->fwnode);
 
+	printk("Local: %s\nRemote %s\nAsync Parent %s\n",
+			of_node_full_name(sdnode),
+			of_node_full_name(to_of_node(asd->match.fwnode.fwnode)),
+			of_node_full_name(to_of_node(async_device)));
+
+	if (match_of(sdnode, to_of_node(asd->match.fwnode.fwnode)) ||
+	    match_of(sdnode, to_of_node(async_device)))
+		printk("Matched");
+
 	return match_of(sdnode, to_of_node(asd->match.fwnode.fwnode)) ||
 	       match_of(sdnode, to_of_node(async_device));
 }

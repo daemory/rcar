@@ -244,7 +244,8 @@ int adv748x_csi2_probe(struct adv748x_state *state, struct adv748x_csi2 *tx)
 			is_txa(tx) ? "txa" : "txb");
 
 	/* Ensure that matching is based upon the endpoint fwnodes */
-	tx->sd.fwnode = of_fwnode_handle(ep);
+	if (!is_txa(tx))
+		tx->sd.fwnode = of_fwnode_handle(ep);
 
 	/* Register internal ops for incremental subdev registration */
 	tx->sd.internal_ops = &adv748x_csi2_internal_ops;
