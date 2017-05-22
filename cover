@@ -5,7 +5,7 @@ Hello,
 This patch series fixes the rcar-du-drm driver to support VSP plane sources
 with an IOMMU. It is available for convenience at
 
-        git://linuxtv.org/pinchartl/media.git iommu/devel/du
+  git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git vsp-du/iommu-fcp
 
 On R-Car Gen3 the DU has no direct memory access but sources planes through
 VSP instances. When an IOMMU is inserted between the VSP and memory, the DU
@@ -70,29 +70,3 @@ is connected to use an IOMMU (possibly through FCP devices).
 
 [1] https://www.mail-archive.com/linux-renesas-soc@vger.kernel.org/msg06589.html
 [2] https://www.spinics.net/lists/arm-kernel/msg581410.html
-
-Laurent Pinchart (4):
-  v4l: rcar-fcp: Don't get/put module reference
-  v4l: rcar-fcp: Add an API to retrieve the FCP device
-  v4l: vsp1: Add API to map and unmap DRM buffers through the VSP
-  drm: rcar-du: Map memory through the VSP device
-
-Magnus Damm (1):
-  v4l: vsp1: Map the DL and video buffers through the proper bus master
-
- drivers/gpu/drm/rcar-du/rcar_du_vsp.c    | 74 +++++++++++++++++++++++++++++---
- drivers/gpu/drm/rcar-du/rcar_du_vsp.h    |  2 +
- drivers/media/platform/rcar-fcp.c        | 17 ++++----
- drivers/media/platform/vsp1/vsp1.h       |  1 +
- drivers/media/platform/vsp1/vsp1_dl.c    |  4 +-
- drivers/media/platform/vsp1/vsp1_drm.c   | 25 +++++++++++
- drivers/media/platform/vsp1/vsp1_drv.c   |  9 ++++
- drivers/media/platform/vsp1/vsp1_video.c |  2 +-
- include/media/rcar-fcp.h                 |  5 +++
- include/media/vsp1.h                     |  3 ++
- 10 files changed, 124 insertions(+), 18 deletions(-)
-
---
-Regards,
-
-Laurent Pinchart
