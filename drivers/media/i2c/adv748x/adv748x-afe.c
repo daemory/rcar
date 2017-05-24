@@ -557,7 +557,8 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 	afe->streaming = false;
 	afe->curr_norm = V4L2_STD_ALL;
 
-	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops, "afe");
+	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops,
+			    MEDIA_ENT_F_ATV_DECODER, "afe");
 
 	for (i = ADV748X_AFE_SINK_AIN0; i <= ADV748X_AFE_SINK_AIN7; i++)
 		afe->pads[i].flags = MEDIA_PAD_FL_SINK;

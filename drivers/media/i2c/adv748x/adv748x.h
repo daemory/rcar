@@ -193,7 +193,8 @@ int adv748x_write(struct adv748x_state *state, u8 addr, u8 reg, u8 value);
 #define txb_clrset(s, r, m, v) txb_write(s, r, (txb_read(s, r) & ~m) | v)
 
 void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
-		const struct v4l2_subdev_ops *ops, const char *ident);
+			 const struct v4l2_subdev_ops *ops, u32 function,
+			 const char *ident);
 
 int adv748x_register_subdevs(struct adv748x_state *state,
 			     struct v4l2_device *v4l2_dev);

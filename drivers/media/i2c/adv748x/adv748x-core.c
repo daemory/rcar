@@ -444,7 +444,8 @@ static int adv748x_identify_chip(struct adv748x_state *state)
  */
 
 void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
-		const struct v4l2_subdev_ops *ops, const char *ident)
+			 const struct v4l2_subdev_ops *ops, u32 function,
+			 const char *ident)
 {
 	v4l2_subdev_init(sd, ops);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -461,7 +462,7 @@ void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 		i2c_adapter_id(state->client->adapter),
 		state->client->addr, ident);
 
-	sd->entity.function = MEDIA_ENT_F_ATV_DECODER;
+	sd->entity.function = function;
 	sd->entity.ops = &adv748x_media_ops;
 }
 

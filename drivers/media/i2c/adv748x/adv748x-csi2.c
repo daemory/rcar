@@ -258,7 +258,8 @@ int adv748x_csi2_init(struct adv748x_state *state, struct adv748x_csi2 *tx)
 	}
 
 	adv748x_subdev_init(&tx->sd, state, &adv748x_csi2_ops,
-			is_txa(tx) ? "txa" : "txb");
+			    MEDIA_ENT_F_IO_V4L,
+			    is_txa(tx) ? "txa" : "txb");
 
 	/* Ensure that matching is based upon the endpoint fwnodes */
 	tx->sd.fwnode = of_fwnode_handle(ep);
