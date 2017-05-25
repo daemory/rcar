@@ -130,6 +130,7 @@ struct adv748x_afe {
 
 	bool streaming;
 	v4l2_std_id curr_norm;
+	unsigned int input;
 };
 
 #define adv748x_ctrl_to_afe(ctrl) \
@@ -173,6 +174,11 @@ struct adv748x_state {
 #define adv_err(a, fmt, arg...)	dev_err(a->dev, fmt, ##arg)
 #define adv_info(a, fmt, arg...) dev_info(a->dev, fmt, ##arg)
 #define adv_dbg(a, fmt, arg...)	dev_dbg(a->dev, fmt, ##arg)
+
+/* Register Mappings */
+
+/* SDP Main Map */
+#define ADV748X_SDP_INSEL		0x00
 
 /* Register handling */
 int adv748x_read(struct adv748x_state *state, u8 addr, u8 reg);

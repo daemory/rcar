@@ -321,9 +321,6 @@ static const struct adv748x_reg_value adv748x_init_txa_4lane[] = {
 	{ADV748X_I2C_EOR, 0xff, 0xff}	/* End of register table */
 };
 
-/* TODO:KPB: Need to work out how to provide AFE port select! More entities? */
-#define ADV748X_SDP_INPUT_CVBS_AIN8 0x07
-
 /* 02-01 Analog CVBS to MIPI TX-B CSI 1-Lane - */
 /* Autodetect CVBS Single Ended In Ain 1 - MIPI Out */
 static const struct adv748x_reg_value adv748x_init_txb_1lane[] = {
@@ -335,8 +332,8 @@ static const struct adv748x_reg_value adv748x_init_txb_1lane[] = {
 
 	{ADV748X_I2C_SDP, 0x0f, 0x00}, /* Exit Power Down Mode */
 	{ADV748X_I2C_SDP, 0x52, 0xcd},/* ADI Required Write */
-	/* TODO: do not use hard codeded INSEL */
-	{ADV748X_I2C_SDP, 0x00, ADV748X_SDP_INPUT_CVBS_AIN8},
+
+	{ADV748X_I2C_SDP, ADV748X_SDP_INSEL, 0x07},
 	{ADV748X_I2C_SDP, 0x0e, 0x80},	/* ADI Required Write */
 	{ADV748X_I2C_SDP, 0x9c, 0x00},	/* ADI Required Write */
 	{ADV748X_I2C_SDP, 0x9c, 0xff},	/* ADI Required Write */
