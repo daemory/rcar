@@ -172,6 +172,13 @@ static int adv748x_afe_set_video_standard(struct adv748x_state *state,
 	return 0;
 }
 
+static int adv748x_afe_s_input(struct adv748x_afe *afe, unsigned int input)
+{
+	struct adv748x_state *state = adv748x_afe_to_state(afe);
+
+	return sdp_write(state, ADV748X_SDP_INSEL, input);
+}
+
 static int adv748x_afe_g_pixelaspect(struct v4l2_subdev *sd,
 				     struct v4l2_fract *aspect)
 {
@@ -284,6 +291,13 @@ static int adv748x_afe_s_stream(struct v4l2_subdev *sd, int enable)
 	int ret, signal = V4L2_IN_ST_NO_SIGNAL;
 
 	mutex_lock(&state->mutex);
+
+	if (enable) {
+		/* How about 0-indexes all round on the AIN's */
+		ret = adv748x_afe_s_input(afe, afe->input - 1);
+		if (ret)
+			goto unlock;
+	}
 
 	ret = adv748x_txb_power(state, enable);
 	if (ret)
@@ -554,12 +568,24 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 	int ret;
 	unsigned int i;
 
+	afe->input = 0;
 	afe->streaming = false;
 	afe->curr_norm = V4L2_STD_ALL;
 
 	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops,
 			    MEDIA_ENT_F_ATV_DECODER, "afe");
 
+	/* Identify the first connector found as a default input if set */
+	for (i = ADV748X_PORT_AIN1; i <= ADV748X_PORT_AIN8; i++) {
+		/* Inputs and ports are 1-indexed to match the data sheet */
+		if (state->endpoints[i]) {
+			afe->input = i;
+			break;
+		}
+	}
+	adv_dbg(state, "AFE Default input set to %d\n", afe->input);
+
+	/* Entity pads and sinks are 0-indexed to match the pads */
 	for (i = ADV748X_AFE_SINK_AIN0; i <= ADV748X_AFE_SINK_AIN7; i++)
 		afe->pads[i].flags = MEDIA_PAD_FL_SINK;
 
