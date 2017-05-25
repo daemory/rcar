@@ -287,7 +287,7 @@ static int adv748x_afe_s_stream(struct v4l2_subdev *sd, int enable)
 
 	ret = adv748x_txb_power(state, enable);
 	if (ret)
-		goto error;
+		goto unlock;
 
 	afe->streaming = enable;
 
@@ -297,7 +297,7 @@ static int adv748x_afe_s_stream(struct v4l2_subdev *sd, int enable)
 	else
 		adv_dbg(state, "Couldn't detect SDP video signal\n");
 
-error:
+unlock:
 	mutex_unlock(&state->mutex);
 
 	return ret;
