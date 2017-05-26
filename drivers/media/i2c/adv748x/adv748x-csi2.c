@@ -34,6 +34,41 @@ static struct v4l2_subdev *adv748x_csi2_get_source_sd(struct adv748x_csi2 *tx)
 	return media_entity_to_v4l2_subdev(pad->entity);
 }
 
+/**
+ * adv748x_csi2_register_link : Register and link internal entities
+ *
+ * @tx: CSI2 private entity
+ * @v4l2_dev: Video registration device
+ * @src: Source subdevice to establish link
+ * @src_pad: Pad number of source to link to this @tx
+ * @preferred: Specify if this link is preferred over pre-existing links
+ *
+ * Ensure that the subdevice is registered against the v4l2_device, and link the
+ * source pad to the sink pad of the CSI2 bus entity.
+ */
+static int adv748x_csi2_register_link(struct adv748x_csi2 *tx,
+				      struct v4l2_device *v4l2_dev,
+				      struct v4l2_subdev *src,
+				      unsigned int src_pad,
+				      bool preferred)
+{
+	int enabled = 0;
+	int ret;
+
+	if (preferred)
+		enabled = MEDIA_LNK_FL_ENABLED;
+
+	if (!src->v4l2_dev) {
+		ret = v4l2_device_register_subdev(v4l2_dev, src);
+		if (ret)
+			return ret;
+	}
+
+	return media_create_pad_link(&src->entity, src_pad,
+				     &tx->sd.entity, ADV748X_CSI2_SINK,
+				     enabled);
+}
+
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_internal_ops
  *
@@ -46,18 +81,22 @@ static int adv748x_csi2_registered(struct v4l2_subdev *sd)
 {
 	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
 	struct adv748x_state *state = tx->state;
+	int ret;
 
 	adv_dbg(state, "Registered %s (%s)", is_txa(tx) ? "TXA":"TXB",
 			sd->name);
 
-	/*
-	 * We can not register our sub devices until both CSI/TX entities
-	 * are registered.
-	 */
-	if (is_txa(tx))
+	ret = adv748x_csi2_register_link(tx, sd->v4l2_dev, &state->afe.sd,
+					 ADV748X_AFE_SOURCE, !is_txa(tx));
+	if (ret)
+		return ret;
+
+	/* TX-B only supports AFE */
+	if (!is_txa(tx))
 		return 0;
 
-	return adv748x_register_subdevs(state, sd->v4l2_dev);
+	return adv748x_csi2_register_link(tx, sd->v4l2_dev, &state->hdmi.sd,
+					  ADV748X_HDMI_SOURCE, true);
 }
 
 static const struct v4l2_subdev_internal_ops adv748x_csi2_internal_ops = {
