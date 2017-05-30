@@ -24,7 +24,7 @@ static const struct reg_sequence adv7511_fixed_registers[] = {
 	{ 0x98, 0x03 },
 	{ 0x9a, 0xe0 },
 	{ 0x9c, 0x30 },
-	{ 0x9d, 0x61 },
+	{ 0x9d, 0x01 },
 	{ 0xa2, 0xa4 },
 	{ 0xa3, 0xa4 },
 	{ 0xe0, 0xd0 },
@@ -338,7 +338,7 @@ static void adv7511_power_on(struct adv7511 *adv7511)
 		 * Still, let's be safe and stick to the documentation.
 		 */
 		regmap_write(adv7511->regmap, ADV7511_REG_INT_ENABLE(0),
-			     ADV7511_INT0_EDID_READY);
+			     ADV7511_INT0_EDID_READY | ADV7511_INT0_HPD);
 		regmap_write(adv7511->regmap, ADV7511_REG_INT_ENABLE(1),
 			     ADV7511_INT1_DDC_ERROR);
 	}
@@ -550,7 +550,7 @@ static int adv7511_get_modes(struct adv7511 *adv7511,
 				   ADV7511_POWER_POWER_DOWN, 0);
 		if (adv7511->i2c_main->irq) {
 			regmap_write(adv7511->regmap, ADV7511_REG_INT_ENABLE(0),
-				     ADV7511_INT0_EDID_READY);
+				     ADV7511_INT0_EDID_READY | ADV7511_INT0_HPD);
 			regmap_write(adv7511->regmap, ADV7511_REG_INT_ENABLE(1),
 				     ADV7511_INT1_DDC_ERROR);
 		}
