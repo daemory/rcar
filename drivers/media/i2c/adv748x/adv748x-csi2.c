@@ -54,6 +54,7 @@ static int adv748x_csi2_register_link(struct adv748x_csi2 *tx,
 {
 	int enabled = 0;
 	int ret;
+	int HACK_RVIN = true;
 
 	if (preferred)
 		enabled = MEDIA_LNK_FL_ENABLED;
@@ -62,6 +63,16 @@ static int adv748x_csi2_register_link(struct adv748x_csi2 *tx,
 		ret = v4l2_device_register_subdev(v4l2_dev, src);
 		if (ret)
 			return ret;
+	}
+
+	/* Temporary workaround - not for Integration or release */
+	if (HACK_RVIN) {
+		/* Don't create disabled links */
+		if (!enabled)
+			return 0;
+
+		/* Force enabled links as immutable */
+		enabled |= MEDIA_LNK_FL_IMMUTABLE;
 	}
 
 	return media_create_pad_link(&src->entity, src_pad,
