@@ -288,6 +288,9 @@ static int adv748x_hdmi_query_dv_timings(struct v4l2_subdev *sd,
 		return -ENOLINK;
 
 	pixelclock = adv748x_hdmi_read_pixelclock(state);
+
+	adv_dbg(state, "HDMI Pixelclock is %d\n", pixelclock);
+
 	if (pixelclock < 0)
 		return -ENODATA;
 

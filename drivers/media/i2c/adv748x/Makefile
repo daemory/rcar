@@ -5,3 +5,5 @@ adv748x-objs	:= \
 		adv748x-hdmi.o
 
 obj-$(CONFIG_VIDEO_ADV748X)	+= adv748x.o
+
+ccflags-y := -DDEBUG

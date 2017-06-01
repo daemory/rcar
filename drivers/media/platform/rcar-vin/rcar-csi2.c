@@ -9,6 +9,8 @@
  * option) any later version.
  */
 
+#define DEBUG
+
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
