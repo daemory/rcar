@@ -18,8 +18,6 @@ This version sees lots of review comments addressed from previous reviews, and
 the removal of the async notifiers to register the AFE/HDMI entities (which was
 functional - but overkill)
 
-Updates to the core to support matching will be provided in a separate series
-
 ADV748x
 =======
 The ADV7481 and ADV7482 support two video pipelines which can run independently
@@ -64,3 +62,15 @@ References
 [0] http://www.mail-archive.com/linux-renesas-soc@vger.kernel.org/msg05196.html
 [1] https://git.ragnatech.se/linux rcar-vin-elinux-v7
 [2] https://www.mail-archive.com/linux-media@vger.kernel.org/msg111332.html
+
+v1/RFC:
+ - Initial posting
+
+v2:
+ - Reworked and
+
+v3:
+ - Refreshed with lots of fixups from Sakari's review comments
+
+v4:
+ - Many changes all round, following Laurent's review
