@@ -69,7 +69,7 @@
 	};
 
 	cvbs-in {
-		compatible = "cvbs-connector";
+		compatible = "composite-video-connector";
 		label = "CVBS IN";
 
 		port {
@@ -443,7 +443,7 @@
 		interrupt-parent = <&gpio6>;
 		interrupt-names = "intrq1", "intrq2";
 		interrupts = <30 IRQ_TYPE_LEVEL_LOW>,
-		             <31 IRQ_TYPE_LEVEL_LOW>;
+		     <31 IRQ_TYPE_LEVEL_LOW>;
 
 		port@0 {
 			reg = <0>;
