@@ -9,6 +9,8 @@
  * option) any later version.
  */
 
+#define DEBUG
+
 #include <linux/module.h>
 #include <linux/mutex.h>
 
@@ -268,6 +270,9 @@ static int adv748x_hdmi_query_dv_timings(struct v4l2_subdev *sd,
 		return -ENOLINK;
 
 	pixelclock = adv748x_hdmi_read_pixelclock(state);
+
+	adv_dbg(state, "HDMI Pixelclock is %d\n", pixelclock);
+
 	if (pixelclock < 0)
 		return -ENODATA;
 
@@ -728,9 +733,11 @@ int adv748x_hdmi_init(struct adv748x_hdmi *hdmi)
 	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
 	static const struct v4l2_dv_timings cea1280x720 =
 		V4L2_DV_BT_CEA_1280X720P30;
+	static const struct v4l2_dv_timings cea1920x1080 =
+			V4L2_DV_BT_CEA_1920X1080P30;
 	int ret;
 
-	hdmi->timings = cea1280x720;
+	hdmi->timings = cea1920x1080;
 
 	/* Initialise a default 16:9 aspect ratio */
 	hdmi->aspect_ratio.numerator = 16;
