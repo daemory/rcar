@@ -14,6 +14,8 @@
  *	Kieran Bingham <kieran.bingham@ideasonboard.com>
  */
 
+#define DEBUG
+
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/i2c.h>
