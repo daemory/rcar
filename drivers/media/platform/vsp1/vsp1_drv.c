@@ -411,7 +411,7 @@ static int vsp1_create_entities(struct vsp1_device *vsp1)
 		vsp1->wpf[i] = wpf;
 		list_add_tail(&wpf->entity.list_dev, &vsp1->entities);
 
-		if (vsp1->info->uapi) {
+		if (vsp1->info->uapi || wpf->has_writeback) {
 			struct vsp1_video *video = vsp1_video_create(vsp1, wpf);
 
 			if (IS_ERR(video)) {
@@ -463,6 +463,7 @@ done:
 
 int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 {
+	struct vsp1_rwpf *wpf = vsp1->wpf[index];
 	unsigned int timeout;
 	u32 status;
 
@@ -478,6 +479,9 @@ int vsp1_reset_wpf(struct vsp1_device *vsp1, unsigned int index)
 
 		usleep_range(1000, 2000);
 	}
+
+	if (wpf->pipe)
+		wpf->pipe->configured = false;
 
 	if (!timeout) {
 		dev_err(vsp1->dev, "failed to reset wpf.%u\n", index);
@@ -709,7 +713,8 @@ static const struct vsp1_device_info vsp1_device_infos[] = {
 		.version = VI6_IP_VERSION_MODEL_VSPD_GEN3,
 		.model = "VSP2-D",
 		.gen = 3,
-		.features = VSP1_HAS_BRU | VSP1_HAS_LIF | VSP1_HAS_WPF_VFLIP,
+		.features = VSP1_HAS_BRU | VSP1_HAS_LIF | VSP1_HAS_WPF_VFLIP
+			  | VSP1_HAS_WPF_WRITEBACK,
 		.rpf_count = 5,
 		.wpf_count = 2,
 		.num_bru_inputs = 5,
