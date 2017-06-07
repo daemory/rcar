@@ -25,6 +25,7 @@
 #include "vsp1_lif.h"
 #include "vsp1_pipe.h"
 #include "vsp1_rwpf.h"
+#include "vsp1_video.h"
 
 
 /* -----------------------------------------------------------------------------
@@ -34,6 +35,14 @@
 void vsp1_drm_display_start(struct vsp1_device *vsp1)
 {
 	vsp1_dlm_irq_display_start(vsp1->drm->pipe.output->dlm);
+}
+
+static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe)
+{
+	struct vsp1_drm *drm = to_vsp1_drm(pipe);
+
+	if (drm->du_complete)
+		drm->du_complete(drm->du_private);
 }
 
 /* -----------------------------------------------------------------------------
@@ -95,6 +104,7 @@ int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg)
 		}
 
 		pipe->num_inputs = 0;
+		vsp1->drm->du_complete = NULL;
 
 		vsp1_dlm_reset(pipe->output->dlm);
 		vsp1_device_put(vsp1);
@@ -198,6 +208,13 @@ int vsp1_du_setup_lif(struct device *dev, const struct vsp1_du_lif_config *cfg)
 	ret = vsp1_device_get(vsp1);
 	if (ret < 0)
 		return ret;
+
+	/*
+	 * Register a callback to allow us to notify the DRM driver of frame
+	 * completion events.
+	 */
+	vsp1->drm->du_complete = cfg->callback;
+	vsp1->drm->du_private = cfg->callback_data;
 
 	ret = media_pipeline_start(&pipe->output->entity.subdev.entity,
 					  &pipe->pipe);
@@ -483,6 +500,13 @@ void vsp1_du_atomic_flush(struct device *dev)
 				__func__, rpf->entity.index);
 	}
 
+	/*
+	 * If we have a writeback node attached, we use this opportunity to
+	 * update the video buffers.
+	 */
+	if (pipe->output->video && pipe->output->video->frame_end)
+		pipe->output->video->frame_end(pipe);
+
 	/* Configure all entities in the pipeline. */
 	list_for_each_entry(entity, &pipe->entities, list_pipe) {
 		/* Disconnect unused RPFs from the pipeline. */
@@ -572,6 +596,16 @@ int vsp1_drm_create_links(struct vsp1_device *vsp1)
 	if (ret < 0)
 		return ret;
 
+	if (vsp1->wpf[0]->has_writeback) {
+		/* Connect the video device to the WPF for Writeback support */
+		ret = media_create_pad_link(&vsp1->wpf[0]->entity.subdev.entity,
+				    RWPF_PAD_SOURCE,
+				    &vsp1->wpf[0]->video->video.entity,
+				    0, flags);
+		if (ret < 0)
+			return ret;
+	}
+
 	return 0;
 }
 
@@ -603,6 +637,7 @@ int vsp1_drm_init(struct vsp1_device *vsp1)
 	pipe->lif = &vsp1->lif->entity;
 	pipe->output = vsp1->wpf[0];
 	pipe->output->pipe = pipe;
+	pipe->frame_end = vsp1_du_pipeline_frame_end;
 
 	return 0;
 }
