@@ -289,8 +289,6 @@ struct adv748x_state {
 
 #define ADV748X_SDP_MAP_SEL		0x0e	/* user_map_rw_reg_0e */
 #define ADV748X_SDP_MAP_SEL_RO_MAIN	1
-#define ADV748X_SDP_MAP_SEL_RO_MAP1	2
-#define ADV748X_SDP_MAP_SEL_RO_MAP2	3
 
 /* Free run pattern select */
 #define ADV748X_SDP_FRP			0x14
