@@ -242,6 +242,7 @@ enum adv7511_sync_polarity {
  * @input_style:		The input component arrangement variant
  * @input_justification:	Video input format bit justification
  * @clock_delay:		Clock delay for the input clock (in ps)
+ * @clock_max_rate:		Clock maximum rate (in Hz)
  * @embedded_sync:		Video input uses BT.656-style embedded sync
  * @sync_pulse:			Select the sync pulse
  * @vsync_polarity:		vsync input signal configuration
@@ -255,6 +256,7 @@ struct adv7511_link_config {
 	enum adv7511_input_justification input_justification;
 
 	int clock_delay;
+	int clock_max_rate;
 
 	bool embedded_sync;
 	enum adv7511_input_sync_pulse sync_pulse;
@@ -307,6 +309,7 @@ struct adv7511 {
 	bool powered;
 
 	struct drm_display_mode curr_mode;
+	int clock_max_rate;
 
 	unsigned int f_tmds;
 

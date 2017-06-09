@@ -323,6 +323,7 @@ static void adv7511_set_link_config(struct adv7511 *adv7511,
 	adv7511->hsync_polarity = config->hsync_polarity;
 	adv7511->vsync_polarity = config->vsync_polarity;
 	adv7511->rgb = config->input_colorspace == HDMI_COLORSPACE_RGB;
+	adv7511->clock_max_rate = config->clock_max_rate;
 }
 
 static void adv7511_power_on(struct adv7511 *adv7511)
@@ -620,7 +621,7 @@ adv7511_detect(struct adv7511 *adv7511, struct drm_connector *connector)
 static int adv7511_mode_valid(struct adv7511 *adv7511,
 			      struct drm_display_mode *mode)
 {
-	if (mode->clock > 165000)
+	if (mode->clock > adv7511->clock_max_rate)
 		return MODE_CLOCK_HIGH;
 
 	return MODE_OK;
@@ -915,6 +916,9 @@ static int adv7511_parse_dt(struct device_node *np,
 	of_property_read_u32(np, "adi,clock-delay", &config->clock_delay);
 	if (config->clock_delay < -1200 || config->clock_delay > 1600)
 		return -EINVAL;
+
+	if (of_property_read_u32(np, "adi,clock-max-rate", &config->clock_max_rate))
+		config->clock_max_rate = 166000;
 
 	config->embedded_sync = of_property_read_bool(np, "adi,embedded-sync");
 
