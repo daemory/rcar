@@ -66,7 +66,7 @@ enum adv748x_page {
  * and the device tree specification
  */
 enum adv748x_ports {
-	ADV748X_PORT_HDMI = 0,
+	ADV748X_PORT_AIN0 = 0,
 	ADV748X_PORT_AIN1 = 1,
 	ADV748X_PORT_AIN2 = 2,
 	ADV748X_PORT_AIN3 = 3,
@@ -74,7 +74,7 @@ enum adv748x_ports {
 	ADV748X_PORT_AIN5 = 5,
 	ADV748X_PORT_AIN6 = 6,
 	ADV748X_PORT_AIN7 = 7,
-	ADV748X_PORT_AIN8 = 8,
+	ADV748X_PORT_HDMI = 8,
 	ADV748X_PORT_TTL = 9,
 	ADV748X_PORT_TXA = 10,
 	ADV748X_PORT_TXB = 11,

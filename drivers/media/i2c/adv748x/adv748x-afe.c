@@ -293,8 +293,7 @@ static int adv748x_afe_s_stream(struct v4l2_subdev *sd, int enable)
 	mutex_lock(&state->mutex);
 
 	if (enable) {
-		/* How about 0-indexes all round on the AIN's */
-		ret = adv748x_afe_s_input(afe, afe->input - 1);
+		ret = adv748x_afe_s_input(afe, afe->input);
 		if (ret)
 			goto unlock;
 	}
@@ -544,7 +543,7 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 			    MEDIA_ENT_F_ATV_DECODER, "afe");
 
 	/* Identify the first connector found as a default input if set */
-	for (i = ADV748X_PORT_AIN1; i <= ADV748X_PORT_AIN8; i++) {
+	for (i = ADV748X_PORT_AIN0; i <= ADV748X_PORT_AIN7; i++) {
 		/* Inputs and ports are 1-indexed to match the data sheet */
 		if (state->endpoints[i]) {
 			afe->input = i;
