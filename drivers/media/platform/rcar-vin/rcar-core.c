@@ -14,8 +14,6 @@
  * option) any later version.
  */
 
-#define DEBUG
-
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>

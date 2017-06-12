@@ -14,8 +14,6 @@
  * option) any later version.
  */
 
-#define DEBUG
-
 #include <linux/pm_runtime.h>
 
 #include <media/v4l2-event.h>
