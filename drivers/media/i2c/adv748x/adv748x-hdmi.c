@@ -692,7 +692,6 @@ static const struct v4l2_ctrl_ops adv748x_hdmi_ctrl_ops = {
 static int adv748x_hdmi_init_controls(struct adv748x_hdmi *hdmi)
 {
 	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
-	struct v4l2_ctrl *ctrl;
 
 	v4l2_ctrl_handler_init(&hdmi->ctrl_hdl, 5);
 
