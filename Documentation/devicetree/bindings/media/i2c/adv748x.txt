@@ -26,7 +26,7 @@ are numbered as follows.
 
 	  Name		Type		Port
 	---------------------------------------
-	  HDMI		sink		0
+	  AIN0		sink		0
 	  AIN1		sink		1
 	  AIN2		sink		2
 	  AIN3		sink		3
@@ -34,7 +34,7 @@ are numbered as follows.
 	  AIN5		sink		5
 	  AIN6		sink		6
 	  AIN7		sink		7
-	  AIN8		sink		8
+	  HDMI		sink		8
 	  TTL		sink		9
 	  TXA		source		10
 	  TXB		source		11
