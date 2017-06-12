@@ -582,8 +582,8 @@ static int adv748x_reset(struct adv748x_state *state)
 				       ADV748X_IO_10_PIX_OUT_EN);
 
 	/* Use vid_std and v_freq as freerun resolution for CP */
-	cp_clrset(state, ADV748X_CP_CLMP_POS, ADV748X_CP_CLMP_POS_DIS_PARAM,
-					      ADV748X_CP_CLMP_POS_DIS_PARAM);
+	cp_clrset(state, ADV748X_CP_CLMP_POS, ADV748X_CP_CLMP_POS_DIS_AUTO,
+					      ADV748X_CP_CLMP_POS_DIS_AUTO);
 
 	return 0;
 }

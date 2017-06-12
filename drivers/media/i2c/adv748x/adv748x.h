@@ -346,7 +346,7 @@ struct adv748x_state {
 #define ADV748X_CP_VID_ADJ_2_INTERLACED_3D	BIT(4)
 
 #define ADV748X_CP_CLMP_POS		0xc9	/* clmp_pos_cntrl_4 */
-#define ADV748X_CP_CLMP_POS_DIS_PARAM	BIT(0)	/* dis_auto_param_buff */
+#define ADV748X_CP_CLMP_POS_DIS_AUTO	BIT(0)	/* dis_auto_param_buff */
 
 /* CSI : TXA/TXB Maps */
 #define ADV748X_CSI_VC_REF		0x0d	/* csi_tx_top_reg_0d */
