@@ -620,6 +620,24 @@ static const struct v4l2_subdev_ops adv748x_ops_hdmi = {
 };
 
 /* -----------------------------------------------------------------------------
+ * v4l2_subdev_internal_ops
+ */
+
+static int adv748x_hdmi_registered(struct v4l2_subdev *sd)
+{
+	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+
+	/* Propagate the Pixel Rate */
+	adv748x_hdmi_propagate_pixelrate(hdmi);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_internal_ops adv748x_hdmi_internal_ops = {
+	.registered = adv748x_hdmi_registered,
+};
+
+/* -----------------------------------------------------------------------------
  * Controls
  */
 
@@ -739,6 +757,9 @@ int adv748x_hdmi_init(struct adv748x_hdmi *hdmi)
 
 	adv748x_subdev_init(&hdmi->sd, state, &adv748x_ops_hdmi,
 			    MEDIA_ENT_F_IO_DTV, "hdmi");
+
+	/* Register for pixel rate propagation */
+	hdmi->sd.internal_ops = &adv748x_hdmi_internal_ops;
 
 	hdmi->pads[ADV748X_HDMI_SINK].flags = MEDIA_PAD_FL_SINK;
 	hdmi->pads[ADV748X_HDMI_SOURCE].flags = MEDIA_PAD_FL_SOURCE;

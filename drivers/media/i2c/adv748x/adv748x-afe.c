@@ -396,6 +396,24 @@ static const struct v4l2_subdev_ops adv748x_afe_ops = {
 };
 
 /* -----------------------------------------------------------------------------
+ * v4l2_subdev_internal_ops
+ */
+
+static int adv748x_afe_registered(struct v4l2_subdev *sd)
+{
+	struct adv748x_afe *afe = adv748x_sd_to_afe(sd);
+
+	/* Propagate the Pixel Rate */
+	adv748x_afe_propagate_pixelrate(afe);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_internal_ops adv748x_afe_internal_ops = {
+	.registered = adv748x_afe_registered,
+};
+
+/* -----------------------------------------------------------------------------
  * Controls
  */
 
@@ -507,6 +525,9 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 
 	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops,
 			    MEDIA_ENT_F_ATV_DECODER, "afe");
+
+	/* Register for pixel rate propagation */
+	afe->sd.internal_ops = &adv748x_afe_internal_ops;
 
 	/* Identify the first connector found as a default input if set */
 	for (i = ADV748X_PORT_AIN0; i <= ADV748X_PORT_AIN7; i++) {
