@@ -113,6 +113,7 @@ struct adv748x_hdmi {
 	struct media_pad pads[ADV748X_HDMI_NR_PADS];
 	struct v4l2_ctrl_handler ctrl_hdl;
 	struct v4l2_subdev sd;
+	struct v4l2_mbus_framefmt format;
 
 	struct v4l2_dv_timings timings;
 	struct v4l2_fract aspect_ratio;
@@ -145,6 +146,7 @@ struct adv748x_afe {
 	struct media_pad pads[ADV748X_AFE_NR_PADS];
 	struct v4l2_ctrl_handler ctrl_hdl;
 	struct v4l2_subdev sd;
+	struct v4l2_mbus_framefmt format;
 
 	bool streaming;
 	v4l2_std_id curr_norm;

@@ -358,48 +358,51 @@ static int adv748x_afe_enum_mbus_code(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv748x_afe_get_pad_format(struct v4l2_subdev *sd,
+static int adv748x_afe_get_format(struct v4l2_subdev *sd,
 				      struct v4l2_subdev_pad_config *cfg,
-				      struct v4l2_subdev_format *format)
+				      struct v4l2_subdev_format *sdformat)
 {
 	struct adv748x_afe *afe = adv748x_sd_to_afe(sd);
+	struct v4l2_mbus_framefmt *mbusformat;
 
-	adv748x_afe_fill_format(afe, &format->format);
+	/* The format of the analog sink pads is nonsensical */
+	if (sdformat->pad != ADV748X_AFE_SOURCE)
+		return -EINVAL;
 
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
-
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		format->format.code = fmt->code;
-	}
-
-	return 0;
-}
-
-static int adv748x_afe_set_pad_format(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_pad_config *cfg,
-				      struct v4l2_subdev_format *format)
-{
-	struct adv748x_afe *afe = adv748x_sd_to_afe(sd);
-
-	adv748x_afe_fill_format(afe, &format->format);
-
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
-
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		fmt->code = format->format.code;
+	if (sdformat->which == V4L2_SUBDEV_FORMAT_TRY) {
+		mbusformat = v4l2_subdev_get_try_format(sd, cfg, sdformat->pad);
+		sdformat->format = *mbusformat;
 	} else {
+		adv748x_afe_fill_format(afe, &sdformat->format);
 		adv748x_afe_set_pixelrate(afe);
 	}
 
 	return 0;
 }
 
+static int adv748x_afe_set_format(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_format *sdformat)
+{
+	struct v4l2_mbus_framefmt *mbusformat;
+
+	/* The format of the analog sink pads is nonsensical */
+	if (sdformat->pad != ADV748X_AFE_SOURCE)
+		return -EINVAL;
+
+	if (sdformat->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		return adv748x_afe_get_format(sd, cfg, sdformat);
+
+	mbusformat = v4l2_subdev_get_try_format(sd, cfg, sdformat->pad);
+	*mbusformat = sdformat->format;
+
+	return 0;
+}
+
 static const struct v4l2_subdev_pad_ops adv748x_afe_pad_ops = {
 	.enum_mbus_code = adv748x_afe_enum_mbus_code,
-	.set_fmt = adv748x_afe_set_pad_format,
-	.get_fmt = adv748x_afe_get_pad_format,
+	.set_fmt = adv748x_afe_set_format,
+	.get_fmt = adv748x_afe_get_format,
 };
 
 /* -----------------------------------------------------------------------------

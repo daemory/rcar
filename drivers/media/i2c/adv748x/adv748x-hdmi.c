@@ -447,40 +447,54 @@ static int adv748x_hdmi_enum_mbus_code(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int adv748x_hdmi_get_pad_format(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_format *format)
+static struct v4l2_mbus_framefmt *
+adv748x_hdmi_get_pad_format(struct v4l2_subdev *sd,
+			    struct v4l2_subdev_pad_config *cfg,
+			    unsigned int pad, u32 which)
 {
 	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
 
-	adv748x_hdmi_fill_format(hdmi, &format->format);
+	if (which == V4L2_SUBDEV_FORMAT_TRY)
+		return v4l2_subdev_get_try_format(sd, cfg, pad);
+	else
+		return &hdmi->format;
+}
 
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
+static int adv748x_hdmi_get_format(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_format *sdformat)
+{
+	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+	struct v4l2_mbus_framefmt *mbusformat;
 
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		format->format.code = fmt->code;
+	if (sdformat->pad != ADV748X_HDMI_SOURCE)
+		return -EINVAL;
+
+	if (sdformat->which == V4L2_SUBDEV_FORMAT_TRY) {
+		mbusformat = v4l2_subdev_get_try_format(sd, cfg, sdformat->pad);
+		sdformat->format = *mbusformat;
+	} else {
+		adv748x_hdmi_fill_format(hdmi, &sdformat->format);
+		adv748x_hdmi_set_pixelrate(hdmi);
 	}
 
 	return 0;
 }
 
-static int adv748x_hdmi_set_pad_format(struct v4l2_subdev *sd,
-				       struct v4l2_subdev_pad_config *cfg,
-				       struct v4l2_subdev_format *format)
+static int adv748x_hdmi_set_format(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_format *sdformat)
 {
-	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+	struct v4l2_mbus_framefmt *mbusformat;
 
-	adv748x_hdmi_fill_format(hdmi, &format->format);
+	if (sdformat->pad != ADV748X_HDMI_SOURCE)
+		return -EINVAL;
 
-	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *fmt;
+	if (sdformat->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		return adv748x_hdmi_get_format(sd, cfg, sdformat);
 
-		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
-		fmt->code = format->format.code;
-	} else {
-		adv748x_hdmi_set_pixelrate(hdmi);
-	}
+	mbusformat = v4l2_subdev_get_try_format(sd, cfg, sdformat->pad);
+	*mbusformat = sdformat->format;
 
 	return 0;
 }
@@ -608,8 +622,8 @@ static int adv748x_hdmi_dv_timings_cap(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_pad_ops adv748x_pad_ops_hdmi = {
 	.enum_mbus_code = adv748x_hdmi_enum_mbus_code,
-	.set_fmt = adv748x_hdmi_set_pad_format,
-	.get_fmt = adv748x_hdmi_get_pad_format,
+	.set_fmt = adv748x_hdmi_set_format,
+	.get_fmt = adv748x_hdmi_get_format,
 	.get_edid = adv748x_hdmi_get_edid,
 	.set_edid = adv748x_hdmi_set_edid,
 	.dv_timings_cap = adv748x_hdmi_dv_timings_cap,
