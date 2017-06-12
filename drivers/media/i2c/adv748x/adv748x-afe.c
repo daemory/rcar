@@ -330,6 +330,22 @@ static const struct v4l2_subdev_video_ops adv748x_afe_video_ops = {
  * v4l2_subdev_pad_ops
  */
 
+static int adv748x_afe_set_pixelrate(struct adv748x_afe *afe)
+{
+	struct v4l2_subdev *tx;
+	unsigned int width, height, fps;
+
+	tx = adv748x_get_remote_sd(&afe->pads[ADV748X_AFE_SOURCE]);
+	if (!tx)
+		return -ENOLINK;
+
+	width = 720;
+	height = afe->curr_norm & V4L2_STD_525_60 ? 480 : 576;
+	fps = afe->curr_norm & V4L2_STD_525_60 ? 30 : 25;
+
+	return adv748x_csi2_set_pixelrate(tx, width * height * fps);
+}
+
 static int adv748x_afe_enum_mbus_code(struct v4l2_subdev *sd,
 				      struct v4l2_subdev_pad_config *cfg,
 				      struct v4l2_subdev_mbus_code_enum *code)
@@ -373,6 +389,8 @@ static int adv748x_afe_set_pad_format(struct v4l2_subdev *sd,
 
 		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
 		fmt->code = format->format.code;
+	} else {
+		adv748x_afe_set_pixelrate(afe);
 	}
 
 	return 0;
@@ -391,6 +409,24 @@ static const struct v4l2_subdev_pad_ops adv748x_afe_pad_ops = {
 static const struct v4l2_subdev_ops adv748x_afe_ops = {
 	.video = &adv748x_afe_video_ops,
 	.pad = &adv748x_afe_pad_ops,
+};
+
+/* -----------------------------------------------------------------------------
+ * v4l2_subdev_internal_ops
+ */
+
+static int adv748x_afe_registered(struct v4l2_subdev *sd)
+{
+	struct adv748x_afe *afe = adv748x_sd_to_afe(sd);
+
+	/* Propagate the Pixel Rate */
+	adv748x_afe_set_pixelrate(afe);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_internal_ops adv748x_afe_internal_ops = {
+	.registered = adv748x_afe_registered,
 };
 
 /* -----------------------------------------------------------------------------
@@ -453,47 +489,15 @@ static int adv748x_afe_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int adv748x_afe_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct adv748x_afe *afe = adv748x_ctrl_to_afe(ctrl);
-	unsigned int width, height, fps;
-	v4l2_std_id std;
-
-	switch (ctrl->id) {
-	case V4L2_CID_PIXEL_RATE:
-		/*
-		 * TODO: Convert to non volatile control with updates through
-		 * v4l2_ctrl_s_ctrl_int64() instead.
-		 */
-		width = 720;
-		if (afe->curr_norm == V4L2_STD_ALL)
-			adv748x_afe_status(afe, NULL,  &std);
-		else
-			std = afe->curr_norm;
-
-		height = std & V4L2_STD_525_60 ? 480 : 576;
-		fps = std & V4L2_STD_525_60 ? 30 : 25;
-
-		*ctrl->p_new.p_s64 = width * height * fps;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static const struct v4l2_ctrl_ops adv748x_afe_ctrl_ops = {
 	.s_ctrl = adv748x_afe_s_ctrl,
-	.g_volatile_ctrl = adv748x_afe_g_volatile_ctrl,
 };
 
 static int adv748x_afe_init_controls(struct adv748x_afe *afe)
 {
 	struct adv748x_state *state = adv748x_afe_to_state(afe);
-	struct v4l2_ctrl *ctrl;
 
-	v4l2_ctrl_handler_init(&afe->ctrl_hdl, 6);
+	v4l2_ctrl_handler_init(&afe->ctrl_hdl, 5);
 
 	/* Use our mutex for the controls */
 	afe->ctrl_hdl.lock = &state->mutex;
@@ -510,10 +514,6 @@ static int adv748x_afe_init_controls(struct adv748x_afe *afe)
 	v4l2_ctrl_new_std(&afe->ctrl_hdl, &adv748x_afe_ctrl_ops,
 			  V4L2_CID_HUE, ADV748X_SDP_HUE_MIN,
 			  ADV748X_SDP_HUE_MAX, 1, ADV748X_SDP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&afe->ctrl_hdl, &adv748x_afe_ctrl_ops,
-				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
 	v4l2_ctrl_new_std_menu_items(&afe->ctrl_hdl, &adv748x_afe_ctrl_ops,
 				     V4L2_CID_TEST_PATTERN,
@@ -541,6 +541,9 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 
 	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops,
 			    MEDIA_ENT_F_ATV_DECODER, "afe");
+
+	/* Register for pixel rate propagation */
+	afe->sd.internal_ops = &adv748x_afe_internal_ops;
 
 	/* Identify the first connector found as a default input if set */
 	for (i = ADV748X_PORT_AIN0; i <= ADV748X_PORT_AIN7; i++) {

@@ -29,17 +29,6 @@ static int adv748x_csi2_set_virtual_channel(struct adv748x_csi2 *tx,
 	return tx_write(tx, ADV748X_CSI_VC_REF, vc << ADV748X_CSI_VC_REF_SHIFT);
 }
 
-static struct v4l2_subdev *adv748x_csi2_get_source_sd(struct adv748x_csi2 *tx)
-{
-	struct media_pad *pad = &tx->pads[ADV748X_CSI2_SINK];
-
-	pad = media_entity_remote_pad(pad);
-	if (!pad)
-		return NULL;
-
-	return media_entity_to_v4l2_subdev(pad->entity);
-}
-
 /**
  * adv748x_csi2_register_link : Register and link internal entities
  *
@@ -129,7 +118,7 @@ static int adv748x_csi2_s_stream(struct v4l2_subdev *sd, int enable)
 	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
 	struct v4l2_subdev *src;
 
-	src = adv748x_csi2_get_source_sd(tx);
+	src = adv748x_get_remote_sd(&tx->pads[ADV748X_CSI2_SINK]);
 	if (!src)
 		return -EPIPE;
 
@@ -239,38 +228,29 @@ static const struct v4l2_subdev_ops adv748x_csi2_ops = {
  * Subdev module and controls
  */
 
-static int adv748x_csi2_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
+int adv748x_csi2_set_pixelrate(struct v4l2_subdev *sd, s64 rate)
 {
-	struct adv748x_csi2 *tx = container_of(ctrl->handler,
-					struct adv748x_csi2, ctrl_hdl);
+	struct v4l2_ctrl *ctrl;
 
+	ctrl = v4l2_ctrl_find(sd->ctrl_handler, V4L2_CID_PIXEL_RATE);
+	if (!ctrl)
+		return -EINVAL;
+
+	return v4l2_ctrl_s_ctrl_int64(ctrl, rate);
+}
+
+static int adv748x_csi2_s_ctrl(struct v4l2_ctrl *ctrl)
+{
 	switch (ctrl->id) {
 	case V4L2_CID_PIXEL_RATE:
-	{
-		struct v4l2_ctrl *rate;
-		struct v4l2_subdev *src;
-
-		src = adv748x_csi2_get_source_sd(tx);
-		if (!src)
-			return -ENODEV;
-
-		rate = v4l2_ctrl_find(src->ctrl_handler, V4L2_CID_PIXEL_RATE);
-		if (!rate)
-			return -EPIPE;
-
-		*ctrl->p_new.p_s64 = v4l2_ctrl_g_ctrl_int64(rate);
-
-		break;
-	}
+		return 0;
 	default:
 		return -EINVAL;
 	}
-
-	return 0;
 }
 
 static const struct v4l2_ctrl_ops adv748x_csi2_ctrl_ops = {
-	.g_volatile_ctrl = adv748x_csi2_g_volatile_ctrl,
+	.s_ctrl = adv748x_csi2_s_ctrl,
 };
 
 static int adv748x_csi2_init_controls(struct adv748x_csi2 *tx)
@@ -279,15 +259,8 @@ static int adv748x_csi2_init_controls(struct adv748x_csi2 *tx)
 
 	v4l2_ctrl_handler_init(&tx->ctrl_hdl, 1);
 
-	/*
-	 * The CSI passes through controls to the connected subdevice and
-	 * therefore must not set it's control handler mutex to the state mutex
-	 */
-
 	ctrl = v4l2_ctrl_new_std(&tx->ctrl_hdl, &adv748x_csi2_ctrl_ops,
 				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
 	tx->sd.ctrl_handler = &tx->ctrl_hdl;
 	if (tx->ctrl_hdl.error) {

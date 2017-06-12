@@ -392,6 +392,15 @@ int adv748x_write_block(struct adv748x_state *state, int client_page,
 #define tx_write(t, r, v) adv748x_write(t->state, t->page, r, v)
 #define tx_clrset(t, r, m, v) tx_write(t, r, (tx_read(t, r) & ~m) | v)
 
+static inline struct v4l2_subdev *adv748x_get_remote_sd(struct media_pad *pad)
+{
+	pad = media_entity_remote_pad(pad);
+	if (!pad)
+		return NULL;
+
+	return media_entity_to_v4l2_subdev(pad->entity);
+}
+
 void adv748x_subdev_init(struct v4l2_subdev *sd, struct adv748x_state *state,
 			 const struct v4l2_subdev_ops *ops, u32 function,
 			 const char *ident);
@@ -407,6 +416,7 @@ void adv748x_afe_cleanup(struct adv748x_afe *afe);
 
 int adv748x_csi2_init(struct adv748x_state *state, struct adv748x_csi2 *tx);
 void adv748x_csi2_cleanup(struct adv748x_csi2 *tx);
+int adv748x_csi2_set_pixelrate(struct v4l2_subdev *sd, s64 rate);
 
 int adv748x_hdmi_init(struct adv748x_hdmi *hdmi);
 void adv748x_hdmi_cleanup(struct adv748x_hdmi *hdmi);

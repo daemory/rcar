@@ -415,6 +415,26 @@ static const struct v4l2_subdev_video_ops adv748x_video_ops_hdmi = {
  * v4l2_subdev_pad_ops
  */
 
+static int adv748x_hdmi_set_pixelrate(struct adv748x_hdmi *hdmi)
+{
+	struct v4l2_subdev *tx;
+	struct v4l2_dv_timings timings;
+	struct v4l2_bt_timings *bt = &timings.bt;
+	unsigned int fps;
+
+	tx = adv748x_get_remote_sd(&hdmi->pads[ADV748X_HDMI_SOURCE]);
+	if (!tx)
+		return -ENOLINK;
+
+	adv748x_hdmi_query_dv_timings(&hdmi->sd, &timings);
+
+	fps = DIV_ROUND_CLOSEST(bt->pixelclock,
+				V4L2_DV_BT_FRAME_WIDTH(bt) *
+				V4L2_DV_BT_FRAME_HEIGHT(bt));
+
+	return adv748x_csi2_set_pixelrate(tx, bt->width * bt->height * fps);
+}
+
 static int adv748x_hdmi_enum_mbus_code(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_mbus_code_enum *code)
@@ -458,6 +478,8 @@ static int adv748x_hdmi_set_pad_format(struct v4l2_subdev *sd,
 
 		fmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
 		fmt->code = format->format.code;
+	} else {
+		adv748x_hdmi_set_pixelrate(hdmi);
 	}
 
 	return 0;
@@ -604,6 +626,24 @@ static const struct v4l2_subdev_ops adv748x_ops_hdmi = {
 };
 
 /* -----------------------------------------------------------------------------
+ * v4l2_subdev_internal_ops
+ */
+
+static int adv748x_hdmi_registered(struct v4l2_subdev *sd)
+{
+	struct adv748x_hdmi *hdmi = adv748x_sd_to_hdmi(sd);
+
+	/* Propagate the Pixel Rate */
+	adv748x_hdmi_set_pixelrate(hdmi);
+
+	return 0;
+}
+
+static const struct v4l2_subdev_internal_ops adv748x_hdmi_internal_ops = {
+	.registered = adv748x_hdmi_registered,
+};
+
+/* -----------------------------------------------------------------------------
  * Controls
  */
 
@@ -663,43 +703,8 @@ static int adv748x_hdmi_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int adv748x_hdmi_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct adv748x_hdmi *hdmi = adv748x_ctrl_to_hdmi(ctrl);
-	unsigned int width, height, fps;
-
-	switch (ctrl->id) {
-	case V4L2_CID_PIXEL_RATE:
-	{
-		struct v4l2_dv_timings timings;
-		struct v4l2_bt_timings *bt = &timings.bt;
-
-		/*
-		 * TODO: Convert to non volatile control with updates through
-		 * v4l2_ctrl_s_ctrl_int64() instead.
-		 */
-
-		adv748x_hdmi_query_dv_timings(&hdmi->sd, &timings);
-
-		width = bt->width;
-		height = bt->height;
-		fps = DIV_ROUND_CLOSEST(bt->pixelclock,
-					V4L2_DV_BT_FRAME_WIDTH(bt) *
-					V4L2_DV_BT_FRAME_HEIGHT(bt));
-
-		*ctrl->p_new.p_s64 = width * height * fps;
-		break;
-	}
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static const struct v4l2_ctrl_ops adv748x_hdmi_ctrl_ops = {
 	.s_ctrl = adv748x_hdmi_s_ctrl,
-	.g_volatile_ctrl = adv748x_hdmi_g_volatile_ctrl,
 };
 
 static int adv748x_hdmi_init_controls(struct adv748x_hdmi *hdmi)
@@ -707,7 +712,7 @@ static int adv748x_hdmi_init_controls(struct adv748x_hdmi *hdmi)
 	struct adv748x_state *state = adv748x_hdmi_to_state(hdmi);
 	struct v4l2_ctrl *ctrl;
 
-	v4l2_ctrl_handler_init(&hdmi->ctrl_hdl, 6);
+	v4l2_ctrl_handler_init(&hdmi->ctrl_hdl, 5);
 
 	/* Use our mutex for the controls */
 	hdmi->ctrl_hdl.lock = &state->mutex;
@@ -724,10 +729,6 @@ static int adv748x_hdmi_init_controls(struct adv748x_hdmi *hdmi)
 	v4l2_ctrl_new_std(&hdmi->ctrl_hdl, &adv748x_hdmi_ctrl_ops,
 			  V4L2_CID_HUE, ADV748X_CP_HUE_MIN,
 			  ADV748X_CP_HUE_MAX, 1, ADV748X_CP_HUE_DEF);
-	ctrl = v4l2_ctrl_new_std(&hdmi->ctrl_hdl, &adv748x_hdmi_ctrl_ops,
-				 V4L2_CID_PIXEL_RATE, 1, INT_MAX, 1, 1);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
 	v4l2_ctrl_new_std_menu_items(&hdmi->ctrl_hdl, &adv748x_hdmi_ctrl_ops,
 				     V4L2_CID_TEST_PATTERN,
@@ -758,6 +759,9 @@ int adv748x_hdmi_init(struct adv748x_hdmi *hdmi)
 
 	adv748x_subdev_init(&hdmi->sd, state, &adv748x_ops_hdmi,
 			    MEDIA_ENT_F_IO_DTV, "hdmi");
+
+	/* Register for pixel rate propagation */
+	hdmi->sd.internal_ops = &adv748x_hdmi_internal_ops;
 
 	hdmi->pads[ADV748X_HDMI_SINK].flags = MEDIA_PAD_FL_SINK;
 	hdmi->pads[ADV748X_HDMI_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
