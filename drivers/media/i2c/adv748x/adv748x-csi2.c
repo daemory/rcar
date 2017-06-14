@@ -36,7 +36,6 @@ static int adv748x_csi2_set_virtual_channel(struct adv748x_csi2 *tx,
  * @v4l2_dev: Video registration device
  * @src: Source subdevice to establish link
  * @src_pad: Pad number of source to link to this @tx
- * @preferred: Specify if this link is preferred over pre-existing links
  *
  * Ensure that the subdevice is registered against the v4l2_device, and link the
  * source pad to the sink pad of the CSI2 bus entity.
@@ -44,30 +43,21 @@ static int adv748x_csi2_set_virtual_channel(struct adv748x_csi2 *tx,
 static int adv748x_csi2_register_link(struct adv748x_csi2 *tx,
 				      struct v4l2_device *v4l2_dev,
 				      struct v4l2_subdev *src,
-				      unsigned int src_pad,
-				      bool preferred)
+				      unsigned int src_pad)
 {
-	int enabled = 0;
+	int enabled = MEDIA_LNK_FL_ENABLED;
 	int ret;
-	int HACK_RVIN = true;
 
-	if (preferred)
-		enabled = MEDIA_LNK_FL_ENABLED;
+	/*
+	 * Dynamic linking of the AFE is not supported.
+	 * Register the links as immutable.
+	 */
+	enabled |= MEDIA_LNK_FL_IMMUTABLE;
 
 	if (!src->v4l2_dev) {
 		ret = v4l2_device_register_subdev(v4l2_dev, src);
 		if (ret)
 			return ret;
-	}
-
-	/* Temporary workaround - not for Integration or release */
-	if (HACK_RVIN) {
-		/* Don't create disabled links */
-		if (!enabled)
-			return 0;
-
-		/* Force enabled links as immutable */
-		enabled |= MEDIA_LNK_FL_IMMUTABLE;
 	}
 
 	return media_create_pad_link(&src->entity, src_pad,
@@ -87,22 +77,25 @@ static int adv748x_csi2_registered(struct v4l2_subdev *sd)
 {
 	struct adv748x_csi2 *tx = adv748x_sd_to_csi2(sd);
 	struct adv748x_state *state = tx->state;
-	int ret;
 
 	adv_dbg(state, "Registered %s (%s)", is_txa(tx) ? "TXA":"TXB",
 			sd->name);
 
-	ret = adv748x_csi2_register_link(tx, sd->v4l2_dev, &state->afe.sd,
-					 ADV748X_AFE_SOURCE, !is_txa(tx));
-	if (ret)
-		return ret;
-
-	/* TX-B only supports AFE */
-	if (!is_txa(tx))
-		return 0;
-
-	return adv748x_csi2_register_link(tx, sd->v4l2_dev, &state->hdmi.sd,
-					  ADV748X_HDMI_SOURCE, true);
+	/*
+	 * The adv748x hardware allows the AFE to route through the TXA, however
+	 * this is not currently supported in this driver.
+	 *
+	 * Link HDMI->TXA, and AFE->TXB directly.
+	 */
+	if (is_txa(tx)) {
+		return adv748x_csi2_register_link(tx, sd->v4l2_dev,
+						  &state->hdmi.sd,
+						  ADV748X_HDMI_SOURCE);
+	} else {
+		return adv748x_csi2_register_link(tx, sd->v4l2_dev,
+						  &state->afe.sd,
+						  ADV748X_AFE_SOURCE);
+	}
 }
 
 static const struct v4l2_subdev_internal_ops adv748x_csi2_internal_ops = {
