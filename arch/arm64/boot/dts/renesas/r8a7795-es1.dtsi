@@ -1,0 +1,465 @@
+/*
+ * Device Tree Source for the r8a7795 ES1.x SoC
+ *
+ * Copyright (C) 2015 Renesas Electronics Corp.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "r8a7795.dtsi"
+
+&soc {
+	xhci1: usb@ee0400000 {
+		compatible = "renesas,xhci-r8a7795", "renesas,rcar-gen3-xhci";
+		reg = <0 0xee040000 0 0xc00>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 327>;
+		power-domains = <&sysc R8A7795_PD_ALWAYS_ON>;
+		resets = <&cpg 327>;
+		status = "disabled";
+	};
+
+	fcpf2: fcp@fe952000 {
+		compatible = "renesas,fcpf";
+		reg = <0 0xfe952000 0 0x200>;
+		clocks = <&cpg CPG_MOD 613>;
+		power-domains = <&sysc R8A7795_PD_A3VP>;
+		resets = <&cpg 613>;
+	};
+
+	vspi2: vsp@fe9c0000 {
+		compatible = "renesas,vsp2";
+		reg = <0 0xfe9c0000 0 0x8000>;
+		interrupts = <GIC_SPI 446 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 629>;
+		power-domains = <&sysc R8A7795_PD_A3VP>;
+		resets = <&cpg 629>;
+
+		renesas,fcp = <&fcpvi2>;
+	};
+
+	fcpvi2: fcp@fe9cf000 {
+		compatible = "renesas,fcpv";
+		reg = <0 0xfe9cf000 0 0x200>;
+		clocks = <&cpg CPG_MOD 609>;
+		power-domains = <&sysc R8A7795_PD_A3VP>;
+		resets = <&cpg 609>;
+	};
+
+	vspd3: vsp@fea38000 {
+		compatible = "renesas,vsp2";
+		reg = <0 0xfea38000 0 0x4000>;
+		interrupts = <GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 620>;
+		power-domains = <&sysc R8A7795_PD_ALWAYS_ON>;
+		resets = <&cpg 620>;
+
+		renesas,fcp = <&fcpvd3>;
+	};
+
+	fcpvd3: fcp@fea3f000 {
+		compatible = "renesas,fcpv";
+		reg = <0 0xfea3f000 0 0x200>;
+		clocks = <&cpg CPG_MOD 600>;
+		power-domains = <&sysc R8A7795_PD_ALWAYS_ON>;
+		resets = <&cpg 600>;
+	};
+
+	fdp1@fe948000 {
+		compatible = "renesas,fdp1";
+		reg = <0 0xfe948000 0 0x2400>;
+		interrupts = <GIC_SPI 264 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 117>;
+		power-domains = <&sysc R8A7795_PD_A3VP>;
+		resets = <&cpg 117>;
+		renesas,fcp = <&fcpf2>;
+	};
+
+	csi20: csi2@fea80000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi20vin0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin0csi20>;
+				};
+				csi20vin1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin1csi20>;
+				};
+				csi20vin2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin2csi20>;
+				};
+				csi20vin3: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin3csi20>;
+				};
+				csi20vin4: endpoint@4 {
+					reg = <4>;
+					remote-endpoint = <&vin4csi20>;
+				};
+				csi20vin5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&vin5csi20>;
+				};
+				csi20vin6: endpoint@6 {
+					reg = <6>;
+					remote-endpoint = <&vin6csi20>;
+				};
+				csi20vin7: endpoint@7 {
+					reg = <7>;
+					remote-endpoint = <&vin7csi20>;
+				};
+			};
+		};
+	};
+
+	csi21: csi2@fea90000 {
+		compatible = "renesas,r8a7795-csi2", "renesas,rcar-gen3-csi2";
+		reg = <0 0xfea90000 0 0x10000>;
+		interrupts = <GIC_SPI 185 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cpg CPG_MOD 713>;
+		power-domains = <&sysc R8A7795_PD_ALWAYS_ON>;
+		status = "disabled";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi21vin0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin0csi21>;
+				};
+				csi21vin1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin1csi21>;
+				};
+				csi21vin2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin2csi21>;
+				};
+				csi21vin3: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin3csi21>;
+				};
+				csi21vin4: endpoint@4 {
+					reg = <4>;
+					remote-endpoint = <&vin4csi21>;
+				};
+				csi21vin5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&vin5csi21>;
+				};
+				csi21vin6: endpoint@6 {
+					reg = <6>;
+					remote-endpoint = <&vin6csi21>;
+				};
+				csi21vin7: endpoint@7 {
+					reg = <7>;
+					remote-endpoint = <&vin7csi21>;
+				};
+			};
+		};
+	};
+
+	csi40: csi2@feaa0000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi40vin0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin0csi40>;
+				};
+				csi40vin1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin1csi40>;
+				};
+				csi40vin2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin2csi40>;
+				};
+				csi40vin3: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin3csi40>;
+				};
+			};
+		};
+	};
+
+	csi41: csi2@feab0000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi41vin4: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin4csi41>;
+				};
+				csi41vin5: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin5csi41>;
+				};
+				csi41vin6: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin6csi41>;
+				};
+				csi41vin7: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin7csi41>;
+				};
+			};
+		};
+	};
+
+	vin0: video@e6ef0000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin0csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin0>;
+				};
+				vin0csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin0>;
+				};
+				vin0csi40: endpoint@2 {
+					reg = <2>;
+					remote-endpoint= <&csi40vin0>;
+				};
+			};
+		};
+	};
+
+	vin1: video@e6ef1000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin1csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin1>;
+				};
+				vin1csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin1>;
+				};
+				vin1csi40: endpoint@2 {
+					reg = <2>;
+					remote-endpoint= <&csi40vin1>;
+				};
+			};
+		};
+	};
+
+	vin2: video@e6ef2000 {
+		renesas,id = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin2csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin2>;
+				};
+				vin2csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin2>;
+				};
+				vin2csi40: endpoint@2 {
+					reg = <2>;
+					remote-endpoint= <&csi40vin2>;
+				};
+			};
+		};
+	};
+
+	vin3: video@e6ef3000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin3csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin3>;
+				};
+				vin3csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin3>;
+				};
+				vin3csi40: endpoint@2 {
+					reg = <2>;
+					remote-endpoint= <&csi40vin3>;
+				};
+			};
+		};
+	};
+
+	vin4: video@e6ef4000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin4csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin4>;
+				};
+				vin4csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin4>;
+				};
+				vin4csi41: endpoint@3 {
+					reg = <3>;
+					remote-endpoint= <&csi41vin4>;
+				};
+			};
+		};
+	};
+
+	vin5: video@e6ef5000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin5csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin5>;
+				};
+				vin5csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin5>;
+				};
+				vin5csi41: endpoint@3 {
+					reg = <3>;
+					remote-endpoint= <&csi41vin5>;
+				};
+			};
+		};
+	};
+
+	vin6: video@e6ef6000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin6csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin6>;
+				};
+				vin6csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin6>;
+				};
+				vin6csi41: endpoint@3 {
+					reg = <3>;
+					remote-endpoint= <&csi41vin6>;
+				};
+			};
+		};
+	};
+
+	vin7: video@e6ef7000 {
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin7csi20: endpoint@0 {
+					reg = <0>;
+					remote-endpoint= <&csi20vin7>;
+				};
+				vin7csi21: endpoint@1 {
+					reg = <1>;
+					remote-endpoint= <&csi21vin7>;
+				};
+				vin7csi41: endpoint@3 {
+					reg = <3>;
+					remote-endpoint= <&csi41vin7>;
+				};
+			};
+		};
+	};
+};
+
+&du {
+	compatible = "renesas,du-r8a7795";
+	vsps = <&vspd0 &vspd1 &vspd2 &vspd3>;
+};
