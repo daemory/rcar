@@ -658,10 +658,14 @@ static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 	rcar_du_crtc_write(rcrtc, DSRCR, status & DSRCR_MASK);
 
 	if (status & DSSR_FRM) {
-		drm_crtc_handle_vblank(&rcrtc->crtc);
-
-		if (rcdu->info->gen < 3)
+		/*
+		 * Gen 3 vblank and page flips are handled through the VSP
+		 * completion handler
+		 */
+		if (rcdu->info->gen < 3) {
+			drm_crtc_handle_vblank(&rcrtc->crtc);
 			rcar_du_crtc_finish_page_flip(rcrtc);
+		}
 
 		ret = IRQ_HANDLED;
 	}

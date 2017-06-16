@@ -37,12 +37,13 @@ void vsp1_drm_display_start(struct vsp1_device *vsp1)
 	vsp1_dlm_irq_display_start(vsp1->drm->pipe.output->dlm);
 }
 
-static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe)
+static void vsp1_du_pipeline_frame_end(struct vsp1_pipeline *pipe,
+				       bool completed)
 {
 	struct vsp1_drm *drm = to_vsp1_drm(pipe);
 
 	if (drm->du_complete)
-		drm->du_complete(drm->du_private);
+		drm->du_complete(drm->du_private, completed);
 }
 
 /* -----------------------------------------------------------------------------

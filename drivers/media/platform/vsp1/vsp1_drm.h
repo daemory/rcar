@@ -37,7 +37,7 @@ struct vsp1_drm {
 	} inputs[VSP1_MAX_RPF];
 
 	/* Frame synchronisation */
-	void (*du_complete)(void *);
+	void (*du_complete)(void *, bool);
 	void *du_private;
 };
 
