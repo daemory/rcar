@@ -620,7 +620,7 @@ static int rcar_du_crtc_enable_vblank(struct drm_crtc *crtc)
 	struct rcar_du_crtc *rcrtc = to_rcar_crtc(crtc);
 
 	rcar_du_crtc_write(rcrtc, DSRCR, DSRCR_VBCL);
-	rcar_du_crtc_set(rcrtc, DIER, DIER_VBE);
+	rcar_du_crtc_set(rcrtc, DIER, DIER_FRE);
 
 	return 0;
 }
@@ -629,7 +629,7 @@ static void rcar_du_crtc_disable_vblank(struct drm_crtc *crtc)
 {
 	struct rcar_du_crtc *rcrtc = to_rcar_crtc(crtc);
 
-	rcar_du_crtc_clr(rcrtc, DIER, DIER_VBE);
+	rcar_du_crtc_clr(rcrtc, DIER, DIER_FRE);
 }
 
 static const struct drm_crtc_funcs crtc_funcs = {
