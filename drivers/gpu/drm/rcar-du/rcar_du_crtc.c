@@ -664,8 +664,19 @@ static int rcar_du_crtc_enable_vblank(struct drm_crtc *crtc)
 {
 	struct rcar_du_crtc *rcrtc = to_rcar_crtc(crtc);
 
-	rcar_du_crtc_write(rcrtc, DSRCR, DSRCR_VBCL);
-	rcar_du_crtc_set(rcrtc, DIER, DIER_VBE);
+	/*
+	 * When using the VSP vertical blanking is reported from the VSP frame
+	 * completion handler right before sending the vblank event that signals
+	 * page flip completion, to avoid incorrect vblank event timestamps.
+	 * There is thus no need to enable the vertical blanking interrupt in
+	 * that case.
+	 */
+	if (!rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE)) {
+		rcar_du_crtc_write(rcrtc, DSRCR, DSRCR_VBCL);
+		rcar_du_crtc_set(rcrtc, DIER, DIER_VBE);
+	}
+
+	rcrtc->vblank_enable = true;
 
 	return 0;
 }
@@ -674,7 +685,10 @@ static void rcar_du_crtc_disable_vblank(struct drm_crtc *crtc)
 {
 	struct rcar_du_crtc *rcrtc = to_rcar_crtc(crtc);
 
-	rcar_du_crtc_clr(rcrtc, DIER, DIER_VBE);
+	rcrtc->vblank_enable = false;
+
+	if (!rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE))
+		rcar_du_crtc_clr(rcrtc, DIER, DIER_VBE);
 }
 
 static const struct drm_crtc_funcs crtc_funcs = {
@@ -695,7 +709,6 @@ static const struct drm_crtc_funcs crtc_funcs = {
 static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 {
 	struct rcar_du_crtc *rcrtc = arg;
-	struct rcar_du_device *rcdu = rcrtc->group->dev;
 	irqreturn_t ret = IRQ_NONE;
 	u32 status;
 
@@ -704,9 +717,7 @@ static irqreturn_t rcar_du_crtc_irq(int irq, void *arg)
 
 	if (status & DSSR_VBK) {
 		drm_crtc_handle_vblank(&rcrtc->crtc);
-
-		if (rcdu->info->gen < 3)
-			rcar_du_crtc_finish_page_flip(rcrtc);
+		rcar_du_crtc_finish_page_flip(rcrtc);
 
 		ret = IRQ_HANDLED;
 	}
