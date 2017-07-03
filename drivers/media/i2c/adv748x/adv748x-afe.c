@@ -521,7 +521,7 @@ int adv748x_afe_init(struct adv748x_afe *afe)
 
 	afe->input = 0;
 	afe->streaming = false;
-	afe->curr_norm = V4L2_STD_NTSC_M;
+	afe->curr_norm = V4L2_STD_PAL_M;
 
 	adv748x_subdev_init(&afe->sd, state, &adv748x_afe_ops,
 			    MEDIA_ENT_F_ATV_DECODER, "afe");
