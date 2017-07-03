@@ -45,6 +45,7 @@ static const struct v4l2_dv_timings_cap adv748x_hdmi_timings_cap = {
 			     ADV748X_HDMI_MIN_PIXELCLOCK,
 			     ADV748X_HDMI_MAX_PIXELCLOCK,
 			     V4L2_DV_BT_STD_CEA861 | V4L2_DV_BT_STD_DMT,
+			     V4L2_DV_BT_CAP_INTERLACED |
 			     V4L2_DV_BT_CAP_PROGRESSIVE)
 };
 
@@ -56,6 +57,8 @@ struct adv748x_hdmi_video_standards {
 
 static const struct adv748x_hdmi_video_standards
 adv748x_hdmi_video_standards[] = {
+	{ V4L2_DV_BT_CEA_720X480I59_94, 0x40, 0x00 },
+	{ V4L2_DV_BT_CEA_720X576I50, 0x41, 0x01 },
 	{ V4L2_DV_BT_CEA_720X480P59_94, 0x4a, 0x00 },
 	{ V4L2_DV_BT_CEA_720X576P50, 0x4b, 0x00 },
 	{ V4L2_DV_BT_CEA_1280X720P60, 0x53, 0x00 },
@@ -63,6 +66,8 @@ adv748x_hdmi_video_standards[] = {
 	{ V4L2_DV_BT_CEA_1280X720P30, 0x53, 0x02 },
 	{ V4L2_DV_BT_CEA_1280X720P25, 0x53, 0x03 },
 	{ V4L2_DV_BT_CEA_1280X720P24, 0x53, 0x04 },
+	{ V4L2_DV_BT_CEA_1920X1080I60, 0x54, 0x00 },
+	{ V4L2_DV_BT_CEA_1920X1080I50, 0x54, 0x01 },
 	{ V4L2_DV_BT_CEA_1920X1080P60, 0x5e, 0x00 },
 	{ V4L2_DV_BT_CEA_1920X1080P50, 0x5e, 0x01 },
 	{ V4L2_DV_BT_CEA_1920X1080P30, 0x5e, 0x02 },
@@ -98,7 +103,7 @@ static void adv748x_hdmi_fill_format(struct adv748x_hdmi *hdmi,
 
 	fmt->code = MEDIA_BUS_FMT_RGB888_1X24;
 	fmt->field = hdmi->timings.bt.interlaced ?
-			V4L2_FIELD_ALTERNATE : V4L2_FIELD_NONE;
+			V4L2_FIELD_INTERLACED : V4L2_FIELD_NONE;
 
 	/* TODO: The colorspace depends on the AVI InfoFrame contents */
 	fmt->colorspace = V4L2_COLORSPACE_SRGB;
