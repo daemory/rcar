@@ -50,6 +50,7 @@ For more details see the file COPYING in the source distribution of Linux.
 	pxa_camera
 	radiotrack
 	rcar-fdp1
+        rcar-vsp1
 	saa7134
 	sh_mobile_ceu_camera
 	si470x
