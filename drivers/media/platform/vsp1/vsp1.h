@@ -23,6 +23,14 @@
 
 #include "vsp1_regs.h"
 
+#define dprintk(vsp1, fmt, args...) \
+	do { \
+		trace_printk("[%d] %s:%d: " fmt, \
+			task_pid_nr(current), __func__, __LINE__, ##args); \
+		dev_info(vsp1->dev, "[%d] %s:%d: " fmt, \
+			task_pid_nr(current), __func__, __LINE__, ##args); \
+	} while (0)
+
 struct clk;
 struct device;
 struct rcar_fcp_device;

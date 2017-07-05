@@ -757,6 +757,8 @@ void vsp1_dlm_destroy(struct vsp1_dl_manager *dlm)
 		return;
 
 
+	dprintk(dlm->vsp1, "Destroying DLM %d\n", dlm->index);
+
 	list_for_each_entry_safe(dl, next, &dlm->free, list) {
 		list_del(&dl->list);
 		vsp1_dl_list_free(dl);
