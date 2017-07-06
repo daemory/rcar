@@ -60,6 +60,7 @@ struct vsp1_dl_body {
 	size_t size;
 
 	unsigned int num_entries;
+	unsigned int max_entries;
 };
 
 /**
@@ -136,6 +137,7 @@ static int vsp1_dl_body_init(struct vsp1_device *vsp1,
 
 	dlb->vsp1 = vsp1;
 	dlb->size = size;
+	dlb->max_entries = num_entries;
 
 	dlb->entries = dma_alloc_wc(vsp1->bus_master, dlb->size, &dlb->dma,
 				    GFP_KERNEL);
@@ -218,6 +220,11 @@ void vsp1_dl_fragment_free(struct vsp1_dl_body *dlb)
  */
 void vsp1_dl_fragment_write(struct vsp1_dl_body *dlb, u32 reg, u32 data)
 {
+	if (dlb->num_entries >= dlb->max_entries) {
+		WARN_ONCE(true, "DLB size exceeded");
+		return;
+	}
+
 	dlb->entries[dlb->num_entries].addr = reg;
 	dlb->entries[dlb->num_entries].data = data;
 	dlb->num_entries++;
