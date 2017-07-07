@@ -247,6 +247,7 @@ struct most_interface {
 		       struct mbo *mbo);
 	int (*poison_channel)(struct most_interface *iface, int channel_idx);
 	void (*request_netinfo)(struct most_interface *iface, int channel_idx);
+	struct device *dev;
 	void *priv;
 };
 
