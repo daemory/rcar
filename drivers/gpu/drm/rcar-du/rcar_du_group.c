@@ -126,6 +126,18 @@ static void rcar_du_group_setup(struct rcar_du_group *rgrp)
 	if (rcdu->info->gen >= 3)
 		rcar_du_group_write(rgrp, DEFR10, DEFR10_CODE | DEFR10_DEFE10);
 
+	if (rcar_du_has(rcdu, RCAR_DU_FEATURE_VSP1_SOURCE)) {
+		/*
+		 * The CRTCs can compose the output of a VSP with other planes
+		 * on Gen2 hardware, and of two VSPs on Gen3 hardware. Neither
+		 * of these features are supported by the driver, so we hardcode
+		 * plane assignment to CRTCs when setting up the group to avoid
+		 * the need to restart the group when setting up planes.
+		 */
+		rcar_du_group_write(rgrp, DS1PR, 1);
+		rcar_du_group_write(rgrp, DS2PR, rcdu->info->gen >= 3 ? 3 : 2);
+	}
+
 	/*
 	 * Use DS1PR and DS2PR to configure planes priorities and connects the
 	 * superposition 0 to DU0 pins. DU1 pins will be configured dynamically.

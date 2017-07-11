@@ -282,6 +282,10 @@ static void rcar_du_crtc_update_planes(struct rcar_du_crtc *rcrtc)
 	unsigned int i;
 	u32 dspr = 0;
 
+	/* Plane assignment is fixed when using the VSP. */
+	if (rcar_du_has(rcdu, RCAR_DU_FEATURE_VSP1_SOURCE))
+		return;
+
 	for (i = 0; i < rcrtc->group->num_planes; ++i) {
 		struct rcar_du_plane *plane = &rcrtc->group->planes[i];
 		unsigned int j;
@@ -315,17 +319,6 @@ static void rcar_du_crtc_update_planes(struct rcar_du_crtc *rcrtc)
 			prio -= 4;
 			dspr |= (index + 1) << prio;
 			hwplanes |= 1 << index;
-		}
-	}
-
-	/* If VSP+DU integration is enabled the plane assignment is fixed. */
-	if (rcar_du_has(rcdu, RCAR_DU_FEATURE_VSP1_SOURCE)) {
-		if (rcdu->info->gen < 3) {
-			dspr = (rcrtc->index % 2) + 1;
-			hwplanes = 1 << (rcrtc->index % 2);
-		} else {
-			dspr = (rcrtc->index % 2) ? 3 : 1;
-			hwplanes = 1 << ((rcrtc->index % 2) ? 2 : 0);
 		}
 	}
 
@@ -429,8 +422,13 @@ static void rcar_du_crtc_setup(struct rcar_du_crtc *rcrtc)
 	rcar_du_crtc_set_display_timing(rcrtc);
 	rcar_du_group_set_routing(rcrtc->group);
 
-	/* Start with all planes disabled. */
-	rcar_du_group_write(rcrtc->group, rcrtc->index % 2 ? DS2PR : DS1PR, 0);
+	/*
+	 * Start with all planes disabled, except when using the VSP in which
+	 * case the fixed plane assignment must not be modified.
+	 */
+	if (!rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE))
+		rcar_du_group_write(rcrtc->group,
+				    rcrtc->index % 2 ? DS2PR : DS1PR, 0);
 
 	/* Enable the VSP compositor. */
 	if (rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE))
@@ -515,8 +513,11 @@ static void rcar_du_crtc_stop(struct rcar_du_crtc *rcrtc)
 	 * are stopped in one operation as we now wait for one vblank per CRTC.
 	 * Whether this can be improved needs to be researched.
 	 */
-	rcar_du_group_write(rcrtc->group, rcrtc->index % 2 ? DS2PR : DS1PR, 0);
-	drm_crtc_wait_one_vblank(crtc);
+	if (!rcar_du_has(rcrtc->group->dev, RCAR_DU_FEATURE_VSP1_SOURCE)) {
+		rcar_du_group_write(rcrtc->group,
+				    rcrtc->index % 2 ? DS2PR : DS1PR, 0);
+		drm_crtc_wait_one_vblank(crtc);
+	}
 
 	/*
 	 * Disable vertical blanking interrupt reporting. We first need to wait

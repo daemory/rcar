@@ -562,17 +562,23 @@ int rcar_du_modeset_init(struct rcar_du_device *rcdu)
 		rgrp->index = i;
 		rgrp->num_crtcs = min(rcdu->num_crtcs - 2 * i, 2U);
 
-		/*
-		 * If we have more than one CRTCs in this group pre-associate
-		 * the low-order planes with CRTC 0 and the high-order planes
-		 * with CRTC 1 to minimize flicker occurring when the
-		 * association is changed.
-		 */
-		rgrp->dptsr_planes = rgrp->num_crtcs > 1
-				   ? (rcdu->info->gen >= 3 ? 0x04 : 0xf0)
-				   : 0;
-
-		if (!rcar_du_has(rcdu, RCAR_DU_FEATURE_VSP1_SOURCE)) {
+		if (rcar_du_has(rcdu, RCAR_DU_FEATURE_VSP1_SOURCE)) {
+			/*
+			 * When using the VSP plane assignment to CRTCs is
+			 * fixed. The first VSP is connected to plane 1, and the
+			 * second VSP to plane 2 on Gen2 hardware and to plane 3
+			 * on Gen3 hardware.
+			 */
+			rgrp->dptsr_planes = rgrp->num_crtcs > 1
+					   ? (rcdu->info->gen >= 3 ? 4 : 2)
+					   : 0;
+		} else {
+			/*
+			 * Pre-associate the planes with the CRTCs if we have
+			 * more than one CRTC in this group to minimize flicker
+			 * when plane association is changed.
+			 */
+			rgrp->dptsr_planes = rgrp->num_crtcs > 1 ? 0xf0 : 0x00;
 			ret = rcar_du_planes_init(rgrp);
 			if (ret < 0)
 				return ret;
