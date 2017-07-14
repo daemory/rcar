@@ -1,0 +1,77 @@
+/*
+ * Device Tree Source for the H3ULCB Kingfisher board:
+ * this adding conflicting resource on VIN4 for Raspberry Pi camera
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+&i2cswitch4 {
+	i2c@4 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <4>;
+
+		rpi_camera: ov5647@36 {
+			compatible = "ovti,ov5647";
+			reg = <0x36>;
+
+			port@0 {
+				rpi_camera_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+					remote-endpoint = <&vin4ep0>;
+				};
+			};
+		};
+	};
+};
+
+&vin4 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin4ep0: endpoint {
+				csi,select = "csi20";
+				virtual,channel = <0>;
+				remote-endpoint = <&rpi_camera_in>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			csi2ep0: endpoint {
+				remote-endpoint = <&csi2_20_ep>;
+			};
+		};
+	};
+};
+
+&csi2_20 {
+	status = "okay";
+
+	virtual,channel {
+		csi2_vc0 {
+			data,type = "raw8";
+			receive,vc = <0>;
+		};
+	};
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		csi2_20_ep: endpoint {
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+			csi-rate = <280>;
+		};
+	};
+};

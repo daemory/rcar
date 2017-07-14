@@ -1,0 +1,40 @@
+/*
+ * Device Tree Source for the M3ULCB Kingfisher board on r8a7796
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "r8a7796-m3ulcb.dts"
+#include "ulcb-kf.dtsi"
+
+/ {
+	model = "Renesas M3ULCB Kingfisher board based on r8a7796";
+};
+
+&du {
+	ports {
+		port@0 {
+			endpoint {
+				remote-endpoint = <&adv7513_in>;
+			};
+		};
+		port@2 {
+			endpoint {
+				remote-endpoint = <&lvds_enc_in>;
+			};
+		};
+	};
+};
+
+&hsusb {
+	status = "okay";
+};
+
+&xhci0 {
+	status = "disabled";
+};

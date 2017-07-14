@@ -1,0 +1,465 @@
+/*
+ * Device Tree Source for the M3ULCB Kingfisher V1 board
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include "r8a7796-m3ulcb-kf-v0.dts"
+
+/ {
+	model = "Renesas M3ULCB Kingfisher V1 board based on r8a7796";
+
+	aliases {
+		serial1 = &hscif0;
+		serial2 = &hscif1;
+		serial3 = &scif1;
+	};
+
+	wlan_en: regulator@4 {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_ext_74 4 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	codec_en_reg: regulator@6 {
+		compatible = "regulator-fixed";
+		regulator-name = "codec-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_ext_74 15 0>;
+
+		/* delay - CHECK */
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
+	amp_en_reg: regulator@7 {
+		compatible = "regulator-fixed";
+		regulator-name = "amp-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&gpio_ext_74 0 0>;
+
+		startup-delay-us = <0>;
+		enable-active-high;
+	};
+
+	/delete-node/regulator@8;
+
+	sdio_switch: regulator@9 {
+		compatible = "regulator-fixed";
+		regulator-name = "wifi_on";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_ext_74 5 0>;
+		enable-active-low;
+		regulator-always-on;
+	};
+
+	/delete-node/regulator@10;
+
+	radio_switch: regulator@11 {
+		compatible = "regulator-fixed";
+		regulator-name = "radio_on";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_ext_74 13 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
+	mpcie_3v3: regulator@12 {
+		compatible = "regulator-fixed";
+		regulator-name = "mPCIe 3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio_ext_77 14 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	mpcie_1v8: regulator@13 {
+		compatible = "regulator-fixed";
+		regulator-name = "mPCIe 1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&gpio_ext_77 15 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <200000>;
+		enable-active-high;
+	};
+
+	kim {
+		shutdown-gpios = <&gpio_ext_74 3 GPIO_ACTIVE_HIGH>;
+	};
+
+	hdmi-out {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con: endpoint {
+				remote-endpoint = <&adv7513_out>;
+			};
+		};
+	};
+};
+
+&pfc {
+	/delete-node/hscif4;
+
+	scif1_pins: scif1 {
+		groups = "scif1_data_b";
+		function = "scif1";
+	};
+
+	hscif0_pins: hscif0 {
+		groups = "hscif0_data", "hscif0_ctrl";
+		function = "hscif0";
+	};
+
+	hscif1_pins: hscif1 {
+		groups = "hscif1_data_a", "hscif1_ctrl_a";
+		function = "hscif1";
+	};
+
+	du_pins: du {
+		groups = "du_rgb888", "du_sync", "du_clk_out_0", "du_disp";
+		function = "du";
+	};
+};
+
+&du {
+	pinctrl-0 = <&du_pins>;
+	pinctrl-names = "default";
+
+	ports {
+		port@0 {
+			endpoint {
+				remote-endpoint = <&adv7513_in>;
+			};
+		};
+	};
+};
+
+&gpio0 {
+	/delete-node/video_a_irq;
+	/delete-node/video_b_irq;
+	/delete-node/gpioext_2_20_irq;
+};
+
+&gpio1 {
+	/delete-node/gpioext_2_21_irq;
+	/delete-node/wifi_irq;
+};
+
+&gpio2 {
+	bl_pwm {
+		gpio-hog;
+		gpios = <3 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "BL PWM 100%";
+	};
+};
+
+&gpio5 {
+	/delete-node/touch_irq;
+	/delete-node/bt_strap;
+};
+
+&gpio7 {
+	/delete-node/gpioext_2_21_irq;
+};
+
+&scif1 {
+	pinctrl-0 = <&scif1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&hscif0 {
+	pinctrl-0 = <&hscif0_pins>;
+	pinctrl-names = "default";
+	uart-has-rtscts;
+
+	status = "okay";
+};
+
+&hscif1 {
+	pinctrl-0 = <&hscif1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&hscif4 {
+	/delete-property/pinctrl-0;
+	/delete-property/pinctrl-names;
+
+	status = "disabled";
+};
+
+&i2c2 {
+	/delete-node/pca9535@20;
+	/delete-node/pca9535@21;
+
+	gpio_ext_74: pca9539@74 {
+		compatible = "nxp,pca9539";
+		reg = <0x74>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		interrupt-parent = <&gpio6>;
+		interrupts = <8 IRQ_TYPE_EDGE_FALLING>;
+
+		hub_pwen {
+			gpio-hog;
+			gpios = <6 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "HUB pwen";
+		};
+		hub_rst {
+			gpio-hog;
+			gpios = <7 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "HUB rst";
+		};
+		otg_offvbus {
+			gpio-hog;
+			gpios = <8 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "OTG off VBUSn";
+		};
+		otg_extlpn {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "OTG EXTLPn";
+		};
+		otg_stat1 {
+			gpio-hog;
+			gpios = <10 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "OTG Stat1";
+		};
+		otg_stat2 {
+			gpio-hog;
+			gpios = <11 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "OTG Stat2";
+		};
+	};
+
+	gpio_ext_75: pca9539@75 {
+		compatible = "nxp,pca9539";
+		reg = <0x75>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		interrupt-parent = <&gpio6>;
+		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+
+		gps_rst {
+			gpio-hog;
+			gpios = <6 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "GPS rst";
+		};
+		fpdl_shdn {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "FPDLink shdn";
+		};
+	};
+};
+
+&i2cswitch2 {
+	reg = <0x71>;
+	reset-gpios= <&gpio5 3 GPIO_ACTIVE_LOW>;
+
+	i2c@4 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <4>;
+
+		hdmi@3d {
+			compatible = "adi,adv7511w";
+			reg = <0x3d>;
+//			interrupt-parent = <&gpio2>;
+//			interrupts = <0 IRQ_TYPE_EDGE_BOTH>;
+			pd-gpios = <&gpio_ext_75 5 GPIO_ACTIVE_LOW>;
+
+			adi,input-depth = <8>;
+			adi,input-colorspace = "rgb";
+			adi,input-clock = "1x";
+			adi,input-style = <1>;
+			adi,input-justification = "evenly";
+			adi,clock-delay = <1200>;
+			adi,clock-max-rate = <100000>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					adv7513_in: endpoint {
+						remote-endpoint = <&du_out_rgb>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					adv7513_out: endpoint {
+						remote-endpoint = <&hdmi_con>;
+					};
+				};
+			};
+		};
+	};
+};
+
+&i2c4 {
+	/delete-node/pca9535@21;
+
+	gpio_ext_76: pca9539@76 {
+		compatible = "nxp,pca9539";
+		reg = <0x76>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		interrupt-parent = <&gpio7>;
+		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+
+		port_b_a0 {
+			gpio-hog;
+			gpios = <0 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "Video-B A0";
+		};
+		port_b_a1 {
+			gpio-hog;
+			gpios = <1 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "Video-B A1";
+		};
+		port_a_a0 {
+			gpio-hog;
+			gpios = <2 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "Video-A A0";
+		};
+		port_a_a1 {
+			gpio-hog;
+			gpios = <3 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "Video-A A1";
+		};
+		cmos_pwdn {
+			gpio-hog;
+			gpios = <8 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "CMOS PWDN";
+		};
+		cmos_rst {
+			gpio-hog;
+			gpios = <9 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "CMOS RST";
+		};
+		/* pin 12 - CAM_CLK */
+		rpi_cam_io_1 {
+			gpio-hog;
+			gpios = <10 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "RaspB_IO1";
+		};
+		/* pin 11 - CAM_GPIO - assume pwdn */
+		rpi_cam_io_0 {
+			gpio-hog;
+			gpios = <11 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "RaspB_IO0";
+		};
+		sam_rst {
+			gpio-hog;
+			gpios = <4 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "SAM RST";
+		};
+		sam_pwr {
+			gpio-hog;
+			gpios = <5 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "SAM PWR";
+		};
+		/* 0 - FPDLink output, 1 - LVDS output */
+		lvds_vs_fpdl {
+			gpio-hog;
+			gpios = <14 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "LVDS switch";
+		};
+	};
+
+	gpio_ext_77: pca9539@77 {
+		compatible = "nxp,pca9539";
+		reg = <0x77>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		interrupt-parent = <&gpio5>;
+		interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
+
+		mpcie_wake {
+			gpio-hog;
+			gpios = <0 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "mPCIe WAKE#";
+		};
+		mpcie_wdisable {
+			gpio-hog;
+			gpios = <1 GPIO_ACTIVE_HIGH>;
+			output-high;
+			line-name = "mPCIe W_DISABLE";
+		};
+		mpcie_clreq {
+			gpio-hog;
+			gpios = <2 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "mPCIe CLKREQ#";
+		};
+		mpcie_ovc {
+			gpio-hog;
+			gpios = <3 GPIO_ACTIVE_HIGH>;
+			input;
+			line-name = "mPCIe OVC";
+		};
+	};
+};
+
+&i2cswitch4 {
+	reg = <0x71>;
+	reset-gpios= <&gpio3 15 GPIO_ACTIVE_LOW>;
+};
+
+&wlcore {
+	interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
+};
+
+&pciec1 {
+	pcie3v3-supply = <&mpcie_3v3>;
+	pcie1v8-supply = <&mpcie_1v8>;
+};

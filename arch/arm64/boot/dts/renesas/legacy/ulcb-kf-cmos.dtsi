@@ -1,0 +1,75 @@
+/*
+ * Device Tree Source for the H3ULCB Kingfisher board:
+ * this adding conflicting resource on VIN5 for CMOS camera
+ *
+ * Copyright (C) 2017 Renesas Electronics Corp.
+ * Copyright (C) 2017 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+/ {
+	camera_clk: camera_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "mclk";
+	};
+};
+
+&pfc {
+	vin5_pins: vin5 {
+		groups = "vin5_data8", "vin5_sync", "vin5_clk";
+		function = "vin5";
+	};
+};
+
+&i2cswitch4 {
+	i2c@5 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <5>;
+
+		cmos_camera: ov5642@3c {
+			compatible = "ovti,ov5642";
+			reg = <0x3c>;
+			clocks = <&camera_clk>;
+			clock-names = "mclk";
+
+			port@0 {
+				cmos_camera_in: endpoint {
+					remote-endpoint = <&vin5ep0>;
+				};
+			};
+		};
+	};
+};
+
+&vin5 {
+	pinctrl-0 = <&vin5_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			vin5ep0: endpoint@0 {
+				/delete-property/csi,select;
+				/delete-property/virtual,channel;
+				/delete-property/data-lanes;
+				bus-width = <8>;
+				/* #HSYNC, #VSYNC */
+				vsync-active = <1>;
+				hsync-active = <0>;
+				remote-endpoint = <&cmos_camera_in>;
+			};
+		};
+		port@1 {
+			/delete-node/endpoint;
+		};
+	};
+};
