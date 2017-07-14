@@ -30,11 +30,14 @@ struct rcar_du_vsp;
  * @extclock: external pixel dot clock (optional)
  * @mmio_offset: offset of the CRTC registers in the DU MMIO block
  * @index: CRTC software and hardware index
- * @started: whether the CRTC has been started and is running
+ * @initialized: whether the CRTC has been initialized and clocks enabled
+ * @vblank_enable: whether vblank events are enabled on this CRTC
  * @event: event to post when the pending page flip completes
  * @flip_wait: wait queue used to signal page flip completion
  * @outputs: bitmask of the outputs (enum rcar_du_output) driven by this CRTC
  * @group: CRTC group this CRTC belongs to
+ * @vsp: VSP feeding video to this CRTC
+ * @vsp_pipe: index of the VSP pipeline feeding video to this CRTC
  */
 struct rcar_du_crtc {
 	struct drm_crtc crtc;
@@ -43,8 +46,9 @@ struct rcar_du_crtc {
 	struct clk *extclock;
 	unsigned int mmio_offset;
 	unsigned int index;
-	bool started;
+	bool initialized;
 
+	bool vblank_enable;
 	struct drm_pending_vblank_event *event;
 	wait_queue_head_t flip_wait;
 
@@ -52,6 +56,7 @@ struct rcar_du_crtc {
 
 	struct rcar_du_group *group;
 	struct rcar_du_vsp *vsp;
+	unsigned int vsp_pipe;
 };
 
 #define to_rcar_crtc(c)	container_of(c, struct rcar_du_crtc, crtc)
