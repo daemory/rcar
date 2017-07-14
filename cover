@@ -1,0 +1,20 @@
+vsp1: TLB optimisation
+
+Each display list currently allocates an area of DMA memory to store register
+settings for the VSP1 to process. Each of these allocations adds pressure to
+the IPMMU TLB entries.
+
+We can reduce the pressure by pre-allocating larger areas and dividing the area
+across multiple bodies represented as a pool.
+
+Patch 1 adds protection to ensure that the display list body does not overflow
+and will allow us to reduce the size of the body allocations in the future (it
+has already helped me catch an overflow during the development of this series,
+so I thought it was a worth while addition)
+
+Patch 2 implements the fragment pool object and provides function helpers to
+interact with the pool
+
+Patches 3 to 6 convert the existing allocations to use the new fragment pool.
+These are separated for clarity, but I have no objections to squashing those
+into a single commit if it is preferred.
