@@ -21,7 +21,6 @@
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-of.h>
 #include <media/v4l2-subdev.h>
 
 #define MAX9286_MAX_PORTS	4
