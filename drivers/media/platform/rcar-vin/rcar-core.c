@@ -688,20 +688,11 @@ static void rvin_group_notify_unbind(struct v4l2_async_notifier *notifier,
 				     struct v4l2_async_subdev *asd)
 {
 	struct rvin_dev *vin = notifier_to_vin(notifier);
-	unsigned int i;
+	struct rvin_graph_entity *csi = to_rvin_graph_entity(asd);
 
 	mutex_lock(&vin->group->lock);
-	for (i = 0; i < RVIN_CSI_MAX; i++) {
-		if (&vin->group->csi[i].asd == asd) {
-			vin_dbg(vin, "Unbind CSI-2 %s\n", subdev->name);
-			vin->group->csi[i].subdev = NULL;
-			mutex_unlock(&vin->group->lock);
-			return;
-		}
-	}
+	csi->subdev = NULL;
 	mutex_unlock(&vin->group->lock);
-
-	vin_err(vin, "No entity for subdev %s to unbind\n", subdev->name);
 }
 
 static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
@@ -709,23 +700,16 @@ static int rvin_group_notify_bound(struct v4l2_async_notifier *notifier,
 				   struct v4l2_async_subdev *asd)
 {
 	struct rvin_dev *vin = notifier_to_vin(notifier);
-	unsigned int i;
+	struct rvin_graph_entity *csi = to_rvin_graph_entity(asd);
 
 	v4l2_set_subdev_hostdata(subdev, vin);
 
 	mutex_lock(&vin->group->lock);
-	for (i = 0; i < RVIN_CSI_MAX; i++) {
-		if (&vin->group->csi[i].asd == asd) {
-			vin_dbg(vin, "Bound CSI-2 %s\n", subdev->name);
-			vin->group->csi[i].subdev = subdev;
-			mutex_unlock(&vin->group->lock);
-			return 0;
-		}
-	}
+	vin_dbg(vin, "Bound CSI-2 %s\n", subdev->name);
+	csi->subdev = subdev;
 	mutex_unlock(&vin->group->lock);
 
-	vin_err(vin, "No entity for subdev %s to bind\n", subdev->name);
-	return -EINVAL;
+	return 0;
 }
 
 static struct device_node *rvin_group_get_csi(struct rvin_dev *vin,

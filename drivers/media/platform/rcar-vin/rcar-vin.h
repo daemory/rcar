@@ -92,6 +92,9 @@ struct rvin_graph_entity {
 	unsigned int sink_pad;
 };
 
+#define to_rvin_graph_entity(asd) \
+	container_of(asd, struct rvin_graph_entity, asd)
+
 struct rvin_group;
 
 
