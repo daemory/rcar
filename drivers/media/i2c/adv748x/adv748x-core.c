@@ -21,6 +21,7 @@
 #include <linux/mutex.h>
 #include <linux/of_graph.h>
 #include <linux/regmap.h>
+#include <linux/slab.h>
 #include <linux/v4l2-dv-timings.h>
 
 #include <media/v4l2-ctrls.h>

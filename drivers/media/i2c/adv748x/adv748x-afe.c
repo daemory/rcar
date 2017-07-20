@@ -13,6 +13,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 #include <linux/v4l2-dv-timings.h>
 
 #include <media/v4l2-ctrls.h>
