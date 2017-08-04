@@ -1,5 +1,8 @@
 vsp1 partition algorithm improvements
 
+Hans, this series should be ready for integration now. Could you pick up these
+patches please?
+
 Some updates and initial improvements for the VSP1 partition algorithm that
 remove redundant processing and variables, reducing the processing done in
 interrupt context slightly.
@@ -27,3 +30,6 @@ v2:
 v3:
  - Review fixes and changes from Laurent
  - v4l: vsp1: Release buffers in start_streaming error path
+
+v4:
+ - (Final) fixups from Laurent's review, and picked up his reviewed-by tags.
