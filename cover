@@ -4,13 +4,16 @@ Some updates and initial improvements for the VSP1 partition algorithm that
 remove redundant processing and variables, reducing the processing done in
 interrupt context slightly.
 
-Patches 1, 2 and 3 clean up the calculation of the partition windows such that
+Patch 1, fixes up a bug to release buffers back to vb2 if errors occur in
+vsp1_video_start_streaming()
+
+Patches 2, 3 and 4 clean up the calculation of the partition windows such that
 they are only calculated once at streamon.
 
-Patch 4 improves the allocations with a new vsp1_partition object to track each
+Patch 5 improves the allocations with a new vsp1_partition object to track each
 window state.
 
-Patches 5, and 6 then go on to enhance the partition algorithm by allowing each
+Patches 6, and 7 then go on to enhance the partition algorithm by allowing each
 entity to calculate the requirements for it's pipeline predecessor to
 successfully generate the requested output window. This system allows the
 entity objects to specify what they need to fulfil the output for the next
@@ -20,3 +23,7 @@ v2:
  - Rebased to v4.12-rc1
  - Partition tables dynamically allocated
  - review fixups
+
+v3:
+ - Review fixes and changes from Laurent
+ - v4l: vsp1: Release buffers in start_streaming error path
