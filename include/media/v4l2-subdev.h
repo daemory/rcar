@@ -292,6 +292,9 @@ struct v4l2_subdev_audio_ops {
  * receiver should use 1D DMA.
  */
 #define V4L2_MBUS_FRAME_DESC_FL_BLOB		(1U << 1)
+/* Indicates the the discriptor describes a muxed CSI-2 bus */
+#define V4L2_MBUS_FRAME_DESC_FL_CSI2		(1U << 2)
+
 
 /**
  * struct v4l2_mbus_frame_desc_entry - media bus frame description structure
@@ -301,11 +304,19 @@ struct v4l2_subdev_audio_ops {
  * @pixelcode: media bus pixel code, valid if FRAME_DESC_FL_BLOB is not set
  * @length: number of octets per frame, valid if V4L2_MBUS_FRAME_DESC_FL_BLOB
  *	    is set
+ * @csi2: CSI-2 bus specific parameters, valid if V4L2_MBUS_FRAME_DESC_FL_CSI2
+ *        is set
  */
 struct v4l2_mbus_frame_desc_entry {
 	u16 flags;
 	u32 pixelcode;
 	u32 length;
+
+	struct {
+		unsigned int channel;
+		unsigned int datatype;
+		unsigned int pad;
+	} csi2;
 };
 
 #define V4L2_FRAME_DESC_ENTRY_MAX	4
