@@ -1235,15 +1235,17 @@ static int rvin_set_stream(struct rvin_dev *vin, int on)
 		if (media_pipeline_start(&vin->vdev.entity, pipe))
 			return -EPIPE;
 
-		ret = v4l2_subdev_call(sd, video, s_stream, 1);
+		ret = v4l2_subdev_call(sd, pad, s_stream, pad->index, 0, 1);
 		if (ret == -ENOIOCTLCMD)
 			ret = 0;
 		if (ret)
 			media_pipeline_stop(&vin->vdev.entity);
 	} else {
 		media_pipeline_stop(&vin->vdev.entity);
-		ret = v4l2_subdev_call(sd, video, s_stream, 0);
+		ret = v4l2_subdev_call(sd, pad, s_stream, pad->index, 0, 0);
 	}
+
+	vin_dbg(vin, "pad: %u stream: 0 enable: %d\n", pad->index, on);
 
 	return ret;
 }
