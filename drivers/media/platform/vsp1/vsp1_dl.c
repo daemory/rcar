@@ -14,6 +14,7 @@
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
 #include <linux/gfp.h>
+#include <linux/refcount.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 
@@ -57,6 +58,8 @@ struct vsp1_dl_entry {
 struct vsp1_dl_body {
 	struct list_head list;
 	struct list_head free;
+
+	refcount_t refcnt;
 
 	struct vsp1_dl_body_pool *pool;
 	struct vsp1_device *vsp1;
@@ -252,6 +255,7 @@ struct vsp1_dl_body *vsp1_dl_body_get(struct vsp1_dl_body_pool *pool)
 	if (!list_empty(&pool->free)) {
 		dlb = list_first_entry(&pool->free, struct vsp1_dl_body, free);
 		list_del(&dlb->free);
+		refcount_set(&dlb->refcnt, 1);
 	}
 
 	spin_unlock_irqrestore(&pool->lock, flags);
@@ -270,6 +274,9 @@ void vsp1_dl_body_put(struct vsp1_dl_body *dlb)
 	unsigned long flags;
 
 	if (!dlb)
+		return;
+
+	if (!refcount_dec_and_test(&dlb->refcnt))
 		return;
 
 	dlb->num_entries = 0;
@@ -458,7 +465,11 @@ void vsp1_dl_list_write(struct vsp1_dl_list *dl, u32 reg, u32 data)
  * in the order in which bodies are added.
  *
  * Adding a body to a display list passes ownership of the body to the list. The
- * caller must not touch the body after this call.
+ * caller must not modify the body after this call, but can retain a reference
+ * to it for future use if necessary, to add to subsequent lists.
+ *
+ * The reference count of the body is incremented by this attachment, and thus
+ * the caller should release it's reference if does not want to cache the body.
  *
  * Additional bodies are only usable for display lists in header mode.
  * Attempting to add a body to a header-less display list will return an error.
@@ -469,6 +480,8 @@ int vsp1_dl_list_add_body(struct vsp1_dl_list *dl,
 	/* Multi-body lists are only available in header mode. */
 	if (dl->dlm->mode != VSP1_DL_MODE_HEADER)
 		return -EINVAL;
+
+	refcount_inc(&dlb->refcnt);
 
 	list_add_tail(&dlb->list, &dl->bodies);
 	return 0;
