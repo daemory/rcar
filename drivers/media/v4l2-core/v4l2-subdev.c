@@ -547,6 +547,15 @@ int v4l2_subdev_link_validate(struct media_link *link)
 	struct v4l2_subdev_format sink_fmt, source_fmt;
 	int rval;
 
+	/* Require both pads in a link to be multiplexed if one is */
+	if ((link->source->flags | link->sink->flags) & MEDIA_PAD_FL_MUXED) {
+		if ((link->source->flags & MEDIA_PAD_FL_MUXED) == 0)
+			return -EINVAL;
+		if ((link->sink->flags & MEDIA_PAD_FL_MUXED) == 0)
+			return -EINVAL;
+		return 0;
+	}
+
 	rval = v4l2_subdev_link_validate_get_format(
 		link->source, &source_fmt);
 	if (rval < 0)
