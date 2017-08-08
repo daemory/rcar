@@ -296,24 +296,22 @@ static const struct phtw_testdin_data testdin_data_v3m_e3[] = {
 #define CSI0CLKFREQRANGE(n)		((n & 0x3f) << 16)
 
 struct rcar_csi2_format {
-	unsigned int code;
 	unsigned int datatype;
 	unsigned int bpp;
 };
 
 static const struct rcar_csi2_format rcar_csi2_formats[] = {
-	{ .code = MEDIA_BUS_FMT_RGB888_1X24,	.datatype = 0x24, .bpp = 24 },
-	{ .code = MEDIA_BUS_FMT_UYVY8_1X16,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_UYVY8_2X8,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_YUYV10_2X10,	.datatype = 0x1e, .bpp = 16 },
+	{ .datatype = 0x1e, .bpp = 16 },
+	{ .datatype = 0x24, .bpp = 24 },
 };
 
-static const struct rcar_csi2_format *rcar_csi2_code_to_fmt(unsigned int code)
+static const struct rcar_csi2_format
+*rcar_csi2_datatype_to_fmt(unsigned int datatype)
 {
 	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(rcar_csi2_formats); i++)
-		if (rcar_csi2_formats[i].code == code)
+		if (rcar_csi2_formats[i].datatype == datatype)
 			return rcar_csi2_formats + i;
 
 	return NULL;
@@ -403,24 +401,16 @@ static int rcar_csi2_wait_phy_start(struct rcar_csi2 *priv)
 	return -ETIMEDOUT;
 }
 
-static int rcar_csi2_calc_mbps(struct rcar_csi2 *priv, unsigned int bpp)
+static int rcar_csi2_calc_mbps(struct rcar_csi2 *priv,
+				 struct v4l2_subdev *source,
+				 struct v4l2_mbus_frame_desc *fd)
 {
-	struct media_pad *pad, *source_pad;
-	struct v4l2_subdev *source = NULL;
+	struct v4l2_mbus_frame_desc_entry *entry;
+	const struct rcar_csi2_format *format;
+
 	struct v4l2_ctrl *ctrl;
+	unsigned int i, bpp = 0;
 	u64 mbps;
-
-	/* Get remote subdevice */
-	pad = &priv->subdev.entity.pads[RCAR_CSI2_SINK];
-	source_pad = media_entity_remote_pad(pad);
-	if (!source_pad) {
-		dev_err(priv->dev, "Could not find remote source pad\n");
-		return -ENODEV;
-	}
-	source = media_entity_to_v4l2_subdev(source_pad->entity);
-
-	dev_dbg(priv->dev, "Using source %s pad: %u\n", source->name,
-		source_pad->index);
 
 	/* Read the pixel rate control from remote */
 	ctrl = v4l2_ctrl_find(source->ctrl_handler, V4L2_CID_PIXEL_RATE);
@@ -428,6 +418,20 @@ static int rcar_csi2_calc_mbps(struct rcar_csi2 *priv, unsigned int bpp)
 		dev_err(priv->dev, "no link freq control in subdev %s\n",
 			source->name);
 		return -EINVAL;
+	}
+
+	/* Calculate total bpp */
+	for (i = 0; i < fd->num_entries; i++) {
+		entry = &fd->entry[i];
+
+		format = rcar_csi2_datatype_to_fmt(entry->csi2.datatype);
+		if (!format) {
+			dev_err(priv->dev, "Unknown datatype: %d\n",
+				entry->csi2.datatype);
+			return -EINVAL;
+		}
+
+		bpp += format->bpp;
 	}
 
 	/* Calculate the phypll */
@@ -483,36 +487,58 @@ static int rcar_csi2_set_phtw(struct rcar_csi2 *priv, unsigned int mbps)
 
 static int rcar_csi2_start(struct rcar_csi2 *priv)
 {
-	const struct rcar_csi2_format *format;
+	struct v4l2_mbus_frame_desc_entry *entry;
+	struct media_pad *pad, *source_pad;
+	struct v4l2_subdev *source = NULL;
+	struct v4l2_mbus_frame_desc fd;
 	u32 phycnt, tmp;
+
 	u32 vcdt = 0, vcdt2 = 0;
 	unsigned int i;
 	int mbps, ret;
 
-	dev_dbg(priv->dev, "Input size (%ux%u%c)\n",
-		priv->mf.width, priv->mf.height,
-		priv->mf.field == V4L2_FIELD_NONE ? 'p' : 'i');
+	pad = &priv->subdev.entity.pads[RCAR_CSI2_SINK];
+	source_pad = media_entity_remote_pad(pad);
+	if (!source_pad) {
+		dev_err(priv->dev, "Could not find remote source pad\n");
+		return -ENODEV;
+	}
 
-	/* Code is validated in set_ftm */
-	format = rcar_csi2_code_to_fmt(priv->mf.code);
+	source = media_entity_to_v4l2_subdev(source_pad->entity);
+	if (!source) {
+		dev_err(priv->dev, "Could not find remote subdevice\n");
+		return -ENODEV;
+	}
 
-	/*
-	 * Enable all Virtual Channels
-	 *
-	 * NOTE: It's not possible to get individual datatype for each
-	 *       source virtual channel. Once this is possible in V4L2
-	 *       it should be used here.
-	 */
-	for (i = 0; i < 4; i++) {
-		tmp = VCDT_SEL_VC(i) | VCDT_VCDTN_EN | VCDT_SEL_DTN_ON |
-			VCDT_SEL_DT(format->datatype);
+	dev_dbg(priv->dev, "Using source %s pad: %u\n", source->name,
+		source_pad->index);
+
+	if (v4l2_subdev_call(source, pad, get_frame_desc, source_pad->index,
+			     &fd)) {
+		dev_err(priv->dev, "Could not read frame desc\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < fd.num_entries; i++) {
+		entry = &fd.entry[i];
+
+		if ((entry->flags & V4L2_MBUS_FRAME_DESC_FL_CSI2) == 0)
+			return -EINVAL;
+
+		tmp = VCDT_SEL_VC(entry->csi2.channel) | VCDT_VCDTN_EN |
+			VCDT_SEL_DTN_ON | VCDT_SEL_DT(entry->csi2.datatype);
 
 		/* Store in correct reg and offset */
-		if (i < 2)
-			vcdt |= tmp << ((i % 2) * 16);
+		if (entry->csi2.channel < 2)
+			vcdt |= tmp << ((entry->csi2.channel % 2) * 16);
 		else
-			vcdt2 |= tmp << ((i % 2) * 16);
+			vcdt2 |= tmp << ((entry->csi2.channel % 2) * 16);
+
+		dev_dbg(priv->dev, "VC%d datatype: 0x%x\n",
+			entry->csi2.channel, entry->csi2.datatype);
 	}
+
+	dev_dbg(priv->dev, "VCDT: 0x%08x VCDT2: 0x%08x\n", vcdt, vcdt2);
 
 	switch (priv->lanes) {
 	case 1:
@@ -529,7 +555,7 @@ static int rcar_csi2_start(struct rcar_csi2 *priv)
 		return -EINVAL;
 	}
 
-	mbps = rcar_csi2_calc_mbps(priv, format->bpp);
+	mbps = rcar_csi2_calc_mbps(priv, source, &fd);
 	if (mbps < 0)
 		return mbps;
 
