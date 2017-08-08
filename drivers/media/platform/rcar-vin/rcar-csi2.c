@@ -625,11 +625,18 @@ static int rcar_csi2_sd_info(struct rcar_csi2 *priv, struct v4l2_subdev **sd)
 	return 0;
 }
 
-static int rcar_csi2_s_stream(struct v4l2_subdev *sd, int enable)
+static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
+			      unsigned int stream, int enable)
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
 	struct v4l2_subdev *nextsd;
 	int ret;
+
+	if (pad < RCAR_CSI2_SOURCE_VC0 || pad > RCAR_CSI2_SOURCE_VC3)
+		return -EINVAL;
+
+	if (stream != 0)
+		return -EINVAL;
 
 	mutex_lock(&priv->lock);
 
@@ -699,17 +706,13 @@ static int rcar_csi2_get_pad_format(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static const struct v4l2_subdev_video_ops rcar_csi2_video_ops = {
-	.s_stream = rcar_csi2_s_stream,
-};
-
 static const struct v4l2_subdev_pad_ops rcar_csi2_pad_ops = {
 	.set_fmt = rcar_csi2_set_pad_format,
 	.get_fmt = rcar_csi2_get_pad_format,
+	.s_stream = rcar_csi2_s_stream,
 };
 
 static const struct v4l2_subdev_ops rcar_csi2_subdev_ops = {
-	.video	= &rcar_csi2_video_ops,
 	.pad	= &rcar_csi2_pad_ops,
 };
 
