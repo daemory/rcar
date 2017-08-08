@@ -294,7 +294,7 @@ struct rcar_csi2 {
 	struct v4l2_mbus_framefmt mf;
 
 	struct mutex lock;
-	int stream_count;
+	int stream_count[4];
 
 	struct {
 		struct v4l2_async_subdev asd;
@@ -582,7 +582,7 @@ static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 			      unsigned int stream, int enable)
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
-	unsigned int channel, nextpad, nextstream;
+	unsigned int i, channel, nextpad, nextstream, count = 0;
 	struct v4l2_subdev *nextsd;
 	int ret;
 
@@ -601,18 +601,25 @@ static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 	if (ret)
 		goto out;
 
-	priv->stream_count += enable ? 1 : -1;
+	priv->stream_count[channel] += enable ? 1 : -1;
 
-	if (enable && priv->stream_count == 1) {
+	for (i = 0; i < 4; i++)
+		count += priv->stream_count[i];
+
+	if (enable && count == 1) {
 		ret =  rcar_csi2_start(priv);
 		if (ret)
 			goto out;
-		ret = v4l2_subdev_call(nextsd, video, s_stream, 1);
-
-	} else if (!enable && !priv->stream_count) {
+	} else if (!enable && !count) {
 		rcar_csi2_stop(priv);
-		ret = v4l2_subdev_call(nextsd, video, s_stream, 0);
 	}
+
+	if (enable && priv->stream_count[channel] == 1)
+		ret = v4l2_subdev_call(nextsd, pad, s_stream, nextpad,
+				       nextstream, 1);
+	else if (!enable && !priv->stream_count[channel])
+		ret = v4l2_subdev_call(nextsd, pad, s_stream, nextpad,
+				       nextstream, 0);
 out:
 	mutex_unlock(&priv->lock);
 
@@ -912,7 +919,9 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 	priv->dev = &pdev->dev;
 
 	mutex_init(&priv->lock);
-	priv->stream_count = 0;
+
+	for (i = 0; i < 4; i++)
+		priv->stream_count[i] = 0;
 
 	ret = rcar_csi2_parse_dt_settings(priv);
 	if (ret)
