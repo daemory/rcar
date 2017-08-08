@@ -350,7 +350,7 @@ struct rcar_csi2 {
 	struct v4l2_mbus_framefmt mf;
 
 	struct mutex lock;
-	int stream_count;
+	int stream_count[4];
 
 	unsigned short lanes;
 	unsigned char lane_swap[4];
@@ -655,7 +655,7 @@ static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 			      unsigned int stream, int enable)
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
-	unsigned int channel, nextpad, nextstream;
+	unsigned int i, channel, nextpad, nextstream, count = 0;
 	struct v4l2_subdev *nextsd;
 	int ret;
 
@@ -674,7 +674,11 @@ static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 	if (ret)
 		goto out;
 
-	if (enable && priv->stream_count == 0) {
+
+	for (i = 0; i < 4; i++)
+		count += priv->stream_count[i];
+
+	if (enable && count == 0) {
 		pm_runtime_get_sync(priv->dev);
 
 		ret =  rcar_csi2_start(priv);
@@ -682,20 +686,26 @@ static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 			pm_runtime_put(priv->dev);
 			goto out;
 		}
+	} else if (!enable && count == 1) {
+		rcar_csi2_stop(priv);
+		pm_runtime_put(priv->dev);
+	}
 
-		ret = v4l2_subdev_call(nextsd, video, s_stream, 1);
+	if (enable && priv->stream_count[channel] == 0) {
+		ret = v4l2_subdev_call(nextsd, pad, s_stream, nextpad,
+				       nextstream, 1);
 		if (ret) {
 			rcar_csi2_stop(priv);
 			pm_runtime_put(priv->dev);
 			goto out;
 		}
-	} else if (!enable && priv->stream_count == 1) {
-		rcar_csi2_stop(priv);
-		ret = v4l2_subdev_call(nextsd, video, s_stream, 0);
-		pm_runtime_put(priv->dev);
+	}
+	else if (!enable && priv->stream_count[channel] == 1) {
+		ret = v4l2_subdev_call(nextsd, pad, s_stream, nextpad,
+				       nextstream, 0);
 	}
 
-	priv->stream_count += enable ? 1 : -1;
+	priv->stream_count[channel] += enable ? 1 : -1;
 out:
 	mutex_unlock(&priv->lock);
 
@@ -951,7 +961,9 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 	priv->dev = &pdev->dev;
 
 	mutex_init(&priv->lock);
-	priv->stream_count = 0;
+
+	for (i = 0; i < 4; i++)
+		priv->stream_count[i] = 0;
 
 	ret = rcar_csi2_probe_resources(priv, pdev);
 	if (ret) {
