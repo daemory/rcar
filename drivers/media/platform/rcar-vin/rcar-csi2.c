@@ -345,7 +345,7 @@ struct rcar_csi2 {
 	struct v4l2_async_notifier notifier;
 	struct v4l2_async_subdev remote;
 
-	struct v4l2_mbus_framefmt mf;
+	struct v4l2_mbus_framefmt mf[4];
 
 	struct mutex lock;
 	int stream_count[4];
@@ -744,14 +744,19 @@ static int rcar_csi2_set_pad_format(struct v4l2_subdev *sd,
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
 	struct v4l2_mbus_framefmt *framefmt;
+	unsigned int channel;
 
-	if (!rcar_csi2_code_to_fmt(format->format.code))
+	if (format->pad < RCAR_CSI2_SOURCE_VC0 ||
+	    format->pad > RCAR_CSI2_SOURCE_VC3)
 		return -EINVAL;
 
+	/* Figure out CSI-2 channel from pad. First source is VC0, etc */
+	channel = format->pad - RCAR_CSI2_SOURCE_VC0;
+
 	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-		priv->mf = format->format;
+		priv->mf[channel] = format->format;
 	} else {
-		framefmt = v4l2_subdev_get_try_format(sd, cfg, 0);
+		framefmt = v4l2_subdev_get_try_format(sd, cfg, format->pad);
 		*framefmt = format->format;
 	}
 
@@ -763,11 +768,20 @@ static int rcar_csi2_get_pad_format(struct v4l2_subdev *sd,
 				    struct v4l2_subdev_format *format)
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
+	unsigned int channel;
+
+	if (format->pad < RCAR_CSI2_SOURCE_VC0 ||
+	    format->pad > RCAR_CSI2_SOURCE_VC3)
+		return -EINVAL;
+
+	/* Figure out CSI-2 channel from pad. First source is VC0, etc */
+	channel = format->pad - RCAR_CSI2_SOURCE_VC0;
 
 	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		format->format = priv->mf;
+		format->format = priv->mf[channel];
 	else
-		format->format = *v4l2_subdev_get_try_format(sd, cfg, 0);
+		format->format = *v4l2_subdev_get_try_format(sd, cfg,
+							     format->pad);
 
 	return 0;
 }
