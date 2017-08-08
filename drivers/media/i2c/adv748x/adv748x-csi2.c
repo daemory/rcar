@@ -293,7 +293,8 @@ int adv748x_csi2_init(struct adv748x_state *state, struct adv748x_csi2 *tx)
 	tx->sd.internal_ops = &adv748x_csi2_internal_ops;
 
 	tx->pads[ADV748X_CSI2_SINK].flags = MEDIA_PAD_FL_SINK;
-	tx->pads[ADV748X_CSI2_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	tx->pads[ADV748X_CSI2_SOURCE].flags =
+		MEDIA_PAD_FL_SOURCE | MEDIA_PAD_FL_MUXED;
 
 	ret = media_entity_pads_init(&tx->sd.entity, ADV748X_CSI2_NR_PADS,
 				     tx->pads);
