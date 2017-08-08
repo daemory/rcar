@@ -943,7 +943,8 @@ static int rcar_csi2_probe(struct platform_device *pdev)
 	priv->subdev.entity.function = MEDIA_ENT_F_PROC_VIDEO_PIXEL_FORMATTER;
 	priv->subdev.entity.ops = &rcar_csi2_entity_ops;
 
-	priv->pads[RCAR_CSI2_SINK].flags = MEDIA_PAD_FL_SINK;
+	priv->pads[RCAR_CSI2_SINK].flags =
+		MEDIA_PAD_FL_SINK | MEDIA_PAD_FL_MUXED;
 	for (i = RCAR_CSI2_SOURCE_VC0; i < NR_OF_RCAR_CSI2_PAD; i++)
 		priv->pads[i].flags = MEDIA_PAD_FL_SOURCE;
 
