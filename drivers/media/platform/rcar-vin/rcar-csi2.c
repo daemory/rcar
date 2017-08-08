@@ -606,9 +606,14 @@ static void rcar_csi2_stop(struct rcar_csi2 *priv)
 	rcar_csi2_reset(priv);
 }
 
-static int rcar_csi2_sd_info(struct rcar_csi2 *priv, struct v4l2_subdev **sd)
+static int rcar_csi2_sd_info(struct rcar_csi2 *priv, unsigned int channel,
+			     struct v4l2_subdev **nextsd, unsigned int *nextpad,
+			     unsigned int *nextstream)
 {
+	struct v4l2_mbus_frame_desc_entry *entry;
+	struct v4l2_mbus_frame_desc fd;
 	struct media_pad *pad;
+	unsigned int i;
 
 	pad = media_entity_remote_pad(&priv->pads[RCAR_CSI2_SINK]);
 	if (!pad) {
@@ -616,31 +621,56 @@ static int rcar_csi2_sd_info(struct rcar_csi2 *priv, struct v4l2_subdev **sd)
 		return -ENODEV;
 	}
 
-	*sd = media_entity_to_v4l2_subdev(pad->entity);
-	if (!*sd) {
+	*nextsd = media_entity_to_v4l2_subdev(pad->entity);
+	if (!*nextsd) {
 		dev_err(priv->dev, "Could not find remote subdevice\n");
 		return -ENODEV;
 	}
 
-	return 0;
+	*nextpad = pad->index;
+
+	if (v4l2_subdev_call(*nextsd, pad, get_frame_desc, *nextpad, &fd)) {
+		dev_err(priv->dev, "Could not read frame desc\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < fd.num_entries; i++) {
+		entry = &fd.entry[i];
+
+		if ((entry->flags & V4L2_MBUS_FRAME_DESC_FL_CSI2) == 0)
+			return -EINVAL;
+
+		if (entry->csi2.channel == channel) {
+			*nextstream = i;
+			return 0;
+		}
+	}
+
+	dev_err(priv->dev, "Could not find stream for channel %u\n",
+		channel);
+	return -EINVAL;
 }
 
 static int rcar_csi2_s_stream(struct v4l2_subdev *sd, unsigned int pad,
 			      unsigned int stream, int enable)
 {
 	struct rcar_csi2 *priv = sd_to_csi2(sd);
+	unsigned int channel, nextpad, nextstream;
 	struct v4l2_subdev *nextsd;
 	int ret;
 
 	if (pad < RCAR_CSI2_SOURCE_VC0 || pad > RCAR_CSI2_SOURCE_VC3)
 		return -EINVAL;
 
+	/* Figure out CSI-2 channel from pad. First source is VC0, etc */
+	channel = pad - RCAR_CSI2_SOURCE_VC0;
+
 	if (stream != 0)
 		return -EINVAL;
 
 	mutex_lock(&priv->lock);
 
-	ret = rcar_csi2_sd_info(priv, &nextsd);
+	ret = rcar_csi2_sd_info(priv, channel, &nextsd, &nextpad, &nextstream);
 	if (ret)
 		goto out;
 
