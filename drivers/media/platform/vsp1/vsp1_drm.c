@@ -88,6 +88,7 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 	struct vsp1_entity *entity;
 	struct vsp1_entity *next;
 	struct vsp1_dl_list *dl;
+	struct vsp1_dl_body *dlb;
 	struct v4l2_subdev_format format;
 	unsigned long flags;
 	unsigned int i;
@@ -255,12 +256,13 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 
 	/* Configure all entities in the pipeline. */
 	dl = vsp1_dl_list_get(pipe->output->dlm);
+	dlb = vsp1_dl_list_get_body0(dl);
 
 	list_for_each_entry_safe(entity, next, &pipe->entities, list_pipe) {
-		vsp1_entity_route_setup(entity, pipe, dl);
+		vsp1_entity_route_setup(entity, pipe, dlb);
 
-		vsp1_entity_configure_stream(entity, pipe, dl);
-		vsp1_entity_configure_frame(entity, pipe, dl, 0);
+		vsp1_entity_configure_stream(entity, pipe, dlb);
+		vsp1_entity_configure_frame(entity, pipe, dl, dlb, 0);
 	}
 
 	vsp1_dl_list_commit(dl);
@@ -506,11 +508,15 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index)
 	struct vsp1_entity *entity;
 	struct vsp1_entity *next;
 	struct vsp1_dl_list *dl;
+	struct vsp1_dl_body *dlb;
 	unsigned int i;
 	int ret;
 
 	/* Prepare the display list. */
 	dl = vsp1_dl_list_get(pipe->output->dlm);
+
+	/* Retrieve the default DLB from the list */
+	dlb = vsp1_dl_list_get_body0(dl);
 
 	/* Count the number of enabled inputs and sort them by Z-order. */
 	pipe->num_inputs = 0;
@@ -573,7 +579,7 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index)
 		/* Disconnect unused RPFs from the pipeline. */
 		if (entity->type == VSP1_ENTITY_RPF &&
 		    !pipe->inputs[entity->index]) {
-			vsp1_dl_list_write(dl, entity->route->reg,
+			vsp1_dl_body_write(dlb, entity->route->reg,
 					   VI6_DPR_NODE_UNUSED);
 
 			list_del_init(&entity->list_pipe);
@@ -581,9 +587,9 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index)
 			continue;
 		}
 
-		vsp1_entity_route_setup(entity, pipe, dl);
-		vsp1_entity_configure_stream(entity, pipe, dl);
-		vsp1_entity_configure_frame(entity, pipe, dl, 0);
+		vsp1_entity_route_setup(entity, pipe, dlb);
+		vsp1_entity_configure_stream(entity, pipe, dlb);
+		vsp1_entity_configure_frame(entity, pipe, dl, dlb, 0);
 	}
 
 	vsp1_dl_list_commit(dl);
