@@ -190,24 +190,25 @@ static const struct v4l2_subdev_ops lut_ops = {
  * VSP1 Entity Operations
  */
 
-static void lut_configure(struct vsp1_entity *entity,
-			  struct vsp1_pipeline *pipe,
-			  struct vsp1_dl_list *dl,
-			  enum vsp1_entity_params params)
+static void lut_configure_stream(struct vsp1_entity *entity,
+				 struct vsp1_pipeline *pipe,
+				 struct vsp1_dl_list *dl)
+{
+	struct vsp1_lut *lut = to_lut(&entity->subdev);
+
+	vsp1_lut_write(lut, dl, VI6_LUT_CTRL, VI6_LUT_CTRL_EN);
+}
+
+static void lut_configure_frame(struct vsp1_entity *entity,
+				struct vsp1_pipeline *pipe,
+				struct vsp1_dl_list *dl,
+				unsigned int partition)
 {
 	struct vsp1_lut *lut = to_lut(&entity->subdev);
 	struct vsp1_dl_body *dlb;
 	unsigned long flags;
 
-	switch (params) {
-	case VSP1_ENTITY_PARAMS_INIT:
-		vsp1_lut_write(lut, dl, VI6_LUT_CTRL, VI6_LUT_CTRL_EN);
-		break;
-
-	case VSP1_ENTITY_PARAMS_PARTITION:
-		break;
-
-	case VSP1_ENTITY_PARAMS_RUNTIME:
+	if (partition == 0) {
 		spin_lock_irqsave(&lut->lock, flags);
 		dlb = lut->lut;
 		lut->lut = NULL;
@@ -219,8 +220,6 @@ static void lut_configure(struct vsp1_entity *entity,
 			/* release our local reference */
 			vsp1_dl_body_put(dlb);
 		}
-
-		break;
 	}
 }
 
@@ -232,7 +231,8 @@ static void lut_destroy(struct vsp1_entity *entity)
 }
 
 static const struct vsp1_entity_operations lut_entity_ops = {
-	.configure = lut_configure,
+	.configure_stream = lut_configure_stream,
+	.configure_frame = lut_configure_frame,
 	.destroy = lut_destroy,
 };
 
