@@ -541,20 +541,76 @@ v4l2_subdev_link_validate_get_format(struct media_pad *pad,
 	return -EINVAL;
 }
 
+static int v4l2_subdev_link_validate_muxed(struct media_link *link)
+{
+	struct v4l2_mbus_frame_desc sink_fd, source_fd;
+	struct v4l2_subdev *sink_sd, *source_sd;
+	unsigned int i;
+	int ret;
+
+	/* Require both pads in a link to be multiplexed */
+	if ((link->source->flags & MEDIA_PAD_FL_MUXED) == 0 ||
+	    (link->sink->flags & MEDIA_PAD_FL_MUXED) == 0)
+		return -EINVAL;
+
+	sink_sd = media_entity_to_v4l2_subdev(link->sink->entity);
+	source_sd = media_entity_to_v4l2_subdev(link->source->entity);
+
+	/* If not both provide frame descs there is not much to be done */
+	ret = v4l2_subdev_call(sink_sd, pad, get_frame_desc,
+			       link->sink->index, &sink_fd);
+	if (ret < 0)
+		return 0;
+	ret = v4l2_subdev_call(source_sd, pad, get_frame_desc,
+			       link->source->index, &source_fd);
+	if (ret < 0)
+		return 0;
+
+	/* Check both side multiplex same number of streams */
+	if (sink_fd.num_entries != source_fd.num_entries)
+		return -EINVAL;
+
+	/* Verify all formats of the multiplexed pads by examining the
+	 * format of the pads which are routed to them. Maybe this is
+	 * a bad idea...
+	 */
+	for (i = 0; i < sink_fd.num_entries; i++) {
+		struct v4l2_subdev_format sink_fmt, source_fmt;
+
+		sink_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+		sink_fmt.pad = sink_fd.entry[i].csi2.pad;
+		ret = v4l2_subdev_call(sink_sd, pad, get_fmt, NULL, &sink_fmt);
+		if (ret < 0)
+			return 0;
+
+		source_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+		source_fmt.pad = source_fd.entry[i].csi2.pad;
+		ret = v4l2_subdev_call(source_sd, pad, get_fmt, NULL,
+				       &source_fmt);
+		if (ret < 0)
+			return 0;
+
+		ret = v4l2_subdev_call(sink_sd, pad, link_validate, link,
+					&source_fmt, &sink_fmt);
+		if (ret == -ENOIOCTLCMD)
+			ret = v4l2_subdev_link_validate_default(sink_sd, link,
+								&source_fmt,
+								&sink_fmt);
+		if (ret)
+			return -EPIPE;
+	}
+
+	return 0;
+}
+
 int v4l2_subdev_link_validate(struct media_link *link)
 {
 	struct v4l2_subdev *sink;
 	struct v4l2_subdev_format sink_fmt, source_fmt;
 	int rval;
 
-	/* Require both pads in a link to be multiplexed if one is */
-	if ((link->source->flags | link->sink->flags) & MEDIA_PAD_FL_MUXED) {
-		if ((link->source->flags & MEDIA_PAD_FL_MUXED) == 0)
-			return -EINVAL;
-		if ((link->sink->flags & MEDIA_PAD_FL_MUXED) == 0)
-			return -EINVAL;
-		return 0;
-	}
+	if ((link->source->flags | link->sink->flags) & MEDIA_PAD_FL_MUXED)
+		return v4l2_subdev_link_validate_muxed(link);
 
 	rval = v4l2_subdev_link_validate_get_format(
 		link->source, &source_fmt);
