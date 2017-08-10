@@ -64,6 +64,10 @@ static const struct clk_5p49_info clk_5p49v5923a = {
 	.xtal_fre = 25000000,
 };
 
+static const struct clk_5p49_info clk_5p49v5925 = {
+	.xtal_fre = 25000000,
+};
+
 static const struct clk_5p49_info clk_5p49v6901a = {
 	.xtal_fre = 50000000,
 };
@@ -72,6 +76,10 @@ static const struct of_device_id clk_5p49_of_match[] = {
 	{
 		.compatible = "idt,5p49v5923a",
 		.data = &clk_5p49v5923a,
+	},
+	{
+		.compatible = "idt,5p49v5925",
+		.data = &clk_5p49v5925,
 	},
 	{
 		.compatible = "idt,5p49v6901a",
@@ -83,6 +91,7 @@ MODULE_DEVICE_TABLE(of, clk_5p49_of_match);
 
 static const struct i2c_device_id clk_5p49_id[] = {
 	{ "5p49v5923a",},
+	{ "5p49v5925",},
 	{ "5p49v6901a",},
 	{}
 };
