@@ -1,4 +1,4 @@
-vsp1: TLB optimisation
+vsp1: TLB optimisation and DL caching
 
 Each display list currently allocates an area of DMA memory to store register
 settings for the VSP1 to process. Each of these allocations adds pressure to
@@ -6,6 +6,9 @@ the IPMMU TLB entries.
 
 We can reduce the pressure by pre-allocating larger areas and dividing the area
 across multiple bodies represented as a pool.
+
+With this reconfiguration of bodies, we can adapt the configuration code to
+separate out constant hardware configuration and cache it for re-use.
 
 Patch 1 adds protection to ensure that the display list body does not overflow
 and will allow us to reduce the size of the body allocations in the future (it
@@ -15,6 +18,15 @@ so I thought it was a worth while addition)
 Patch 2 implements the fragment pool object and provides function helpers to
 interact with the pool
 
-Patches 3 to 6 convert the existing allocations to use the new fragment pool.
-These are separated for clarity, but I have no objections to squashing those
-into a single commit if it is preferred.
+Patch 3 converts the existing allocations to use the new fragment pool.
+
+From patch 4 to 7, we then refactor the display list handling code to separate
+out the two stages of stream setup and frame configuration and then configure
+directly into display list bodies. This allows us to cache the constant stream
+configuration in a reusable display list body which also repairs suspend/resume
+cycles for the video pipelines.
+
+Finally in patch 8, the size of the internal display list body is reduced down
+to 64 entries, as the maximum used is now 41 slots. The cached video pipeline
+stream configuration appears to use a maximum of 64 entries, but to allow for
+expansion this is set to 128 for now to prevent unexpected overflows.
