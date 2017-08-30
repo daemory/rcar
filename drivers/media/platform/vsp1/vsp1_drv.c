@@ -734,7 +734,6 @@ static const struct vsp1_device_info vsp1_device_infos[] = {
 		.rpf_count = 5,
 		.wpf_count = 2,
 		.num_bru_inputs = 5,
-		.uapi = true,
 	}, {
 		.version = VI6_IP_VERSION_MODEL_VSPD_V3,
 		.model = "VSP2-D",
@@ -744,7 +743,6 @@ static const struct vsp1_device_info vsp1_device_infos[] = {
 		.rpf_count = 5,
 		.wpf_count = 1,
 		.num_bru_inputs = 5,
-		.uapi = true,
 	}, {
 		.version = VI6_IP_VERSION_MODEL_VSPDL_GEN3,
 		.model = "VSP2-DL",
@@ -754,7 +752,6 @@ static const struct vsp1_device_info vsp1_device_infos[] = {
 		.rpf_count = 5,
 		.wpf_count = 2,
 		.num_bru_inputs = 5,
-		.uapi = true,
 	},
 };
 
