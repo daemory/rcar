@@ -421,9 +421,6 @@ int rcar_du_vsp_init(struct rcar_du_vsp *vsp, struct device_node *np,
 	if (ret < 0)
 		return ret;
 
-	/* Add a device link to maintain power management dependencies */
-	vsp->link = device_link_add(rcdu->dev, vsp->vsp, DL_FLAG_PM_RUNTIME);
-
 	 /*
 	  * The VSP2D (Gen3) has 5 RPFs, but the VSP1D (Gen2) is limited to
 	  * 4 RPFs.
