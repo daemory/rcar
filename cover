@@ -17,3 +17,10 @@ Patch 3: Remove unused CRTC suspend/resume functions
 Whilst this is posted as a single series, there are no hard dependencies
 between any of the three patches. They can be picked up independently as
 and when they are successfully reviewed.
+
+This series is posted with a base consisting of a merge between:
+  git://linuxtv.org/media_tree.git master
+and
+  git://people.freedesktop.org/~airlied/linux drm-next
+
+and is also available at the following URL:
