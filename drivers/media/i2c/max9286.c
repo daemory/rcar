@@ -778,6 +778,10 @@ static int max9286_parse_dt(struct max9286_device *max9286)
 		max9286->nsources++;
 	}
 
+	/* Do not register subdevs if there are not devices */
+	if (!max9286->nsources)
+		return 0;
+
 	return v4l2_async_subdev_notifier_register(&max9286->sd,
 						   max9286->nsources,
 						   max9286->subdevs,
