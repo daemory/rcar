@@ -20,6 +20,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/sys_soc.h>
 #include <linux/videodev2.h>
 
 #include <media/rcar-fcp.h>
@@ -40,6 +41,17 @@
 #include "vsp1_sru.h"
 #include "vsp1_uds.h"
 #include "vsp1_video.h"
+
+static const struct soc_device_attribute ths_quirks_match[]  = {
+	{ .soc_id = "r8a7795", .revision = "ES1.*",
+	  .data = (void *)(VSP1_UNDERRUN_WORKAROUND |
+			   VSP1_AUTO_FLD_NOT_SUPPORT), },
+	{ .soc_id = "r8a7795", .revision = "ES2.0",
+	  .data = NULL, },
+	{ .soc_id = "r8a7796",
+	  .data = NULL, },
+	{/*sentinel*/}
+};
 
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
@@ -532,7 +544,12 @@ static int vsp1_device_init(struct vsp1_device *vsp1)
 	vsp1_write(vsp1, VI6_DPR_HGT_SMPPT, (7 << VI6_DPR_SMPPT_TGW_SHIFT) |
 		   (VI6_DPR_NODE_UNUSED << VI6_DPR_SMPPT_PT_SHIFT));
 
-	vsp1_dlm_setup(vsp1);
+	if (vsp1->info->lif_count == 2) {
+		vsp1_dlm_setup(vsp1, 0);
+		vsp1_dlm_setup(vsp1, 1);
+	} else {
+		vsp1_dlm_setup(vsp1, 0);
+	}
 
 	return 0;
 }

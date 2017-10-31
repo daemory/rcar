@@ -265,7 +265,7 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 		vsp1_entity_configure_frame(entity, pipe, dl, dlb, 0);
 	}
 
-	vsp1_dl_list_commit(dl);
+	vsp1_dl_list_commit(dl, pipe_index);
 
 	/* Start the pipeline. */
 	spin_lock_irqsave(&pipe->irqlock, flags);
@@ -373,6 +373,15 @@ int vsp1_du_atomic_update(struct device *dev, unsigned int pipe_index,
 	rpf->format.plane_fmt[0].bytesperline = cfg->pitch;
 	rpf->format.plane_fmt[1].bytesperline = cfg->pitch;
 	rpf->alpha = cfg->alpha;
+
+	rpf->interlaced = cfg->interlaced;
+
+	if ((vsp1->ths_quirks & VSP1_AUTO_FLD_NOT_SUPPORT) &&
+	    rpf->interlaced) {
+		dev_err(vsp1->dev,
+			"Interlaced mode is not supported.\n");
+		return -EINVAL;
+	}
 
 	rpf->mem.addr[0] = cfg->mem[0];
 	rpf->mem.addr[1] = cfg->mem[1];
@@ -592,7 +601,7 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index)
 		vsp1_entity_configure_frame(entity, pipe, dl, dlb, 0);
 	}
 
-	vsp1_dl_list_commit(dl);
+	vsp1_dl_list_commit(dl, pipe_index);
 }
 EXPORT_SYMBOL_GPL(vsp1_du_atomic_flush);
 

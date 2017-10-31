@@ -41,6 +41,11 @@ struct vsp1_rwpf;
 struct vsp1_sru;
 struct vsp1_uds;
 
+/* Workaround for hung up at the time of underrun in R-Car H3(ES1.x) */
+#define VSP1_UNDERRUN_WORKAROUND	BIT(0)
+/* Auto-FLD for Display List not support */
+#define VSP1_AUTO_FLD_NOT_SUPPORT	BIT(1)
+
 #define VSP1_MAX_LIF		2
 #define VSP1_MAX_RPF		5
 #define VSP1_MAX_UDS		3
@@ -73,6 +78,7 @@ struct vsp1_device {
 	struct device *dev;
 	const struct vsp1_device_info *info;
 	u32 version;
+	u32 ths_quirks;
 
 	void __iomem *mmio;
 	struct rcar_fcp_device *fcp;
