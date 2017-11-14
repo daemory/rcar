@@ -1069,7 +1069,10 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
 static void uvc_video_decode_data_work(struct work_struct *work)
 {
 	struct uvc_urb *uvc_urb = container_of(work, struct uvc_urb, work);
+	struct uvc_streaming *stream = uvc_urb->stream;
+	struct uvc_video_queue *queue = &stream->queue;
 	unsigned int i;
+	bool stopping;
 	int ret;
 
 	for (i = 0; i < uvc_urb->packets; i++) {
@@ -1081,10 +1084,22 @@ static void uvc_video_decode_data_work(struct work_struct *work)
 		uvc_queue_buffer_release(op->buf);
 	}
 
-	ret = usb_submit_urb(uvc_urb->urb, GFP_ATOMIC);
-	if (ret  < 0) {
-		uvc_printk(KERN_ERR, "Failed to resubmit video URB (%d).\n",
-			ret);
+	/*
+	 * Prevent resubmitting URBs when shutting down to ensure that no new
+	 * work item will be scheduled after uvc_stop_streaming() flushes the
+	 * work queue.
+	 */
+	spin_lock_irq(&queue->irqlock);
+	stopping = queue->flags & UVC_QUEUE_STOPPING;
+	spin_unlock_irq(&queue->irqlock);
+
+	if (!stopping) {
+		ret = usb_submit_urb(uvc_urb->urb, GFP_ATOMIC);
+		if (ret < 0) {
+			uvc_printk(KERN_ERR,
+				   "Failed to resubmit video URB (%d).\n",
+				   ret);
+		}
 	}
 }
 
@@ -1363,6 +1378,8 @@ static void uvc_video_complete(struct urb *urb)
 	struct uvc_streaming *stream = uvc_urb->stream;
 	struct uvc_video_queue *queue = &stream->queue;
 	struct uvc_buffer *buf = NULL;
+	unsigned long flags;
+	bool stopping;
 
 	switch (urb->status) {
 	case 0:
@@ -1381,6 +1398,19 @@ static void uvc_video_complete(struct urb *urb)
 		uvc_queue_cancel(queue, urb->status == -ESHUTDOWN);
 		return;
 	}
+
+	/*
+	 * Simply accept and discard completed URBs without processing when the
+	 * stream is being shutdown. URBs will be freed as part of the
+	 * uvc_video_enable(s, 0) action, so we must not queue asynchronous
+	 * work based upon them.
+	 */
+	spin_lock_irqsave(&queue->irqlock, flags);
+	stopping = queue->flags & UVC_QUEUE_STOPPING;
+	spin_unlock_irqrestore(&queue->irqlock, flags);
+
+	if (stopping)
+		return;
 
 	buf = uvc_queue_get_current_buffer(queue);
 
