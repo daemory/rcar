@@ -10,23 +10,30 @@ across multiple bodies represented as a pool.
 With this reconfiguration of bodies, we can adapt the configuration code to
 separate out constant hardware configuration and cache it for re-use.
 
-Patch 1 adds protection to ensure that the display list body does not overflow
-and will allow us to reduce the size of the body allocations in the future (it
-has already helped me catch an overflow during the development of this series,
-so I thought it was a worth while addition)
+This posting is only really a status update following the previous review after
+quite a bit of work has been done. However this series is not yet complete, and
+I do not expect a full review - or integration of this series in its current
+form.
 
-Patch 2 implements the fragment pool object and provides function helpers to
-interact with the pool
+In particular:
+  Patch 1 : Reword uses of 'fragment' as 'body'
+          - Is new and can be reviewed if desired.
 
-Patch 3 converts the existing allocations to use the new fragment pool.
+Otherwise, most other issues have been addressed, and the series is rebased to
+utilise the term 'bodies' instead of 'fragments'. A few 'larger' topics came up
+in review, and will be considered in a follow up series. (v4+)
 
-From patch 4 to 7, we then refactor the display list handling code to separate
-out the two stages of stream setup and frame configuration and then configure
-directly into display list bodies. This allows us to cache the constant stream
-configuration in a reusable display list body which also repairs suspend/resume
-cycles for the video pipelines.
+  Patch 3 : Provide a body pool
+          - Allocates more memory than is required for 'extra_size'
 
-Finally in patch 8, the size of the internal display list body is reduced down
-to 64 entries, as the maximum used is now 41 slots. The cached video pipeline
-stream configuration appears to use a maximum of 64 entries, but to allow for
-expansion this is set to 128 for now to prevent unexpected overflows.
+  Patch 5 : Use reference counting for bodies
+          - Minor comment to be fixed up. (I should have done this already)
+
+  Patch 7 : Adapt entities to configure into a body
+          - To be reworked, quite substantially.
+
+  Patch 8 : Move video configuration to a cached dlb
+          - Previous review comments still to be addressed
+
+The patches provided in this series can be found at:
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v3
