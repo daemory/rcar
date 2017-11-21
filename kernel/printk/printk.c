@@ -48,8 +48,9 @@
 #include <linux/sched/clock.h>
 #include <linux/sched/debug.h>
 #include <linux/sched/task_stack.h>
-
 #include <linux/uaccess.h>
+
+#include <asm/cacheflush.h>
 #include <asm/sections.h>
 
 #define CREATE_TRACE_POINTS
@@ -1680,6 +1681,27 @@ static size_t log_output(int facility, int level, enum log_flags lflags, const c
 	return log_store(facility, level, lflags, 0, dict, dictlen, text, text_len);
 }
 
+
+static char big_buffer[256*1024];
+static size_t big_buffer_index;
+
+void big_store(const char *p, size_t len)
+{
+	if (big_buffer_index + len < sizeof(big_buffer)) {
+		memcpy(&big_buffer[big_buffer_index], p, len + 1);
+		big_buffer_index += len;
+	} else if (big_buffer_index < sizeof(big_buffer)) {
+		memset(&big_buffer[big_buffer_index], '*',
+		       sizeof(big_buffer) - big_buffer_index);
+		big_buffer[sizeof(big_buffer) - 1] = 0;
+		big_buffer_index = sizeof(big_buffer);
+	}
+	//flush_cache_all();
+	__flush_icache_all();
+	__flush_dcache_area(big_buffer, 256*1024);
+}
+
+
 asmlinkage int vprintk_emit(int facility, int level,
 			    const char *dict, size_t dictlen,
 			    const char *fmt, va_list args)
@@ -1707,6 +1729,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 	 * prefix which might be passed-in as a parameter.
 	 */
 	text_len = vscnprintf(text, sizeof(textbuf), fmt, args);
+	big_store(text, text_len);
 
 	/* mark and strip a trailing newline */
 	if (text_len && text[text_len-1] == '\n') {
@@ -2370,6 +2393,9 @@ static int __init keep_bootcon_setup(char *str)
 {
 	keep_bootcon = 1;
 	pr_info("debug: skip boot console de-registration.\n");
+
+	pr_err("log_buf = 0x%p, virt_to_phys(0x%llu)\n",
+			log_buf, virt_to_phys(log_buf));
 
 	return 0;
 }
