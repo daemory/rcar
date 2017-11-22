@@ -1,0 +1,26 @@
+/*
+ * Device Tree Source for the Eagle V3M expansion board
+ *
+ * Copyright (C) 2017 Ideas on Board <kieran.bingham@ideasonboard.com>
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+&i2c0 {
+	/* GPIO Expander@27:
+	 *   IO.0: ROUTE_I2C_ENn
+	 *   IO.1: ALT_FUNC_ENn
+	 *   IO.2: DU_RGB888_ENn
+	 *   IO.3: VIN0_ADV7612_ENn
+	 *
+	 *   IO.4:
+	 */
+	io_expander_27: gpio@27 {
+		compatible = "onnn,pca9654";
+		reg = <0x27>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+ };
