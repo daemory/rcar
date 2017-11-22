@@ -34,9 +34,6 @@
 };
 
 &avb {
-	pinctrl-0 = <&avb_pins>;
-	pinctrl-names = "default";
-
 	renesas,no-ether-link;
 	phy-handle = <&phy0>;
 	status = "okay";
@@ -73,11 +70,6 @@
 };
 
 &pfc {
-	avb_pins: avb {
-		groups = "avb0_mdio", "avb0_mii";
-		function = "avb0";
-	};
-
 	i2c0_pins: i2c0 {
 		groups = "i2c0";
 		function = "i2c0";
