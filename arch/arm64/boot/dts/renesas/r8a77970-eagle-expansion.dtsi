@@ -31,6 +31,17 @@
 			};
 		};
 	};
+
+	hdmi0-out {
+		compatible = "hdmi-connector";
+		label = "HDMI0 OUT";
+		type = "a";
+
+		port {
+			hdmi0_con: endpoint {
+			};
+		};
+	};
 };
 
 &i2c0 {
