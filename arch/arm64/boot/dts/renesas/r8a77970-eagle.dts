@@ -255,3 +255,6 @@
 &vin3 {
 	status = "okay";
 };
+
+/* FAKRA Overlay */
+#include "eagle-fakra.dtsi"
