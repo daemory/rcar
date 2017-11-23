@@ -752,14 +752,14 @@ static int adv748x_probe(struct i2c_client *client,
 
 	/* Initialise TXA */
 	ret = adv748x_csi2_init(state, &state->txa);
-	if (ret) {
+	if (ret && ret != -ENODEV) {
 		adv_err(state, "Failed to probe TXA");
 		goto err_cleanup_afe;
 	}
 
 	/* Initialise TXB */
 	ret = adv748x_csi2_init(state, &state->txb);
-	if (ret) {
+	if (ret && ret != -ENODEV) {
 		adv_err(state, "Failed to probe TXB");
 		goto err_cleanup_txa;
 	}
