@@ -37,8 +37,8 @@
 #define ADV748X_I2C_INFOFRAME		0x31	/* HDMI RX InfoFrame Map */
 #define ADV748X_I2C_CEC			0x41	/* CEC Map */
 #define ADV748X_I2C_SDP			0x79	/* SDP Map */
-#define ADV748X_I2C_TXB			0x48	/* CSI-TXB Map */
 #define ADV748X_I2C_TXA			0x4a	/* CSI-TXA Map */
+#define ADV748X_I2C_TXB			0x4b	/* CSI-TXB Map */
 
 enum adv748x_page {
 	ADV748X_PAGE_IO,
