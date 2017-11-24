@@ -190,7 +190,7 @@ static int i2cdev_check(struct device *dev, void *addrp)
 	if (!client || client->addr != *(unsigned int *)addrp)
 		return 0;
 
-	return dev->driver ? -EBUSY : 0;
+	return dev->driver ? 0 : 0;
 }
 
 /* walk up mux tree */
