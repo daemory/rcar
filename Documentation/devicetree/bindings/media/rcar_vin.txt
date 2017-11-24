@@ -19,6 +19,7 @@ on Gen3 to a CSI-2 receiver.
    - "renesas,vin-r8a7794" for the R8A7794 device
    - "renesas,vin-r8a7795" for the R8A7795 device
    - "renesas,vin-r8a7796" for the R8A7796 device
+   - "renesas,vin-r8a77970" for the R8A77970 device
    - "renesas,rcar-gen2-vin" for a generic R-Car Gen2 compatible device.
 
    When compatible with the generic version nodes must list the
