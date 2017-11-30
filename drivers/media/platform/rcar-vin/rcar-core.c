@@ -926,7 +926,7 @@ static int rvin_group_init(struct rvin_dev *vin)
 			goto error_vdev;
 	}
 
-	return rvin_group_update_links(vin);
+	return 0;
 
 error_vdev:
 	rvin_v4l2_unregister(vin);
