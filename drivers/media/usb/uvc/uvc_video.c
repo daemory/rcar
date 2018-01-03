@@ -1075,6 +1075,8 @@ static void uvc_video_decode_data_work(struct work_struct *work)
 	bool stopping;
 	int ret;
 
+	usleep_range(40000, 90000);
+
 	for (i = 0; i < uvc_urb->packets; i++) {
 		struct uvc_decode_op *op = &uvc_urb->decodes[i];
 
