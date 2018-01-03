@@ -1,0 +1,25 @@
+[RFC/RFT] Asynchronous UVC
+
+The Linux UVC driver has long provided adequate performance capabilities for
+web-cams and low data rate video devices in Linux while resolutions were low.
+
+Modern USB cameras are now capable of high data rates thanks to USB3 with
+1080p, and even 4k capture resolutions supported.
+
+Cameras such as the Stereolabs ZED or the Logitech Brio can generate more data
+than an embedded ARM core is able to process on a single core, resulting in
+frame loss.
+
+A large part of this performance impact is from the requirement to
+‘memcpy’ frames out from URB packets to destination frames. This unfortunate
+requirement is due to the UVC protocol allowing a variable length header, and
+thus it is not possible to provide the target frame buffers directly.
+
+Extra throughput is possible by moving the actual memcpy actions to a work
+queue, and moving the memcpy out of interrupt context and allowing work tasks
+to be scheduled across multiple cores.
+
+This series has been tested on both the ZED and Brio cameras on arm64
+platforms, however due to the intrinsic changes in the driver I would like to
+see it tested with other devices and other platforms, so I'd appreciate if
+anyone can test this on a range of USB cameras.
