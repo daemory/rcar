@@ -1369,6 +1369,7 @@ static int genphy_config_eee_advert(struct phy_device *phydev)
 int genphy_setup_forced(struct phy_device *phydev)
 {
 	u16 ctl = 0;
+	int ret;
 
 	phydev->pause = 0;
 	phydev->asym_pause = 0;
@@ -1381,8 +1382,12 @@ int genphy_setup_forced(struct phy_device *phydev)
 	if (DUPLEX_FULL == phydev->duplex)
 		ctl |= BMCR_FULLDPLX;
 
-	return phy_modify(phydev, MII_BMCR,
-			  BMCR_LOOPBACK | BMCR_ISOLATE | BMCR_PDOWN, ctl);
+	ret = phy_modify(phydev, MII_BMCR,
+			 BMCR_LOOPBACK | BMCR_ISOLATE | BMCR_PDOWN, ctl);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 EXPORT_SYMBOL(genphy_setup_forced);
 
@@ -1393,8 +1398,10 @@ EXPORT_SYMBOL(genphy_setup_forced);
 int genphy_restart_aneg(struct phy_device *phydev)
 {
 	/* Don't isolate the PHY if we're negotiating */
-	return phy_modify(phydev, MII_BMCR, BMCR_ISOLATE,
-			  BMCR_ANENABLE | BMCR_ANRESTART);
+	int ret = phy_modify(phydev, MII_BMCR, BMCR_ISOLATE,
+			     BMCR_ANENABLE | BMCR_ANRESTART);
+
+	return ret < 0 ? ret : 0;
 }
 EXPORT_SYMBOL(genphy_restart_aneg);
 
@@ -1660,20 +1667,26 @@ EXPORT_SYMBOL(genphy_config_init);
 
 int genphy_suspend(struct phy_device *phydev)
 {
-	return phy_modify(phydev, MII_BMCR, 0, BMCR_PDOWN);
+	int ret = phy_modify(phydev, MII_BMCR, 0, BMCR_PDOWN);
+
+	return ret < 0 ? ret : 0;
 }
 EXPORT_SYMBOL(genphy_suspend);
 
 int genphy_resume(struct phy_device *phydev)
 {
-	return phy_modify(phydev, MII_BMCR, BMCR_PDOWN, 0);
+	int ret = phy_modify(phydev, MII_BMCR, BMCR_PDOWN, 0);
+
+	return ret < 0 ? ret : 0;
 }
 EXPORT_SYMBOL(genphy_resume);
 
 int genphy_loopback(struct phy_device *phydev, bool enable)
 {
-	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
-			  enable ? BMCR_LOOPBACK : 0);
+	int ret = phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
+			     enable ? BMCR_LOOPBACK : 0);
+
+	return ret < 0 ? ret : 0;
 }
 EXPORT_SYMBOL(genphy_loopback);
 
