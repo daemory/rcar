@@ -1,25 +1,12 @@
-/*
- * Copyright (C) 2012-2017 ARM Limited or its affiliates.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright (C) 2012-2018 ARM Limited or its affiliates. */
 
 /* \file ssi_aead.h
  * ARM CryptoCell AEAD Crypto API
  */
 
-#ifndef __SSI_AEAD_H__
-#define __SSI_AEAD_H__
+#ifndef __CC_AEAD_H__
+#define __CC_AEAD_H__
 
 #include <linux/kernel.h>
 #include <crypto/algapi.h>
@@ -28,7 +15,7 @@
 /* mac_cmp - HW writes 8 B but all bytes hold the same value */
 #define ICV_CMP_SIZE 8
 #define CCM_CONFIG_BUF_SIZE (AES_BLOCK_SIZE * 3)
-#define MAX_MAC_SIZE MAX(SHA256_DIGEST_SIZE, AES_BLOCK_SIZE)
+#define MAX_MAC_SIZE SHA256_DIGEST_SIZE
 
 /* defines for AES GCM configuration buffer */
 #define GCM_BLOCK_LEN_SIZE 8
@@ -74,32 +61,37 @@ struct aead_req_ctx {
 	} gcm_len_block;
 
 	u8 ccm_config[CCM_CONFIG_BUF_SIZE] ____cacheline_aligned;
-	unsigned int hw_iv_size ____cacheline_aligned; /*HW actual size input*/
-	u8 backup_mac[MAX_MAC_SIZE]; /*used to prevent cache coherence problem*/
+	/* HW actual size input */
+	unsigned int hw_iv_size ____cacheline_aligned;
+	/* used to prevent cache coherence problem */
+	u8 backup_mac[MAX_MAC_SIZE];
 	u8 *backup_iv; /*store iv for generated IV flow*/
 	u8 *backup_giv; /*store iv for rfc3686(ctr) flow*/
 	dma_addr_t mac_buf_dma_addr; /* internal ICV DMA buffer */
-	dma_addr_t ccm_iv0_dma_addr; /* buffer for internal ccm configurations */
+	/* buffer for internal ccm configurations */
+	dma_addr_t ccm_iv0_dma_addr;
 	dma_addr_t icv_dma_addr; /* Phys. address of ICV */
 
 	//used in gcm
-	dma_addr_t gcm_iv_inc1_dma_addr; /* buffer for internal gcm configurations */
-	dma_addr_t gcm_iv_inc2_dma_addr; /* buffer for internal gcm configurations */
+	/* buffer for internal gcm configurations */
+	dma_addr_t gcm_iv_inc1_dma_addr;
+	/* buffer for internal gcm configurations */
+	dma_addr_t gcm_iv_inc2_dma_addr;
 	dma_addr_t hkey_dma_addr; /* Phys. address of hkey */
 	dma_addr_t gcm_block_len_dma_addr; /* Phys. address of gcm block len */
 	bool is_gcm4543;
 
 	u8 *icv_virt_addr; /* Virt. address of ICV */
 	struct async_gen_req_ctx gen_ctx;
-	struct ssi_mlli assoc;
-	struct ssi_mlli src;
-	struct ssi_mlli dst;
+	struct cc_mlli assoc;
+	struct cc_mlli src;
+	struct cc_mlli dst;
 	struct scatterlist *src_sgl;
 	struct scatterlist *dst_sgl;
 	unsigned int src_offset;
 	unsigned int dst_offset;
-	enum ssi_req_dma_buf_type assoc_buff_type;
-	enum ssi_req_dma_buf_type data_buff_type;
+	enum cc_req_dma_buf_type assoc_buff_type;
+	enum cc_req_dma_buf_type data_buff_type;
 	struct mlli_params mlli_params;
 	unsigned int cryptlen;
 	struct scatterlist ccm_adata_sg;
@@ -111,7 +103,7 @@ struct aead_req_ctx {
 	bool plaintext_authenticate_only; //for gcm_rfc4543
 };
 
-int ssi_aead_alloc(struct ssi_drvdata *drvdata);
-int ssi_aead_free(struct ssi_drvdata *drvdata);
+int cc_aead_alloc(struct cc_drvdata *drvdata);
+int cc_aead_free(struct cc_drvdata *drvdata);
 
-#endif /*__SSI_AEAD_H__*/
+#endif /*__CC_AEAD_H__*/

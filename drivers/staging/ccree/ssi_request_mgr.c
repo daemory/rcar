@@ -1,53 +1,44 @@
-/*
- * Copyright (C) 2012-2017 ARM Limited or its affiliates.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (C) 2012-2018 ARM Limited or its affiliates. */
 
-#include "ssi_config.h"
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <crypto/ctr.h>
-#ifdef FLUSH_CACHE_ALL
-#include <asm/cacheflush.h>
-#endif
 #include <linux/pm_runtime.h>
 #include "ssi_driver.h"
 #include "ssi_buffer_mgr.h"
 #include "ssi_request_mgr.h"
-#include "ssi_sysfs.h"
 #include "ssi_ivgen.h"
 #include "ssi_pm.h"
 
-#define SSI_MAX_POLL_ITER	10
+#define CC_MAX_POLL_ITER	10
+/* The highest descriptor count in used */
+#define CC_MAX_DESC_SEQ_LEN	23
 
-struct ssi_request_mgr_handle {
+struct cc_req_mgr_handle {
 	/* Request manager resources */
 	unsigned int hw_queue_size; /* HW capability */
 	unsigned int min_free_hw_slots;
 	unsigned int max_used_sw_slots;
-	struct ssi_crypto_req req_queue[MAX_REQUEST_QUEUE_SIZE];
+	struct cc_crypto_req req_queue[MAX_REQUEST_QUEUE_SIZE];
 	u32 req_queue_head;
 	u32 req_queue_tail;
 	u32 axi_completed;
 	u32 q_free_slots;
+	/* This lock protects access to HW register
+	 * that must be single request at a time
+	 */
 	spinlock_t hw_lock;
 	struct cc_hw_desc compl_desc;
 	u8 *dummy_comp_buff;
 	dma_addr_t dummy_comp_buff_dma;
-	struct cc_hw_desc monitor_desc;
+
+	/* backlog queue */
+	struct list_head backlog;
+	unsigned int bl_len;
+	spinlock_t bl_lock; /* protect backlog queue */
 
 #ifdef COMP_IN_WQ
 	struct workqueue_struct *workq;
@@ -55,9 +46,15 @@ struct ssi_request_mgr_handle {
 #else
 	struct tasklet_struct comptask;
 #endif
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
 	bool is_runtime_suspended;
-#endif
+};
+
+struct cc_bl_item {
+	struct cc_crypto_req creq;
+	struct cc_hw_desc desc[CC_MAX_DESC_SEQ_LEN];
+	unsigned int len;
+	struct list_head list;
+	bool notif;
 };
 
 static void comp_handler(unsigned long devarg);
@@ -65,15 +62,15 @@ static void comp_handler(unsigned long devarg);
 static void comp_work_handler(struct work_struct *work);
 #endif
 
-void request_mgr_fini(struct ssi_drvdata *drvdata)
+void cc_req_mgr_fini(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
+	struct cc_req_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
 	struct device *dev = drvdata_to_dev(drvdata);
 
 	if (!req_mgr_h)
 		return; /* Not allocated */
 
-	if (req_mgr_h->dummy_comp_buff_dma != 0) {
+	if (req_mgr_h->dummy_comp_buff_dma) {
 		dma_free_coherent(dev, sizeof(u32), req_mgr_h->dummy_comp_buff,
 				  req_mgr_h->dummy_comp_buff_dma);
 	}
@@ -89,14 +86,14 @@ void request_mgr_fini(struct ssi_drvdata *drvdata)
 	/* Kill tasklet */
 	tasklet_kill(&req_mgr_h->comptask);
 #endif
-	memset(req_mgr_h, 0, sizeof(struct ssi_request_mgr_handle));
+	memset(req_mgr_h, 0, sizeof(struct cc_req_mgr_handle));
 	kfree(req_mgr_h);
 	drvdata->request_mgr_handle = NULL;
 }
 
-int request_mgr_init(struct ssi_drvdata *drvdata)
+int cc_req_mgr_init(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *req_mgr_h;
+	struct cc_req_mgr_handle *req_mgr_h;
 	struct device *dev = drvdata_to_dev(drvdata);
 	int rc = 0;
 
@@ -109,10 +106,13 @@ int request_mgr_init(struct ssi_drvdata *drvdata)
 	drvdata->request_mgr_handle = req_mgr_h;
 
 	spin_lock_init(&req_mgr_h->hw_lock);
+	spin_lock_init(&req_mgr_h->bl_lock);
+	INIT_LIST_HEAD(&req_mgr_h->backlog);
+
 #ifdef COMP_IN_WQ
 	dev_dbg(dev, "Initializing completion workqueue\n");
 	req_mgr_h->workq = create_singlethread_workqueue("arm_cc7x_wq");
-	if (unlikely(!req_mgr_h->workq)) {
+	if (!req_mgr_h->workq) {
 		dev_err(dev, "Failed creating work queue\n");
 		rc = -ENOMEM;
 		goto req_mgr_init_err;
@@ -120,7 +120,8 @@ int request_mgr_init(struct ssi_drvdata *drvdata)
 	INIT_DELAYED_WORK(&req_mgr_h->compwork, comp_work_handler);
 #else
 	dev_dbg(dev, "Initializing completion tasklet\n");
-	tasklet_init(&req_mgr_h->comptask, comp_handler, (unsigned long)drvdata);
+	tasklet_init(&req_mgr_h->comptask, comp_handler,
+		     (unsigned long)drvdata);
 #endif
 	req_mgr_h->hw_queue_size = cc_ioread(drvdata,
 					     CC_REG(DSCRPTR_QUEUE_SRAM_SIZE));
@@ -135,9 +136,10 @@ int request_mgr_init(struct ssi_drvdata *drvdata)
 	req_mgr_h->max_used_sw_slots = 0;
 
 	/* Allocate DMA word for "dummy" completion descriptor use */
-	req_mgr_h->dummy_comp_buff = dma_alloc_coherent(dev, sizeof(u32),
-							&req_mgr_h->dummy_comp_buff_dma,
-							GFP_KERNEL);
+	req_mgr_h->dummy_comp_buff =
+		dma_alloc_coherent(dev, sizeof(u32),
+				   &req_mgr_h->dummy_comp_buff_dma,
+				   GFP_KERNEL);
 	if (!req_mgr_h->dummy_comp_buff) {
 		dev_err(dev, "Not enough memory to allocate DMA (%zu) dropped buffer\n",
 			sizeof(u32));
@@ -156,79 +158,78 @@ int request_mgr_init(struct ssi_drvdata *drvdata)
 	return 0;
 
 req_mgr_init_err:
-	request_mgr_fini(drvdata);
+	cc_req_mgr_fini(drvdata);
 	return rc;
 }
 
-static inline void enqueue_seq(
-	void __iomem *cc_base,
-	struct cc_hw_desc seq[], unsigned int seq_len)
+static void enqueue_seq(struct cc_drvdata *drvdata, struct cc_hw_desc seq[],
+			unsigned int seq_len)
 {
-	int i;
+	int i, w;
+	void __iomem *reg = drvdata->cc_base + CC_REG(DSCRPTR_QUEUE_WORD0);
+	struct device *dev = drvdata_to_dev(drvdata);
+
+	/*
+	 * We do indeed write all 6 command words to the same
+	 * register. The HW supports this.
+	 */
 
 	for (i = 0; i < seq_len; i++) {
-		writel_relaxed(seq[i].word[0], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-		writel_relaxed(seq[i].word[1], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-		writel_relaxed(seq[i].word[2], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-		writel_relaxed(seq[i].word[3], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-		writel_relaxed(seq[i].word[4], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-		wmb();
-		writel_relaxed(seq[i].word[5], (volatile void __iomem *)(cc_base + CC_REG(DSCRPTR_QUEUE_WORD0)));
-#ifdef DX_DUMP_DESCS
-		dev_dbg(dev, "desc[%02d]: 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n",
-			i, seq[i].word[0], seq[i].word[1], seq[i].word[2],
-			seq[i].word[3], seq[i].word[4], seq[i].word[5]);
-#endif
+		for (w = 0; w <= 5; w++)
+			writel_relaxed(seq[i].word[w], reg);
+
+		if (cc_dump_desc)
+			dev_dbg(dev, "desc[%02d]: 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n",
+				i, seq[i].word[0], seq[i].word[1],
+				seq[i].word[2], seq[i].word[3],
+				seq[i].word[4], seq[i].word[5]);
 	}
 }
 
 /*!
  * Completion will take place if and only if user requested completion
- * by setting "is_dout = 0" in send_request().
+ * by cc_send_sync_request().
  *
  * \param dev
  * \param dx_compl_h The completion event to signal
  */
-static void request_mgr_complete(struct device *dev, void *dx_compl_h, void __iomem *cc_base)
+static void request_mgr_complete(struct device *dev, void *dx_compl_h,
+				 int dummy)
 {
 	struct completion *this_compl = dx_compl_h;
 
 	complete(this_compl);
 }
 
-static inline int request_mgr_queues_status_check(
-		struct ssi_drvdata *drvdata,
-		struct ssi_request_mgr_handle *req_mgr_h,
-		unsigned int total_seq_len)
+static int cc_queues_status(struct cc_drvdata *drvdata,
+			    struct cc_req_mgr_handle *req_mgr_h,
+			    unsigned int total_seq_len)
 {
 	unsigned long poll_queue;
 	struct device *dev = drvdata_to_dev(drvdata);
 
 	/* SW queue is checked only once as it will not
-	 * be chaned during the poll becasue the spinlock_bh
+	 * be chaned during the poll because the spinlock_bh
 	 * is held by the thread
 	 */
-	if (unlikely(((req_mgr_h->req_queue_head + 1) &
-		      (MAX_REQUEST_QUEUE_SIZE - 1)) ==
-		     req_mgr_h->req_queue_tail)) {
+	if (((req_mgr_h->req_queue_head + 1) & (MAX_REQUEST_QUEUE_SIZE - 1)) ==
+	    req_mgr_h->req_queue_tail) {
 		dev_err(dev, "SW FIFO is full. req_queue_head=%d sw_fifo_len=%d\n",
 			req_mgr_h->req_queue_head, MAX_REQUEST_QUEUE_SIZE);
-		return -EBUSY;
+		return -ENOSPC;
 	}
 
-	if ((likely(req_mgr_h->q_free_slots >= total_seq_len)))
+	if (req_mgr_h->q_free_slots >= total_seq_len)
 		return 0;
 
 	/* Wait for space in HW queue. Poll constant num of iterations. */
-	for (poll_queue = 0; poll_queue < SSI_MAX_POLL_ITER ; poll_queue++) {
+	for (poll_queue = 0; poll_queue < CC_MAX_POLL_ITER ; poll_queue++) {
 		req_mgr_h->q_free_slots =
 			cc_ioread(drvdata, CC_REG(DSCRPTR_QUEUE_CONTENT));
-		if (unlikely(req_mgr_h->q_free_slots <
-						req_mgr_h->min_free_hw_slots)) {
+		if (req_mgr_h->q_free_slots < req_mgr_h->min_free_hw_slots)
 			req_mgr_h->min_free_hw_slots = req_mgr_h->q_free_slots;
-		}
 
-		if (likely(req_mgr_h->q_free_slots >= total_seq_len)) {
+		if (req_mgr_h->q_free_slots >= total_seq_len) {
 			/* If there is enough place return */
 			return 0;
 		}
@@ -240,132 +241,89 @@ static inline int request_mgr_queues_status_check(
 	dev_dbg(dev, "HW FIFO full, timeout. req_queue_head=%d sw_fifo_len=%d q_free_slots=%d total_seq_len=%d\n",
 		req_mgr_h->req_queue_head, MAX_REQUEST_QUEUE_SIZE,
 		req_mgr_h->q_free_slots, total_seq_len);
-	return -EAGAIN;
+	return -ENOSPC;
 }
 
 /*!
  * Enqueue caller request to crypto hardware.
+ * Need to be called with HW lock held and PM running
  *
  * \param drvdata
- * \param ssi_req The request to enqueue
+ * \param cc_req The request to enqueue
  * \param desc The crypto sequence
  * \param len The crypto sequence length
- * \param is_dout If "true": completion is handled by the caller
- *	  If "false": this function adds a dummy descriptor completion
- *	  and waits upon completion signal.
+ * \param add_comp If "true": add an artificial dout DMA to mark completion
  *
- * \return int Returns -EINPROGRESS if "is_dout=true"; "0" if "is_dout=false"
+ * \return int Returns -EINPROGRESS or error code
  */
-int send_request(
-	struct ssi_drvdata *drvdata, struct ssi_crypto_req *ssi_req,
-	struct cc_hw_desc *desc, unsigned int len, bool is_dout)
+static int cc_do_send_request(struct cc_drvdata *drvdata,
+			      struct cc_crypto_req *cc_req,
+			      struct cc_hw_desc *desc, unsigned int len,
+				bool add_comp, bool ivgen)
 {
-	void __iomem *cc_base = drvdata->cc_base;
-	struct ssi_request_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
+	struct cc_req_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
 	unsigned int used_sw_slots;
 	unsigned int iv_seq_len = 0;
 	unsigned int total_seq_len = len; /*initial sequence length*/
-	struct cc_hw_desc iv_seq[SSI_IVPOOL_SEQ_LEN];
+	struct cc_hw_desc iv_seq[CC_IVPOOL_SEQ_LEN];
 	struct device *dev = drvdata_to_dev(drvdata);
 	int rc;
-	unsigned int max_required_seq_len = (total_seq_len +
-					((ssi_req->ivgen_dma_addr_len == 0) ? 0 :
-					SSI_IVPOOL_SEQ_LEN) +
-					(!is_dout ? 1 : 0));
 
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-	rc = ssi_power_mgr_runtime_get(dev);
-	if (rc != 0) {
-		dev_err(dev, "ssi_power_mgr_runtime_get returned %x\n", rc);
-		return rc;
-	}
-#endif
-
-	do {
-		spin_lock_bh(&req_mgr_h->hw_lock);
-
-		/* Check if there is enough place in the SW/HW queues
-		 * in case iv gen add the max size and in case of no dout add 1
-		 * for the internal completion descriptor
-		 */
-		rc = request_mgr_queues_status_check(drvdata, req_mgr_h,
-						     max_required_seq_len);
-		if (likely(rc == 0))
-			/* There is enough place in the queue */
-			break;
-		/* something wrong release the spinlock*/
-		spin_unlock_bh(&req_mgr_h->hw_lock);
-
-		if (rc != -EAGAIN) {
-			/* Any error other than HW queue full
-			 * (SW queue is full)
-			 */
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-			ssi_power_mgr_runtime_put_suspend(dev);
-#endif
-			return rc;
-		}
-
-		/* HW queue is full - short sleep */
-		msleep(1);
-	} while (1);
-
-	/* Additional completion descriptor is needed incase caller did not
-	 * enabled any DLLI/MLLI DOUT bit in the given sequence
-	 */
-	if (!is_dout) {
-		init_completion(&ssi_req->seq_compl);
-		ssi_req->user_cb = request_mgr_complete;
-		ssi_req->user_arg = &ssi_req->seq_compl;
-		total_seq_len++;
-	}
-
-	if (ssi_req->ivgen_dma_addr_len > 0) {
+	if (ivgen) {
 		dev_dbg(dev, "Acquire IV from pool into %d DMA addresses %pad, %pad, %pad, IV-size=%u\n",
-			ssi_req->ivgen_dma_addr_len,
-			&ssi_req->ivgen_dma_addr[0],
-			&ssi_req->ivgen_dma_addr[1],
-			&ssi_req->ivgen_dma_addr[2],
-			ssi_req->ivgen_size);
+			cc_req->ivgen_dma_addr_len,
+			&cc_req->ivgen_dma_addr[0],
+			&cc_req->ivgen_dma_addr[1],
+			&cc_req->ivgen_dma_addr[2],
+			cc_req->ivgen_size);
 
 		/* Acquire IV from pool */
-		rc = ssi_ivgen_getiv(drvdata, ssi_req->ivgen_dma_addr,
-				     ssi_req->ivgen_dma_addr_len,
-				     ssi_req->ivgen_size, iv_seq, &iv_seq_len);
+		rc = cc_get_iv(drvdata, cc_req->ivgen_dma_addr,
+			       cc_req->ivgen_dma_addr_len,
+			       cc_req->ivgen_size,
+			       iv_seq, &iv_seq_len);
 
-		if (unlikely(rc != 0)) {
+		if (rc) {
 			dev_err(dev, "Failed to generate IV (rc=%d)\n", rc);
-			spin_unlock_bh(&req_mgr_h->hw_lock);
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-			ssi_power_mgr_runtime_put_suspend(dev);
-#endif
 			return rc;
 		}
 
 		total_seq_len += iv_seq_len;
 	}
 
-	used_sw_slots = ((req_mgr_h->req_queue_head - req_mgr_h->req_queue_tail) & (MAX_REQUEST_QUEUE_SIZE - 1));
-	if (unlikely(used_sw_slots > req_mgr_h->max_used_sw_slots))
+	used_sw_slots = ((req_mgr_h->req_queue_head -
+			  req_mgr_h->req_queue_tail) &
+			 (MAX_REQUEST_QUEUE_SIZE - 1));
+	if (used_sw_slots > req_mgr_h->max_used_sw_slots)
 		req_mgr_h->max_used_sw_slots = used_sw_slots;
 
 	/* Enqueue request - must be locked with HW lock*/
-	req_mgr_h->req_queue[req_mgr_h->req_queue_head] = *ssi_req;
-	req_mgr_h->req_queue_head = (req_mgr_h->req_queue_head + 1) & (MAX_REQUEST_QUEUE_SIZE - 1);
+	req_mgr_h->req_queue[req_mgr_h->req_queue_head] = *cc_req;
+	req_mgr_h->req_queue_head = (req_mgr_h->req_queue_head + 1) &
+				    (MAX_REQUEST_QUEUE_SIZE - 1);
 	/* TODO: Use circ_buf.h ? */
 
 	dev_dbg(dev, "Enqueue request head=%u\n", req_mgr_h->req_queue_head);
 
-#ifdef FLUSH_CACHE_ALL
-	flush_cache_all();
-#endif
+	/*
+	 * We are about to push command to the HW via the command registers
+	 * that may refernece hsot memory. We need to issue a memory barrier
+	 * to make sure there are no outstnading memory writes
+	 */
+	wmb();
 
 	/* STAT_PHASE_4: Push sequence */
-	enqueue_seq(cc_base, iv_seq, iv_seq_len);
-	enqueue_seq(cc_base, desc, len);
-	enqueue_seq(cc_base, &req_mgr_h->compl_desc, (is_dout ? 0 : 1));
+	if (ivgen)
+		enqueue_seq(drvdata, iv_seq, iv_seq_len);
 
-	if (unlikely(req_mgr_h->q_free_slots < total_seq_len)) {
+	enqueue_seq(drvdata, desc, len);
+
+	if (add_comp) {
+		enqueue_seq(drvdata, &req_mgr_h->compl_desc, 1);
+		total_seq_len++;
+	}
+
+	if (req_mgr_h->q_free_slots < total_seq_len) {
 		/* This situation should never occur. Maybe indicating problem
 		 * with resuming power. Set the free slot count to 0 and hope
 		 * for the best.
@@ -377,17 +335,182 @@ int send_request(
 		req_mgr_h->q_free_slots -= total_seq_len;
 	}
 
-	spin_unlock_bh(&req_mgr_h->hw_lock);
-
-	if (!is_dout) {
-		/* Wait upon sequence completion.
-		 *  Return "0" -Operation done successfully.
-		 */
-		wait_for_completion(&ssi_req->seq_compl);
-		return 0;
-	}
 	/* Operation still in process */
 	return -EINPROGRESS;
+}
+
+static void cc_enqueue_backlog(struct cc_drvdata *drvdata,
+			       struct cc_bl_item *bli)
+{
+	struct cc_req_mgr_handle *mgr = drvdata->request_mgr_handle;
+
+	spin_lock_bh(&mgr->bl_lock);
+	list_add_tail(&bli->list, &mgr->backlog);
+	++mgr->bl_len;
+	spin_unlock_bh(&mgr->bl_lock);
+	tasklet_schedule(&mgr->comptask);
+}
+
+static void cc_proc_backlog(struct cc_drvdata *drvdata)
+{
+	struct cc_req_mgr_handle *mgr = drvdata->request_mgr_handle;
+	struct cc_bl_item *bli;
+	struct cc_crypto_req *creq;
+	struct crypto_async_request *req;
+	bool ivgen;
+	unsigned int total_len;
+	struct device *dev = drvdata_to_dev(drvdata);
+	int rc;
+
+	spin_lock(&mgr->bl_lock);
+
+	while (mgr->bl_len) {
+		bli = list_first_entry(&mgr->backlog, struct cc_bl_item, list);
+		spin_unlock(&mgr->bl_lock);
+
+		creq = &bli->creq;
+		req = (struct crypto_async_request *)creq->user_arg;
+
+		/*
+		 * Notify the request we're moving out of the backlog
+		 * but only if we haven't done so already.
+		 */
+		if (!bli->notif) {
+			req->complete(req, -EINPROGRESS);
+			bli->notif = true;
+		}
+
+		ivgen = !!creq->ivgen_dma_addr_len;
+		total_len = bli->len + (ivgen ? CC_IVPOOL_SEQ_LEN : 0);
+
+		spin_lock(&mgr->hw_lock);
+
+		rc = cc_queues_status(drvdata, mgr, total_len);
+		if (rc) {
+			/*
+			 * There is still not room in the FIFO for
+			 * this request. Bail out. We'll return here
+			 * on the next completion irq.
+			 */
+			spin_unlock(&mgr->hw_lock);
+			return;
+		}
+
+		rc = cc_do_send_request(drvdata, &bli->creq, bli->desc,
+					bli->len, false, ivgen);
+
+		spin_unlock(&mgr->hw_lock);
+
+		if (rc != -EINPROGRESS) {
+			cc_pm_put_suspend(dev);
+			creq->user_cb(dev, req, rc);
+		}
+
+		/* Remove ourselves from the backlog list */
+		spin_lock(&mgr->bl_lock);
+		list_del(&bli->list);
+		--mgr->bl_len;
+	}
+
+	spin_unlock(&mgr->bl_lock);
+}
+
+int cc_send_request(struct cc_drvdata *drvdata, struct cc_crypto_req *cc_req,
+		    struct cc_hw_desc *desc, unsigned int len,
+		    struct crypto_async_request *req)
+{
+	int rc;
+	struct cc_req_mgr_handle *mgr = drvdata->request_mgr_handle;
+	bool ivgen = !!cc_req->ivgen_dma_addr_len;
+	unsigned int total_len = len + (ivgen ? CC_IVPOOL_SEQ_LEN : 0);
+	struct device *dev = drvdata_to_dev(drvdata);
+	bool backlog_ok = req->flags & CRYPTO_TFM_REQ_MAY_BACKLOG;
+	gfp_t flags = cc_gfp_flags(req);
+	struct cc_bl_item *bli;
+
+	rc = cc_pm_get(dev);
+	if (rc) {
+		dev_err(dev, "ssi_power_mgr_runtime_get returned %x\n", rc);
+		return rc;
+	}
+
+	spin_lock_bh(&mgr->hw_lock);
+	rc = cc_queues_status(drvdata, mgr, total_len);
+
+#ifdef CC_DEBUG_FORCE_BACKLOG
+	if (backlog_ok)
+		rc = -ENOSPC;
+#endif /* CC_DEBUG_FORCE_BACKLOG */
+
+	if (rc == -ENOSPC && backlog_ok) {
+		spin_unlock_bh(&mgr->hw_lock);
+
+		bli = kmalloc(sizeof(*bli), flags);
+		if (!bli) {
+			cc_pm_put_suspend(dev);
+			return -ENOMEM;
+		}
+
+		memcpy(&bli->creq, cc_req, sizeof(*cc_req));
+		memcpy(&bli->desc, desc, len * sizeof(*desc));
+		bli->len = len;
+		bli->notif = false;
+		cc_enqueue_backlog(drvdata, bli);
+		return -EBUSY;
+	}
+
+	if (!rc)
+		rc = cc_do_send_request(drvdata, cc_req, desc, len, false,
+					ivgen);
+
+	spin_unlock_bh(&mgr->hw_lock);
+	return rc;
+}
+
+int cc_send_sync_request(struct cc_drvdata *drvdata,
+			 struct cc_crypto_req *cc_req, struct cc_hw_desc *desc,
+			 unsigned int len)
+{
+	int rc;
+	struct device *dev = drvdata_to_dev(drvdata);
+	struct cc_req_mgr_handle *mgr = drvdata->request_mgr_handle;
+
+	init_completion(&cc_req->seq_compl);
+	cc_req->user_cb = request_mgr_complete;
+	cc_req->user_arg = &cc_req->seq_compl;
+
+	rc = cc_pm_get(dev);
+	if (rc) {
+		dev_err(dev, "ssi_power_mgr_runtime_get returned %x\n", rc);
+		return rc;
+	}
+
+	while (true) {
+		spin_lock_bh(&mgr->hw_lock);
+		rc = cc_queues_status(drvdata, mgr, len + 1);
+
+		if (!rc)
+			break;
+
+		spin_unlock_bh(&mgr->hw_lock);
+		if (rc != -EAGAIN) {
+			cc_pm_put_suspend(dev);
+			return rc;
+		}
+		wait_for_completion_interruptible(&drvdata->hw_queue_avail);
+		reinit_completion(&drvdata->hw_queue_avail);
+	}
+
+	rc = cc_do_send_request(drvdata, cc_req, desc, len, true, false);
+	spin_unlock_bh(&mgr->hw_lock);
+
+	if (rc != -EINPROGRESS) {
+		cc_pm_put_suspend(dev);
+		return rc;
+	}
+
+	wait_for_completion(&cc_req->seq_compl);
+	return 0;
 }
 
 /*!
@@ -401,23 +524,28 @@ int send_request(
  *
  * \return int Returns "0" upon success
  */
-int send_request_init(
-	struct ssi_drvdata *drvdata, struct cc_hw_desc *desc, unsigned int len)
+int send_request_init(struct cc_drvdata *drvdata, struct cc_hw_desc *desc,
+		      unsigned int len)
 {
-	void __iomem *cc_base = drvdata->cc_base;
-	struct ssi_request_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
+	struct cc_req_mgr_handle *req_mgr_h = drvdata->request_mgr_handle;
 	unsigned int total_seq_len = len; /*initial sequence length*/
 	int rc = 0;
 
-	/* Wait for space in HW and SW FIFO. Poll for as much as FIFO_TIMEOUT. */
-	rc = request_mgr_queues_status_check(drvdata, req_mgr_h,
-					     total_seq_len);
-	if (unlikely(rc != 0))
+	/* Wait for space in HW and SW FIFO. Poll for as much as FIFO_TIMEOUT.
+	 */
+	rc = cc_queues_status(drvdata, req_mgr_h, total_seq_len);
+	if (rc)
 		return rc;
 
 	set_queue_last_ind(&desc[(len - 1)]);
 
-	enqueue_seq(cc_base, desc, len);
+	/*
+	 * We are about to push command to the HW via the command registers
+	 * that may refernece hsot memory. We need to issue a memory barrier
+	 * to make sure there are no outstnading memory writes
+	 */
+	wmb();
+	enqueue_seq(drvdata, desc, len);
 
 	/* Update the free slots in HW queue */
 	req_mgr_h->q_free_slots =
@@ -426,12 +554,15 @@ int send_request_init(
 	return 0;
 }
 
-void complete_request(struct ssi_drvdata *drvdata)
+void complete_request(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *request_mgr_handle =
+	struct cc_req_mgr_handle *request_mgr_handle =
 						drvdata->request_mgr_handle;
+
+	complete(&drvdata->hw_queue_avail);
 #ifdef COMP_IN_WQ
-	queue_delayed_work(request_mgr_handle->workq, &request_mgr_handle->compwork, 0);
+	queue_delayed_work(request_mgr_handle->workq,
+			   &request_mgr_handle->compwork, 0);
 #else
 	tasklet_schedule(&request_mgr_handle->comptask);
 #endif
@@ -440,74 +571,49 @@ void complete_request(struct ssi_drvdata *drvdata)
 #ifdef COMP_IN_WQ
 static void comp_work_handler(struct work_struct *work)
 {
-	struct ssi_drvdata *drvdata =
-		container_of(work, struct ssi_drvdata, compwork.work);
+	struct cc_drvdata *drvdata =
+		container_of(work, struct cc_drvdata, compwork.work);
 
 	comp_handler((unsigned long)drvdata);
 }
 #endif
 
-static void proc_completions(struct ssi_drvdata *drvdata)
+static void proc_completions(struct cc_drvdata *drvdata)
 {
-	struct ssi_crypto_req *ssi_req;
+	struct cc_crypto_req *cc_req;
 	struct device *dev = drvdata_to_dev(drvdata);
-	struct ssi_request_mgr_handle *request_mgr_handle =
+	struct cc_req_mgr_handle *request_mgr_handle =
 						drvdata->request_mgr_handle;
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-	int rc = 0;
-#endif
+	unsigned int *tail = &request_mgr_handle->req_queue_tail;
+	unsigned int *head = &request_mgr_handle->req_queue_head;
 
 	while (request_mgr_handle->axi_completed) {
 		request_mgr_handle->axi_completed--;
 
 		/* Dequeue request */
-		if (unlikely(request_mgr_handle->req_queue_head == request_mgr_handle->req_queue_tail)) {
+		if (*head == *tail) {
 			/* We are supposed to handle a completion but our
 			 * queue is empty. This is not normal. Return and
 			 * hope for the best.
 			 */
 			dev_err(dev, "Request queue is empty head == tail %u\n",
-				request_mgr_handle->req_queue_head);
+				*head);
 			break;
 		}
 
-		ssi_req = &request_mgr_handle->req_queue[request_mgr_handle->req_queue_tail];
+		cc_req = &request_mgr_handle->req_queue[*tail];
 
-#ifdef FLUSH_CACHE_ALL
-		flush_cache_all();
-#endif
-
-#ifdef COMPLETION_DELAY
-		/* Delay */
-		{
-			u32 axi_err;
-			int i;
-
-			dev_info(dev, "Delay\n");
-			for (i = 0; i < 1000000; i++)
-				axi_err = cc_ioread(drvdata,
-						    CC_REG(AXIM_MON_ERR));
-		}
-#endif /* COMPLETION_DELAY */
-
-		if (likely(ssi_req->user_cb))
-			ssi_req->user_cb(dev, ssi_req->user_arg,
-					 drvdata->cc_base);
-		request_mgr_handle->req_queue_tail = (request_mgr_handle->req_queue_tail + 1) & (MAX_REQUEST_QUEUE_SIZE - 1);
-		dev_dbg(dev, "Dequeue request tail=%u\n",
-			request_mgr_handle->req_queue_tail);
+		if (cc_req->user_cb)
+			cc_req->user_cb(dev, cc_req->user_arg, 0);
+		*tail = (*tail + 1) & (MAX_REQUEST_QUEUE_SIZE - 1);
+		dev_dbg(dev, "Dequeue request tail=%u\n", *tail);
 		dev_dbg(dev, "Request completed. axi_completed=%d\n",
 			request_mgr_handle->axi_completed);
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-		rc = ssi_power_mgr_runtime_put_suspend(dev);
-		if (rc != 0)
-			dev_err(dev, "Failed to set runtime suspension %d\n",
-				rc);
-#endif
+		cc_pm_put_suspend(dev);
 	}
 }
 
-static inline u32 cc_axi_comp_count(struct ssi_drvdata *drvdata)
+static inline u32 cc_axi_comp_count(struct cc_drvdata *drvdata)
 {
 	return FIELD_GET(AXIM_MON_COMP_VALUE,
 			 cc_ioread(drvdata, CC_REG(AXIM_MON_COMP)));
@@ -516,19 +622,19 @@ static inline u32 cc_axi_comp_count(struct ssi_drvdata *drvdata)
 /* Deferred service handler, run as interrupt-fired tasklet */
 static void comp_handler(unsigned long devarg)
 {
-	struct ssi_drvdata *drvdata = (struct ssi_drvdata *)devarg;
-	struct ssi_request_mgr_handle *request_mgr_handle =
+	struct cc_drvdata *drvdata = (struct cc_drvdata *)devarg;
+	struct cc_req_mgr_handle *request_mgr_handle =
 						drvdata->request_mgr_handle;
 
 	u32 irq;
 
-	irq = (drvdata->irq & SSI_COMP_IRQ_MASK);
+	irq = (drvdata->irq & CC_COMP_IRQ_MASK);
 
-	if (irq & SSI_COMP_IRQ_MASK) {
+	if (irq & CC_COMP_IRQ_MASK) {
 		/* To avoid the interrupt from firing as we unmask it,
 		 * we clear it now
 		 */
-		cc_iowrite(drvdata, CC_REG(HOST_ICR), SSI_COMP_IRQ_MASK);
+		cc_iowrite(drvdata, CC_REG(HOST_ICR), CC_COMP_IRQ_MASK);
 
 		/* Avoid race with above clear: Test completion counter
 		 * once more
@@ -547,7 +653,7 @@ static void comp_handler(unsigned long devarg)
 			} while (request_mgr_handle->axi_completed > 0);
 
 			cc_iowrite(drvdata, CC_REG(HOST_ICR),
-				   SSI_COMP_IRQ_MASK);
+				   CC_COMP_IRQ_MASK);
 
 			request_mgr_handle->axi_completed +=
 					cc_axi_comp_count(drvdata);
@@ -558,16 +664,19 @@ static void comp_handler(unsigned long devarg)
 	 */
 	cc_iowrite(drvdata, CC_REG(HOST_IMR),
 		   cc_ioread(drvdata, CC_REG(HOST_IMR)) & ~irq);
+
+	cc_proc_backlog(drvdata);
 }
 
 /*
- * resume the queue configuration - no need to take the lock as this happens inside
- * the spin lock protection
+ * resume the queue configuration - no need to take the lock as this happens
+ * inside the spin lock protection
  */
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-int ssi_request_mgr_runtime_resume_queue(struct ssi_drvdata *drvdata)
+#if defined(CONFIG_PM)
+int cc_resume_req_queue(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *request_mgr_handle = drvdata->request_mgr_handle;
+	struct cc_req_mgr_handle *request_mgr_handle =
+		drvdata->request_mgr_handle;
 
 	spin_lock_bh(&request_mgr_handle->hw_lock);
 	request_mgr_handle->is_runtime_suspended = false;
@@ -580,9 +689,9 @@ int ssi_request_mgr_runtime_resume_queue(struct ssi_drvdata *drvdata)
  * suspend the queue configuration. Since it is used for the runtime suspend
  * only verify that the queue can be suspended.
  */
-int ssi_request_mgr_runtime_suspend_queue(struct ssi_drvdata *drvdata)
+int cc_suspend_req_queue(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *request_mgr_handle =
+	struct cc_req_mgr_handle *request_mgr_handle =
 						drvdata->request_mgr_handle;
 
 	/* lock the send_request */
@@ -598,9 +707,9 @@ int ssi_request_mgr_runtime_suspend_queue(struct ssi_drvdata *drvdata)
 	return 0;
 }
 
-bool ssi_request_mgr_is_queue_runtime_suspend(struct ssi_drvdata *drvdata)
+bool cc_req_queue_suspended(struct cc_drvdata *drvdata)
 {
-	struct ssi_request_mgr_handle *request_mgr_handle =
+	struct cc_req_mgr_handle *request_mgr_handle =
 						drvdata->request_mgr_handle;
 
 	return	request_mgr_handle->is_runtime_suspended;

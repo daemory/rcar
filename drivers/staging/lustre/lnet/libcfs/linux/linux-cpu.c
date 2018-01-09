@@ -529,19 +529,20 @@ EXPORT_SYMBOL(cfs_cpt_spread_node);
 int
 cfs_cpt_current(struct cfs_cpt_table *cptab, int remap)
 {
-	int cpu = smp_processor_id();
-	int cpt = cptab->ctb_cpu2cpt[cpu];
+	int cpu;
+	int cpt;
 
-	if (cpt < 0) {
-		if (!remap)
-			return cpt;
+	preempt_disable();
+	cpu = smp_processor_id();
+	cpt = cptab->ctb_cpu2cpt[cpu];
 
+	if (cpt < 0 && remap) {
 		/* don't return negative value for safety of upper layer,
 		 * instead we shadow the unknown cpu to a valid partition ID
 		 */
 		cpt = cpu % cptab->ctb_nparts;
 	}
-
+	preempt_enable();
 	return cpt;
 }
 EXPORT_SYMBOL(cfs_cpt_current);
@@ -830,7 +831,7 @@ cfs_cpt_table_create_pattern(char *pattern)
 	int c;
 	int i;
 
-	str = cfs_trimwhite(pattern);
+	str = strim(pattern);
 	if (*str == 'n' || *str == 'N') {
 		pattern = str + 1;
 		if (*pattern != '\0') {
@@ -882,7 +883,7 @@ cfs_cpt_table_create_pattern(char *pattern)
 
 	high = node ? MAX_NUMNODES - 1 : nr_cpu_ids - 1;
 
-	for (str = cfs_trimwhite(pattern), c = 0;; c++) {
+	for (str = strim(pattern), c = 0;; c++) {
 		struct cfs_range_expr *range;
 		struct cfs_expr_list *el;
 		char *bracket = strchr(str, '[');
@@ -917,7 +918,7 @@ cfs_cpt_table_create_pattern(char *pattern)
 			goto failed;
 		}
 
-		str = cfs_trimwhite(str + n);
+		str = strim(str + n);
 		if (str != bracket) {
 			CERROR("Invalid pattern %s\n", str);
 			goto failed;
@@ -957,7 +958,7 @@ cfs_cpt_table_create_pattern(char *pattern)
 			goto failed;
 		}
 
-		str = cfs_trimwhite(bracket + 1);
+		str = strim(bracket + 1);
 	}
 
 	return cptab;

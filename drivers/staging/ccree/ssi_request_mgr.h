@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2012-2017 ARM Limited or its affiliates.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright (C) 2012-2018 ARM Limited or its affiliates. */
 
 /* \file request_mgr.h
  * Request Manager
@@ -23,38 +10,42 @@
 
 #include "cc_hw_queue_defs.h"
 
-int request_mgr_init(struct ssi_drvdata *drvdata);
+int cc_req_mgr_init(struct cc_drvdata *drvdata);
 
 /*!
  * Enqueue caller request to crypto hardware.
  *
  * \param drvdata
- * \param ssi_req The request to enqueue
+ * \param cc_req The request to enqueue
  * \param desc The crypto sequence
  * \param len The crypto sequence length
  * \param is_dout If "true": completion is handled by the caller
  *	  If "false": this function adds a dummy descriptor completion
  *	  and waits upon completion signal.
  *
- * \return int Returns -EINPROGRESS if "is_dout=ture"; "0" if "is_dout=false"
+ * \return int Returns -EINPROGRESS or error
  */
-int send_request(
-	struct ssi_drvdata *drvdata, struct ssi_crypto_req *ssi_req,
-	struct cc_hw_desc *desc, unsigned int len, bool is_dout);
+int cc_send_request(struct cc_drvdata *drvdata, struct cc_crypto_req *cc_req,
+		    struct cc_hw_desc *desc, unsigned int len,
+		    struct crypto_async_request *req);
 
-int send_request_init(
-	struct ssi_drvdata *drvdata, struct cc_hw_desc *desc, unsigned int len);
+int cc_send_sync_request(struct cc_drvdata *drvdata,
+			 struct cc_crypto_req *cc_req, struct cc_hw_desc *desc,
+			 unsigned int len);
 
-void complete_request(struct ssi_drvdata *drvdata);
+int send_request_init(struct cc_drvdata *drvdata, struct cc_hw_desc *desc,
+		      unsigned int len);
 
-void request_mgr_fini(struct ssi_drvdata *drvdata);
+void complete_request(struct cc_drvdata *drvdata);
 
-#if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM_SLEEP)
-int ssi_request_mgr_runtime_resume_queue(struct ssi_drvdata *drvdata);
+void cc_req_mgr_fini(struct cc_drvdata *drvdata);
 
-int ssi_request_mgr_runtime_suspend_queue(struct ssi_drvdata *drvdata);
+#if defined(CONFIG_PM)
+int cc_resume_req_queue(struct cc_drvdata *drvdata);
 
-bool ssi_request_mgr_is_queue_runtime_suspend(struct ssi_drvdata *drvdata);
+int cc_suspend_req_queue(struct cc_drvdata *drvdata);
+
+bool cc_req_queue_suspended(struct cc_drvdata *drvdata);
 #endif
 
 #endif /*__REQUEST_MGR_H__*/

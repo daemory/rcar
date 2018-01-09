@@ -1,35 +1,22 @@
-/*
- * Copyright (C) 2012-2017 ARM Limited or its affiliates.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright (C) 2012-2018 ARM Limited or its affiliates. */
 
-#ifndef __SSI_SRAM_MGR_H__
-#define __SSI_SRAM_MGR_H__
+#ifndef __CC_SRAM_MGR_H__
+#define __CC_SRAM_MGR_H__
 
-#ifndef SSI_CC_SRAM_SIZE
-#define SSI_CC_SRAM_SIZE 4096
+#ifndef CC_CC_SRAM_SIZE
+#define CC_CC_SRAM_SIZE 4096
 #endif
 
-struct ssi_drvdata;
+struct cc_drvdata;
 
 /**
  * Address (offset) within CC internal SRAM
  */
 
-typedef u64 ssi_sram_addr_t;
+typedef u64 cc_sram_addr_t;
 
-#define NULL_SRAM_ADDR ((ssi_sram_addr_t)-1)
+#define NULL_SRAM_ADDR ((cc_sram_addr_t)-1)
 
 /*!
  * Initializes SRAM pool.
@@ -40,14 +27,14 @@ typedef u64 ssi_sram_addr_t;
  *
  * \return int Zero for success, negative value otherwise.
  */
-int ssi_sram_mgr_init(struct ssi_drvdata *drvdata);
+int cc_sram_mgr_init(struct cc_drvdata *drvdata);
 
 /*!
  * Uninits SRAM pool.
  *
  * \param drvdata
  */
-void ssi_sram_mgr_fini(struct ssi_drvdata *drvdata);
+void cc_sram_mgr_fini(struct cc_drvdata *drvdata);
 
 /*!
  * Allocated buffer from SRAM pool.
@@ -58,10 +45,10 @@ void ssi_sram_mgr_fini(struct ssi_drvdata *drvdata);
  * \param drvdata
  * \param size The requested bytes to allocate
  */
-ssi_sram_addr_t ssi_sram_mgr_alloc(struct ssi_drvdata *drvdata, u32 size);
+cc_sram_addr_t cc_sram_alloc(struct cc_drvdata *drvdata, u32 size);
 
 /**
- * ssi_sram_mgr_const2sram_desc() - Create const descriptors sequence to
+ * cc_set_sram_desc() - Create const descriptors sequence to
  *	set values in given array into SRAM.
  * Note: each const value can't exceed word size.
  *
@@ -71,9 +58,8 @@ ssi_sram_addr_t ssi_sram_mgr_alloc(struct ssi_drvdata *drvdata, u32 size);
  * @seq:	  A pointer to the given IN/OUT descriptor sequence
  * @seq_len:	  A pointer to the given IN/OUT sequence length
  */
-void ssi_sram_mgr_const2sram_desc(
-	const u32 *src, ssi_sram_addr_t dst,
-	unsigned int nelement,
-	struct cc_hw_desc *seq, unsigned int *seq_len);
+void cc_set_sram_desc(const u32 *src, cc_sram_addr_t dst,
+		      unsigned int nelement, struct cc_hw_desc *seq,
+		      unsigned int *seq_len);
 
-#endif /*__SSI_SRAM_MGR_H__*/
+#endif /*__CC_SRAM_MGR_H__*/
