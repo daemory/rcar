@@ -1173,9 +1173,19 @@ static int adv7511_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	regmap_write(adv7511->regmap, ADV7511_REG_PACKET_I2C_ADDR,
 		     adv7511->i2c_packet->addr << 1);
 
+	adv7511->i2c_fixed = i2c_new_secondary_device(i2c, "fixed",
+					ADV7511_FIXED_I2C_ADDR_DEFAULT);
+	if (!adv7511->i2c_fixed) {
+		ret = -ENOMEM;
+		goto err_i2c_unregister_packet;
+	}
+
+	regmap_write(adv7511->regmap, ADV7511_REG_FIXED_I2C_ADDR,
+		     adv7511->i2c_fixed->addr << 1);
+
 	ret = adv7511_init_cec_regmap(adv7511);
 	if (ret)
-		goto err_i2c_unregister_packet;
+		goto err_i2c_unregister_fixed;
 
 	regmap_write(adv7511->regmap, ADV7511_REG_CEC_I2C_ADDR,
 		     adv7511->i2c_cec->addr << 1);
@@ -1216,6 +1226,8 @@ err_unregister_cec:
 	i2c_unregister_device(adv7511->i2c_cec);
 	if (adv7511->cec_clk)
 		clk_disable_unprepare(adv7511->cec_clk);
+err_i2c_unregister_fixed:
+	i2c_unregister_device(adv7511->i2c_fixed);
 err_i2c_unregister_packet:
 	i2c_unregister_device(adv7511->i2c_packet);
 err_i2c_unregister_edid:
@@ -1244,6 +1256,7 @@ static int adv7511_remove(struct i2c_client *i2c)
 
 	cec_unregister_adapter(adv7511->cec_adap);
 
+	i2c_unregister_device(adv7511->i2c_fixed);
 	i2c_unregister_device(adv7511->i2c_packet);
 	i2c_unregister_device(adv7511->i2c_edid);
 
