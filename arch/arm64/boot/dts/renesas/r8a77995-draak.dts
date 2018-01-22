@@ -147,6 +147,21 @@
 		pagesize = <8>;
 	};
 
+	composite-in@20 {
+		compatible = "adi,adv7180";
+		reg = <0x20 0x44 0x42>;
+		//reg = <0x20 0x21 0x22>;
+		reg-names = "main", "csi2", "vpp";
+		//remote = <&vin1>;
+	
+		port {
+			adv7180: endpoint {
+				bus-width = <8>;
+				//remote-endpoint = <&vin1ep0>;
+			};
+		};
+	};
+
 	hdmi@39 {
 		compatible = "adi,adv7511w";
 		reg = <0x39>, <0x3f>, <0x38>, <0x3c>;
