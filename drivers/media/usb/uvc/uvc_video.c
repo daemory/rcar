@@ -1047,8 +1047,6 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
  *
  * Perform memcpy tasks in process context, with completion handlers
  * to return the URB, and buffer handles.
- *
- * The work submitter must pre-determine that the work is safe
  */
 static void uvc_video_copy_data_work(struct work_struct *work)
 {
@@ -1489,7 +1487,7 @@ static void uvc_video_complete(struct urb *urb)
 	 */
 	stream->decode(uvc_urb, buf, buf_meta);
 
-	/* Without any queued work, we must submit the URB. */
+	/* If no async work is needed, resubmit the URB immediately. */
 	if (!uvc_urb->async_operations) {
 		ret = usb_submit_urb(uvc_urb->urb, GFP_ATOMIC);
 		if (ret < 0)
@@ -1609,8 +1607,10 @@ static void uvc_uninit_video(struct uvc_streaming *stream, int free_buffers)
 		uvc_urb->urb = NULL;
 	}
 
-	if (free_buffers)
+	if (free_buffers) {
 		uvc_free_urb_buffers(stream);
+		destroy_workqueue(stream->async_wq);
+	}
 }
 
 /*

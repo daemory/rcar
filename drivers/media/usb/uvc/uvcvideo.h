@@ -496,7 +496,7 @@ struct uvc_copy_op {
 	struct uvc_buffer *buf;
 	void *dst;
 	const __u8 *src;
-	int len;
+	size_t len;
 };
 
 /**
