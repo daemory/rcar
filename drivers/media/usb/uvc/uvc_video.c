@@ -1507,20 +1507,19 @@ static void uvc_video_complete(struct urb *urb)
  */
 static void uvc_free_urb_buffers(struct uvc_streaming *stream)
 {
-	unsigned int i;
+	struct uvc_urb *uvc_urb;
 
-	for (i = 0; i < UVC_URBS; ++i) {
-		struct uvc_urb *uvc_urb = &stream->uvc_urb[i];
+	for_each_uvc_urb(uvc_urb, stream) {
+		if (!uvc_urb->buffer)
+			continue;
 
-		if (uvc_urb->buffer) {
 #ifndef CONFIG_DMA_NONCOHERENT
-			usb_free_coherent(stream->dev->udev, stream->urb_size,
-					uvc_urb->buffer, uvc_urb->dma);
+		usb_free_coherent(stream->dev->udev, stream->urb_size,
+				  uvc_urb->buffer, uvc_urb->dma);
 #else
-			kfree(uvc_urb->buffer);
+		kfree(uvc_urb->buffer);
 #endif
-			uvc_urb->buffer = NULL;
-		}
+		uvc_urb->buffer = NULL;
 	}
 
 	stream->urb_size = 0;
@@ -1648,7 +1647,8 @@ static int uvc_init_video_isoc(struct uvc_streaming *stream,
 	struct usb_host_endpoint *ep, gfp_t gfp_flags)
 {
 	struct urb *urb;
-	unsigned int npackets, i, j;
+	struct uvc_urb *uvc_urb;
+	unsigned int npackets, j;
 	u16 psize;
 	u32 size;
 
@@ -1661,9 +1661,7 @@ static int uvc_init_video_isoc(struct uvc_streaming *stream,
 
 	size = npackets * psize;
 
-	for (i = 0; i < UVC_URBS; ++i) {
-		struct uvc_urb *uvc_urb = &stream->uvc_urb[i];
-
+	for_each_uvc_urb(uvc_urb, stream) {
 		urb = usb_alloc_urb(npackets, gfp_flags);
 		if (urb == NULL) {
 			uvc_uninit_video(stream, 1);
@@ -1705,7 +1703,8 @@ static int uvc_init_video_bulk(struct uvc_streaming *stream,
 	struct usb_host_endpoint *ep, gfp_t gfp_flags)
 {
 	struct urb *urb;
-	unsigned int npackets, pipe, i;
+	struct uvc_urb *uvc_urb;
+	unsigned int npackets, pipe;
 	u16 psize;
 	u32 size;
 
@@ -1729,9 +1728,7 @@ static int uvc_init_video_bulk(struct uvc_streaming *stream,
 	if (stream->type == V4L2_BUF_TYPE_VIDEO_OUTPUT)
 		size = 0;
 
-	for (i = 0; i < UVC_URBS; ++i) {
-		struct uvc_urb *uvc_urb = &stream->uvc_urb[i];
-
+	for_each_uvc_urb(uvc_urb, stream) {
 		urb = usb_alloc_urb(0, gfp_flags);
 		if (urb == NULL) {
 			uvc_uninit_video(stream, 1);
@@ -1758,6 +1755,7 @@ static int uvc_init_video(struct uvc_streaming *stream, gfp_t gfp_flags)
 {
 	struct usb_interface *intf = stream->intf;
 	struct usb_host_endpoint *ep;
+	struct uvc_urb *uvc_urb;
 	unsigned int i;
 	int ret;
 
@@ -1840,13 +1838,11 @@ static int uvc_init_video(struct uvc_streaming *stream, gfp_t gfp_flags)
 		return ret;
 
 	/* Submit the URBs. */
-	for (i = 0; i < UVC_URBS; ++i) {
-		struct uvc_urb *uvc_urb = &stream->uvc_urb[i];
-
+	for_each_uvc_urb(uvc_urb, stream) {
 		ret = usb_submit_urb(uvc_urb->urb, gfp_flags);
 		if (ret < 0) {
-			uvc_printk(KERN_ERR, "Failed to submit URB %u "
-					"(%d).\n", i, ret);
+			uvc_printk(KERN_ERR, "Failed to submit URB (%d).\n",
+				   ret);
 			uvc_uninit_video(stream, 1);
 			return ret;
 		}
