@@ -146,6 +146,42 @@
 			};
 		};
 	};
+
+	hdmi@3d {
+		compatible = "adi,adv7511w";
+
+		reg = <0x3d>, <0x3c>, <0x4d>, <0x4c>;
+		reg-names = "main", "edid", "packet", "cec";
+		//interrupt-parent = <&gpio3>;
+		//interrupts = <01 IRQ_TYPE_LEVEL_LOW>;
+
+		/* CEC_CLK = 12MHz_100ppm */
+
+		adi,input-depth = <8>;
+		adi,input-colorspace = "rgb";
+		adi,input-clock = "1x";
+		adi,input-style = <1>;
+		adi,input-justification = "evenly";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				adv7511_1_in: endpoint {
+					// remote-endpoint = <&du_out_lvds0>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				adv7511_1_out: endpoint {
+					// remote-endpoint = <&hdmi_con_out>;
+				};
+			};
+		};
+	};
 };
 
 &pfc {
