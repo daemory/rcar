@@ -33,6 +33,9 @@ enum rcar_lvds_mode {
 
 #define RCAR_LVDS_QUIRK_LANES	(1 << 0)	/* LVDS lanes 1 and 3 inverted */
 
+/* Has Vertical Strip, SSCG, and Divider controls */
+#define RCAR_LVDS_QUIRK_GEN3_EXTENDED (1 << 1)
+
 struct rcar_lvds_device_info {
 	unsigned int gen;
 	unsigned int quirks;
@@ -496,6 +499,11 @@ static const struct rcar_lvds_device_info rcar_lvds_gen3_info = {
 	.gen = 3,
 };
 
+static const struct rcar_lvds_device_info rcar_lvds_gen3_de_info = {
+	.gen = 3,
+	.quirks = RCAR_LVDS_QUIRK_GEN3_EXTENDED,
+};
+
 static const struct of_device_id rcar_lvds_of_table[] = {
 	{ .compatible = "renesas,r8a7743-lvds", .data = &rcar_lvds_gen2_info },
 	{ .compatible = "renesas,r8a7790-lvds", .data = &rcar_lvds_r8a7790_info },
@@ -503,6 +511,7 @@ static const struct of_device_id rcar_lvds_of_table[] = {
 	{ .compatible = "renesas,r8a7793-lvds", .data = &rcar_lvds_gen2_info },
 	{ .compatible = "renesas,r8a7795-lvds", .data = &rcar_lvds_gen3_info },
 	{ .compatible = "renesas,r8a7796-lvds", .data = &rcar_lvds_gen3_info },
+	{ .compatible = "renesas,r8a77995-lvds", .data = &rcar_lvds_gen3_de_info },
 	{ }
 };
 
