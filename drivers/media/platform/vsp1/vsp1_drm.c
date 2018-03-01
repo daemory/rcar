@@ -811,6 +811,17 @@ int vsp1_du_atomic_update(struct device *dev, unsigned int pipe_index,
 		return -EINVAL;
 	}
 
+	if (!(vsp1_feature(vsp1, VSP1_HAS_EXT_DL)) && cfg->interlaced) {
+		/*
+		 * Interlaced support requires extended display lists to
+		 * provide the auto-fld feature with the DU.
+		 */
+		dev_dbg(vsp1->dev, "Interlaced unsupported on this output\n");
+		return -EINVAL;
+	}
+
+	rpf->interlaced = cfg->interlaced;
+
 	rpf->fmtinfo = fmtinfo;
 	rpf->format.num_planes = fmtinfo->planes;
 	rpf->format.plane_fmt[0].bytesperline = cfg->pitch;
