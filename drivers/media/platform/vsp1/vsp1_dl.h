@@ -57,7 +57,7 @@ struct vsp1_dl_manager *vsp1_dlm_create(struct vsp1_device *vsp1,
 					unsigned int prealloc);
 void vsp1_dlm_destroy(struct vsp1_dl_manager *dlm);
 void vsp1_dlm_reset(struct vsp1_dl_manager *dlm);
-bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm);
+bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm, bool interlaced);
 struct vsp1_dl_ext_cmd *vsp1_dlm_get_autofld_cmd(struct vsp1_dl_list *dl);
 
 struct vsp1_dl_list *vsp1_dl_list_get(struct vsp1_dl_manager *dlm);

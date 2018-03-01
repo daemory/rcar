@@ -886,8 +886,9 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl)
  * with the frame end interrupt. The function always returns true in header mode
  * as display list processing is then not continuous and races never occur.
  */
-bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
+bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm, bool interlaced)
 {
+	struct vsp1_device *vsp1 = dlm->vsp1;
 	bool completed = false;
 
 	spin_lock(&dlm->lock);
@@ -911,6 +912,13 @@ bool vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 	 */
 	if (vsp1_dl_list_hw_update_pending(dlm))
 		goto done;
+
+	if (interlaced) {
+		u32 status = vsp1_read(vsp1, VI6_STATUS);
+
+		if (!(status & VI6_STATUS_FLD_STD(dlm->index)))
+			goto done;
+	}
 
 	/*
 	 * The device starts processing the queued display list right after the

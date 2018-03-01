@@ -341,7 +341,8 @@ void vsp1_pipeline_frame_end(struct vsp1_pipeline *pipe)
 	 * up being postponed by one frame. @completed represents whether the
 	 * active frame was finished or postponed.
 	 */
-	completed = vsp1_dlm_irq_frame_end(pipe->output->dlm);
+	completed = vsp1_dlm_irq_frame_end(pipe->output->dlm,
+					   pipe->output->interlaced);
 
 	if (pipe->hgo)
 		vsp1_hgo_frame_end(pipe->hgo);
