@@ -929,12 +929,6 @@ static irqreturn_t rvin_irq(int irq, void *data)
 	rvin_ack_interrupt(vin);
 	handled = 1;
 
-	/* Nothing to do if capture status is 'STOPPED' */
-	if (vin->state == STOPPED) {
-		vin_dbg(vin, "IRQ while state stopped\n");
-		goto done;
-	}
-
 	/* Nothing to do if capture status is 'STOPPING' */
 	if (vin->state == STOPPING) {
 		vin_dbg(vin, "IRQ while state stopping\n");
