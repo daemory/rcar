@@ -11,10 +11,21 @@ With this reconfiguration of bodies, we can adapt the configuration code to
 separate out constant hardware configuration and cache it for re-use.
 
 The patches provided in this series can be found at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v6
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v7
+
+I hope that this series is at a stage where it could be integrated now.  It has
+had some thorough testing and is already integrated in both renesas-drivers and
+renesas-bsp. (except for the minor changes in v7 that is...)
 
 Changelog:
 ----------
+
+v7:
+ - Rebased on to linux-media/master (v4.16-rc4)
+ - Clean up the formatting of the vsp1_dl_list_add_body()
+ - Fix formatting and white space
+ -  s/prepare/configure_stream/
+ -  s/configure/configure_frame/
 
 v6:
  - Rebased on to linux-media/master (v4.16-rc1)
@@ -51,7 +62,7 @@ The VSP unit tests have been run on this patch set with the following results:
 - vsp-unit-test-0000.sh
 Test Conditions:
   Platform          Renesas Salvator-X 2nd version board based on r8a7795 ES2.0+
-  Kernel release    4.16.0-rc1-arm64-renesas-00166-ge0ad4e839fff
+  Kernel release    4.16.0-rc4-arm64-renesas-01067-g397eb3811ec0
   convert           /usr/bin/convert
   compare           /usr/bin/compare
   killall           /usr/bin/killall
@@ -218,10 +229,10 @@ Testing WPF packing in ABGR32 during stress testing: pass
 Testing WPF packing in ARGB32 during stress testing: pass
 Testing WPF packing in XBGR32 during stress testing: pass
 Testing WPF packing in XRGB32 during stress testing: pass
-./vsp-unit-test-0021.sh: line 34: 13658 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
+./vsp-unit-test-0021.sh: line 34:  4489 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
 - vsp-unit-test-0022.sh
 Testing long duration pipelines under stress: pass
-./vsp-unit-test-0022.sh: line 38: 15624 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
+./vsp-unit-test-0022.sh: line 38:  6457 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
 - vsp-unit-test-0023.sh
 Testing histogram HGT with hue areas 0,255,255,255,255,255,255,255,255,255,255,255: pass
 Testing histogram HGT with hue areas 0,40,40,80,80,120,120,160,160,200,200,255: pass
