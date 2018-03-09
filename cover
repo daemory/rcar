@@ -1,0 +1,19 @@
+R-Car DU Interlaced support through VSP1
+
+The Gen3 R-Car DU devices make use of the VSP to handle frame
+processing.
+
+In this series we implement support for handling interlaced pipelines
+by using the auto-fld feature of the VSP hardware.
+
+The implementation is preceded by some cleanup work and refactoring, through
+patches 1 to 6. These are trivial and could be collected earlier and
+independently if this series requires further revisions.
+
+Patch 7 makes a key distinctive change to remove all existing support for
+headerless display lists throughout the VSP1 driver, and ensures that all
+pipelines use the same code path. This simplifies the code and reduces
+opportunity for untested code paths to exist.
+
+Patches 8, 9 and 10 implement the relevant support in the VSP1 driver, before
+patch 11 finally enables the feature through the drm R-Car DU driver.
