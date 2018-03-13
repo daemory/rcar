@@ -1,10 +1,9 @@
 R-Car DU Interlaced support through VSP1
 
-The Gen3 R-Car DU devices make use of the VSP to handle frame
-processing.
+The Gen3 R-Car DU devices make use of the VSP to handle frame processing.
 
-In this series we implement support for handling interlaced pipelines
-by using the auto-fld feature of the VSP hardware.
+In this series we implement support for handling interlaced pipelines by using
+the auto-fld feature of the VSP hardware.
 
 The implementation is preceded by some cleanup work and refactoring, through
 patches 1 to 6. These are trivial and could be collected earlier and
@@ -17,3 +16,29 @@ opportunity for untested code paths to exist.
 
 Patches 8, 9 and 10 implement the relevant support in the VSP1 driver, before
 patch 11 finally enables the feature through the drm R-Car DU driver.
+
+This series is based upon my previous TLB optimise and body rework (v7), and is
+available from the following URL:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
+  tags/vsp1/du/interlaced/v2
+
+ChangeLog:
+
+v2:
+ - media: vsp1: use kernel __packed for structures
+    became:
+   media: vsp1: Remove packed attributes from aligned structures
+
+ - media: vsp1: Add support for extended display list headers
+   - No longer declares structs __packed
+
+ - media: vsp1: Provide support for extended command pools
+   - Fix spelling typo in commit message
+   - constify, and staticify the instantiation of vsp1_extended_commands
+   - s/autfld_cmds/autofld_cmds/
+   - staticify cmd pool functions (Thanks kbuild-bot)
+
+ - media: vsp1: Support Interlaced display pipelines
+   - fix erroneous BIT value which enabled interlaced
+   - fix field handling at frame_end interrupt
