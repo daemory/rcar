@@ -788,8 +788,24 @@ struct cx23885_board cx23885_boards[] = {
 	},
 	[CX23885_BOARD_HAUPPAUGE_HVR1265_K4] = {
 		.name		= "Hauppauge WinTV-HVR-1265(161111)",
+		.porta          = CX23885_ANALOG_VIDEO,
 		.portc		= CX23885_MPEG_DVB,
+		.tuner_type     = TUNER_ABSENT,
 		.force_bff	= 1,
+		.input          = {{
+			.type   = CX23885_VMUX_COMPOSITE1,
+			.vmux   =	CX25840_VIN7_CH3 |
+					CX25840_VIN4_CH2 |
+					CX25840_VIN6_CH1,
+			.amux   = CX25840_AUDIO7,
+		}, {
+			.type   = CX23885_VMUX_SVIDEO,
+			.vmux   =	CX25840_VIN7_CH3 |
+					CX25840_VIN4_CH2 |
+					CX25840_VIN8_CH1 |
+					CX25840_SVIDEO_ON,
+			.amux   = CX25840_AUDIO7,
+		} },
 	},
 	[CX23885_BOARD_HAUPPAUGE_STARBURST2] = {
 		.name		= "Hauppauge WinTV-Starburst2",
@@ -1812,8 +1828,6 @@ void cx23885_gpio_setup(struct cx23885_dev *dev)
 		cx23885_gpio_set(dev, GPIO_2);
 		break;
 	case CX23885_BOARD_HAUPPAUGE_HVR5525:
-	case CX23885_BOARD_HAUPPAUGE_QUADHD_DVB:
-	case CX23885_BOARD_HAUPPAUGE_QUADHD_ATSC:
 	case CX23885_BOARD_HAUPPAUGE_STARBURST2:
 		/*
 		 * HVR5525 GPIO Details:
@@ -1845,7 +1859,9 @@ void cx23885_gpio_setup(struct cx23885_dev *dev)
 		 */
 		break;
 	case CX23885_BOARD_HAUPPAUGE_HVR1265_K4:
+	case CX23885_BOARD_HAUPPAUGE_QUADHD_DVB:
 	case CX23885_BOARD_HAUPPAUGE_QUADHD_DVB_885:
+	case CX23885_BOARD_HAUPPAUGE_QUADHD_ATSC:
 	case CX23885_BOARD_HAUPPAUGE_QUADHD_ATSC_885:
 		/*
 		 * GPIO-08 TER1_RESN
@@ -2346,6 +2362,10 @@ void cx23885_card_setup(struct cx23885_dev *dev)
 				&dev->i2c_bus[2].i2c_adap,
 				"cx25840", 0x88 >> 1, NULL);
 		if (dev->sd_cx25840) {
+			/* set host data for clk_freq configuration */
+			v4l2_set_subdev_hostdata(dev->sd_cx25840,
+						&dev->clk_freq);
+
 			dev->sd_cx25840->grp_id = CX23885_HW_AV_CORE;
 			v4l2_subdev_call(dev->sd_cx25840, core, load_fw);
 		}
