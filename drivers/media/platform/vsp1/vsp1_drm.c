@@ -28,6 +28,7 @@
 #include "vsp1_rwpf.h"
 #include "vsp1_uif.h"
 
+#define BRU_NAME(e)	(e)->type == VSP1_ENTITY_BRU ? "BRU" : "BRS"
 
 /* -----------------------------------------------------------------------------
  * Interrupt Handling
@@ -95,7 +96,6 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 	struct vsp1_entity *next;
 	struct vsp1_dl_list *dl;
 	struct v4l2_subdev_format format;
-	const char *bru_name;
 	unsigned long flags;
 	unsigned int i;
 	int ret;
@@ -106,7 +106,6 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 	drm_pipe = &vsp1->drm->pipe[pipe_index];
 	pipe = &drm_pipe->pipe;
 	bru = to_bru(&pipe->bru->subdev);
-	bru_name = pipe->bru->type == VSP1_ENTITY_BRU ? "BRU" : "BRS";
 
 	if (!cfg) {
 		/*
@@ -172,7 +171,7 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 
 		dev_dbg(vsp1->dev, "%s: set format %ux%u (%x) on %s pad %u\n",
 			__func__, format.format.width, format.format.height,
-			format.format.code, bru_name, i);
+			format.format.code, BRU_NAME(pipe->bru), i);
 	}
 
 	format.pad = pipe->bru->source_pad;
@@ -188,7 +187,7 @@ int vsp1_du_setup_lif(struct device *dev, unsigned int pipe_index,
 
 	dev_dbg(vsp1->dev, "%s: set format %ux%u (%x) on %s pad %u\n",
 		__func__, format.format.width, format.format.height,
-		format.format.code, bru_name, i);
+		format.format.code, BRU_NAME(pipe->bru), i);
 
 	format.pad = RWPF_PAD_SINK;
 	ret = v4l2_subdev_call(&pipe->output->entity.subdev, pad, set_fmt, NULL,
@@ -552,7 +551,7 @@ static int vsp1_du_setup_rpf_pipe(struct vsp1_device *vsp1,
 
 	dev_dbg(vsp1->dev, "%s: set format %ux%u (%x) on %s pad %u\n",
 		__func__, format.format.width, format.format.height,
-		format.format.code, bru_name, format.pad);
+		format.format.code, BRU_NAME(pipe->bru), format.pad);
 
 	sel.pad = bru_input;
 	sel.target = V4L2_SEL_TGT_COMPOSE;
@@ -565,7 +564,7 @@ static int vsp1_du_setup_rpf_pipe(struct vsp1_device *vsp1,
 
 	dev_dbg(vsp1->dev, "%s: set selection (%u,%u)/%ux%u on %s pad %u\n",
 		__func__, sel.r.left, sel.r.top, sel.r.width, sel.r.height,
-		bru_name, sel.pad);
+		BRU_NAME(pipe->bru), sel.pad);
 
 	return 0;
 }
@@ -593,11 +592,8 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index,
 	struct vsp1_entity *next;
 	struct vsp1_entity *uif;
 	struct vsp1_dl_list *dl;
-	const char *bru_name;
 	unsigned int i;
 	int ret;
-
-	bru_name = pipe->bru->type == VSP1_ENTITY_BRU ? "BRU" : "BRS";
 
 	/* Prepare the display list. */
 	dl = vsp1_dl_list_get(pipe->output->dlm);
@@ -655,7 +651,7 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index,
 		rpf->entity.sink_pad = i;
 
 		dev_dbg(vsp1->dev, "%s: connecting RPF.%u to %s:%u\n",
-			__func__, rpf->entity.index, bru_name, i);
+			__func__, rpf->entity.index, BRU_NAME(pipe->bru), i);
 
 		uif = cfg->crc.source == VSP1_DU_CRC_PLANE &&
 		      cfg->crc.index == i ? drm_pipe->uif : NULL;
