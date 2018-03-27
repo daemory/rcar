@@ -40,8 +40,6 @@ v3:
  - Only queue work if required (encode/isight do not queue work)
  - Refactor/Rename variables for clarity
 
-   Tested-by: Randy Dunlap <rdunlap@infradead.org>
-
 v4:
  - (Yet another) Rework of the uninitialise path.
    This time to hopefully clean up the shutdown races for good.
