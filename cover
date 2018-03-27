@@ -20,9 +20,31 @@ queue, and moving the memcpy out of interrupt context thus allowing work tasks
 to be scheduled across multiple cores.
 
 This series has been tested on both the ZED and BRIO cameras on arm64
-platforms, however due to the intrinsic changes in the driver I would like to
-see it tested with other devices and other platforms, so I'd appreciate if
-anyone can test this on a range of USB cameras.
+platforms, and with thanks to Randy Dunlap, a Dynex 1.3MP Webcam, a Sonix USB2
+Camera, and a built in Toshiba Laptop camera, and with thanks to Philipp Zabel
+for testing on a Lite-On internal Laptop Webcam, Logitech C910 (USB2 isoc),
+Oculus Sensor (USB3 isoc), and Microsoft HoloLens Sensors (USB3 bulk).
 
-In particular, any iSight devices, or devices which use UVC to encode data
-(output device) would certainly be great to be tested with these patches.
+As far as I am aware iSight devices, and devices which use UVC to encode data
+(output device) have not yet been tested - but should find no ill effect (at
+least not until they are tested of course :D )
+
+Tested-by: Randy Dunlap <rdunlap@infradead.org>
+Tested-by: Philipp Zabel <philipp.zabel@gmail.com>
+
+v2:
+ - Fix race reported by Guennadi
+
+v3:
+ - Fix similar race reported by Laurent
+ - Only queue work if required (encode/isight do not queue work)
+ - Refactor/Rename variables for clarity
+
+   Tested-by: Randy Dunlap <rdunlap@infradead.org>
+
+v4:
+ - (Yet another) Rework of the uninitialise path.
+   This time to hopefully clean up the shutdown races for good.
+   use usb_poison_urb() to halt all URBs, then flush the work queue
+   before freeing.
+ - Rebase to latest linux-media/master
