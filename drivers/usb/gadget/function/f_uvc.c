@@ -325,17 +325,19 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 
 	switch (alt) {
 	case 0:
-		if (uvc->state != UVC_STATE_STREAMING)
+		if (uvc->state != UVC_STATE_STREAMING &&
+				uvc->state != UVC_STATE_STARTING)
 			return 0;
 
 		if (uvc->video.ep)
 			usb_ep_disable(uvc->video.ep);
 
+		uvc->state = UVC_STATE_STOPPING;
+
 		memset(&v4l2_event, 0, sizeof(v4l2_event));
 		v4l2_event.type = UVC_EVENT_STREAMOFF;
 		v4l2_event_queue(&uvc->vdev, &v4l2_event);
 
-		uvc->state = UVC_STATE_CONNECTED;
 		return 0;
 
 	case 1:
@@ -353,6 +355,8 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 		if (ret)
 			return ret;
 		usb_ep_enable(uvc->video.ep);
+
+		uvc->state = UVC_STATE_STARTING;
 
 		memset(&v4l2_event, 0, sizeof(v4l2_event));
 		v4l2_event.type = UVC_EVENT_STREAMON;

@@ -193,6 +193,9 @@ uvc_v4l2_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 	struct uvc_video *video = &uvc->video;
 	int ret;
 
+	if (uvc->state != UVC_STATE_STARTING)
+		return 0;
+
 	if (type != video->queue.queue.type)
 		return -EINVAL;
 
@@ -201,12 +204,13 @@ uvc_v4l2_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 	if (ret < 0)
 		return ret;
 
+	uvc->state = UVC_STATE_STREAMING;
+
 	/*
 	 * Complete the alternate setting selection setup phase now that
 	 * userspace is ready to provide video frames.
 	 */
 	uvc_function_setup_continue(uvc);
-	uvc->state = UVC_STATE_STREAMING;
 
 	return 0;
 }
@@ -217,11 +221,22 @@ uvc_v4l2_streamoff(struct file *file, void *fh, enum v4l2_buf_type type)
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
 	struct uvc_video *video = &uvc->video;
+	int ret;
+
+	if (uvc->state != UVC_STATE_STOPPING)
+		return 0;
 
 	if (type != video->queue.queue.type)
 		return -EINVAL;
 
-	return uvcg_video_enable(video, 0);
+	ret = uvcg_video_enable(video, 0);
+	if (ret < 0)
+		return ret;
+
+	uvc->state = UVC_STATE_CONNECTED;
+
+	return 0;
+
 }
 
 static int
