@@ -206,12 +206,6 @@ uvc_v4l2_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 
 	uvc->state = UVC_STATE_STREAMING;
 
-	/*
-	 * Complete the alternate setting selection setup phase now that
-	 * userspace is ready to provide video frames.
-	 */
-	uvc_function_setup_continue(uvc);
-
 	return 0;
 }
 
