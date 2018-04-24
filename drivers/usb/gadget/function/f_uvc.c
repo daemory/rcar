@@ -374,8 +374,11 @@ uvc_function_disable(struct usb_function *f)
 {
 	struct uvc_device *uvc = to_uvc(f);
 	struct v4l2_event v4l2_event;
+	struct uvc_video *video = &uvc->video;
 
 	INFO(f->config->cdev, "uvc_function_disable\n");
+
+	uvcg_video_enable(video, 0);
 
 	memset(&v4l2_event, 0, sizeof(v4l2_event));
 	v4l2_event.type = UVC_EVENT_DISCONNECT;
