@@ -102,7 +102,6 @@ struct vsp1_partition {
  * @uds: UDS entity, if present
  * @uds_input: entity at the input of the UDS, if the UDS is present
  * @entities: list of entities in the pipeline
- * @dl: display list associated with the pipeline
  * @partitions: The number of partitions used to process one frame
  * @partition: The current partition for configuration to process
  * @part_table: The pre-calculated partitions used by the pipeline
@@ -138,8 +137,6 @@ struct vsp1_pipeline {
 	 * can walk this list in sequence.
 	 */
 	struct list_head entities;
-
-	struct vsp1_dl_list *dl;
 
 	unsigned int partitions;
 	struct vsp1_partition *partition;
