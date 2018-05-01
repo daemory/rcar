@@ -11,14 +11,19 @@ With this reconfiguration of bodies, we can adapt the configuration code to
 separate out constant hardware configuration and cache it for re-use.
 
 The patches provided in this series can be found at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v7
-
-I hope that this series is at a stage where it could be integrated now.  It has
-had some thorough testing and is already integrated in both renesas-drivers and
-renesas-bsp. (except for the minor changes in v7 that is...)
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v8
 
 Changelog:
 ----------
+v8:
+ - Fix formatting and white space
+ - Reword vsp1_dl_list_add_body() documentation
+ - Update commit message on "Provide a body pool"
+ - No longer pass unnecessary dlm->pool through vsp1_dl_list_alloc()
+ - Add support for the new UIF entity
+ - Fix comment location for clu_configure_stream()
+ - Implement configure_partition separation
+ - Rename video->pipe_config to video->stream_config
 
 v7:
  - Rebased on to linux-media/master (v4.16-rc4)
@@ -62,7 +67,7 @@ The VSP unit tests have been run on this patch set with the following results:
 - vsp-unit-test-0000.sh
 Test Conditions:
   Platform          Renesas Salvator-X 2nd version board based on r8a7795 ES2.0+
-  Kernel release    4.16.0-rc4-arm64-renesas-01067-g397eb3811ec0
+  Kernel release    4.17.0-rc1-arm64-renesas
   convert           /usr/bin/convert
   compare           /usr/bin/compare
   killall           /usr/bin/killall
@@ -217,7 +222,17 @@ Testing RPF crop from (32,32)/512x384: pass
 Testing RPF crop from (32,64)/512x384: pass
 Testing RPF crop from (64,32)/512x384: pass
 - vsp-unit-test-0019.sh
+Testing non-active pipeline suspend/resume in suspend:freezer: passed
+Testing non-active pipeline suspend/resume in suspend:devices: passed
+Testing non-active pipeline suspend/resume in suspend:platform: passed
+Testing non-active pipeline suspend/resume in suspend:processors: passed
+Testing non-active pipeline suspend/resume in suspend:core: passed
 - vsp-unit-test-0020.sh
+Testing Testing active pipeline suspend/resume in suspend:freezer: pass
+Testing Testing active pipeline suspend/resume in suspend:devices: pass
+Testing Testing active pipeline suspend/resume in suspend:platform: pass
+Testing Testing active pipeline suspend/resume in suspend:processors: pass
+Testing Testing active pipeline suspend/resume in suspend:core: pass
 - vsp-unit-test-0021.sh
 Testing WPF packing in RGB332 during stress testing: pass
 Testing WPF packing in ARGB555 during stress testing: pass
@@ -229,10 +244,10 @@ Testing WPF packing in ABGR32 during stress testing: pass
 Testing WPF packing in ARGB32 during stress testing: pass
 Testing WPF packing in XBGR32 during stress testing: pass
 Testing WPF packing in XRGB32 during stress testing: pass
-./vsp-unit-test-0021.sh: line 34:  4489 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
+./vsp-unit-test-0021.sh: line 34: 14785 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
 - vsp-unit-test-0022.sh
 Testing long duration pipelines under stress: pass
-./vsp-unit-test-0022.sh: line 38:  6457 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
+./vsp-unit-test-0022.sh: line 38: 16751 Killed                  stress --cpu 8 --io 4 --vm 2 --vm-bytes 128M
 - vsp-unit-test-0023.sh
 Testing histogram HGT with hue areas 0,255,255,255,255,255,255,255,255,255,255,255: pass
 Testing histogram HGT with hue areas 0,40,40,80,80,120,120,160,160,200,200,255: pass
@@ -242,4 +257,4 @@ Testing histogram HGT with hue areas 10,20,50,60,100,110,150,160,200,210,230,240
 Testing histogram HGT with hue areas 240,20,60,80,100,120,140,160,180,200,210,220: pass
 - vsp-unit-test-0024.sh
 Test requires unavailable feature set `rpf.0 rpf.1 brs wpf.0': skipped
-158 tests: 142 passed, 0 failed, 3 skipped
+168 tests: 147 passed, 0 failed, 3 skipped
