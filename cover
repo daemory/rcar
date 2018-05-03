@@ -17,13 +17,19 @@ opportunity for untested code paths to exist.
 Patches 8, 9 and 10 implement the relevant support in the VSP1 driver, before
 patch 11 finally enables the feature through the drm R-Car DU driver.
 
-This series is based upon my previous TLB optimise and body rework (v7), and is
+This series is based upon my previous TLB optimise and body rework (v8), and is
 available from the following URL:
 
   git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
-  tags/vsp1/du/interlaced/v2
+  tags/vsp1/du/interlaced/v8
 
 ChangeLog:
+
+v3:
+ - Rebased on top of TLB Optimise rework v8
+ - Added the DL parameter back into the configure_partition() calls.
+   - This change could be moved into the TLB-Optimise series.
+ - Document interlaced field in struct vsp1_du_atomic_config
 
 v2:
  - media: vsp1: use kernel __packed for structures
