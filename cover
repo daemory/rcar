@@ -17,13 +17,16 @@ opportunity for untested code paths to exist.
 Patches 8, 9 and 10 implement the relevant support in the VSP1 driver, before
 patch 11 finally enables the feature through the drm R-Car DU driver.
 
-This series is based upon my previous TLB optimise and body rework (v8), and is
+This series is based upon my previous TLB optimise and body rework (v9), and is
 available from the following URL:
 
   git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
-  tags/vsp1/du/interlaced/v8
+  tags/vsp1/du/interlaced/v4
 
 ChangeLog:
+
+v4:
+ - Move configure_partition() call changes into tlb-optimise-v9
 
 v3:
  - Rebased on top of TLB Optimise rework v8
