@@ -957,10 +957,15 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
 	 */
 	if (len < 2 || data[0] < 2 || data[0] > len) {
 		stream->stats.frame.nb_invalid++;
+		uvc_trace(UVC_TRACE_FRAME, "buffer failed checks... len = %d, data[0] = 0x%x\n",
+				len, data[0]);
 		return -EINVAL;
 	}
 
 	fid = data[1] & UVC_STREAM_FID;
+
+	uvc_trace(UVC_TRACE_FRAME, "fid = %d, data[0] = 0x%x data[1] = 0x%x\n",
+		  fid, data[0], data[1]);
 
 	/* Increase the sequence number regardless of any buffer states, so
 	 * that discontinuous sequence numbers always indicate lost frames.
@@ -1000,10 +1005,14 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
 	if (buf->state != UVC_BUF_STATE_ACTIVE) {
 		if (fid == stream->last_fid) {
 			uvc_trace(UVC_TRACE_FRAME, "Dropping payload (out of "
-				"sync).\n");
+				"sync) fid=0x%x stream->last_fid = 0x%x.\n",
+				fid, stream->last_fid);
+
 			if ((stream->dev->quirks & UVC_QUIRK_STREAM_NO_FID) &&
 			    (data[1] & UVC_STREAM_EOF))
 				stream->last_fid ^= UVC_STREAM_FID;
+
+
 			return -ENODATA;
 		}
 
@@ -1057,6 +1066,9 @@ static void uvc_video_decode_data(struct uvc_streaming *stream,
 	nbytes = min((unsigned int)len, maxlen);
 	memcpy(mem, data, nbytes);
 	buf->bytesused += nbytes;
+
+
+	uvc_printk(KERN_INFO, "decode_data: len: %d, maxlen %d\n", len, maxlen);
 
 	/* Complete the current frame if the buffer size was exceeded. */
 	if (len > maxlen) {

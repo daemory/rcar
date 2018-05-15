@@ -21,6 +21,8 @@
 #include "musb_core.h"
 #include "musb_trace.h"
 
+// #define musb_dbg(m, ...) printk(KERN_INFO __VA_ARGS__)
+
 
 /* ----------------------------------------------------------------------- */
 
