@@ -1201,6 +1201,29 @@ static struct musb_fifo_cfg mode_5_cfg[] = {
 { .hw_ep_num = 15, .style = FIFO_RXTX, .maxpacket = 1024, },
 };
 
+/* mode 6 - fits in 16KB */
+static struct musb_fifo_cfg mode_6_cfg[] = {
+{ .hw_ep_num =  1, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num =  1, .style = FIFO_RX,   .maxpacket = 512, },
+{ .hw_ep_num =  2, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num =  2, .style = FIFO_RX,   .maxpacket = 512, },
+{ .hw_ep_num =  3, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num =  3, .style = FIFO_RX,   .maxpacket = 512, },
+{ .hw_ep_num =  4, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num =  4, .style = FIFO_RX,   .maxpacket = 512, },
+{ .hw_ep_num =  9, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num =  9, .style = FIFO_RX,   .maxpacket = 512, },
+{ .hw_ep_num = 10, .style = FIFO_TX,   .maxpacket = 256, },
+{ .hw_ep_num = 10, .style = FIFO_RX,   .maxpacket = 64, },
+{ .hw_ep_num = 11, .style = FIFO_TX,   .maxpacket = 256, },
+{ .hw_ep_num = 11, .style = FIFO_RX,   .maxpacket = 64, },
+{ .hw_ep_num = 12, .style = FIFO_TX,   .maxpacket = 256, },
+{ .hw_ep_num = 12, .style = FIFO_RX,   .maxpacket = 64, },
+{ .hw_ep_num = 13, .style = FIFO_RXTX, .maxpacket = 4096, .mode = BUF_DOUBLE, },
+{ .hw_ep_num = 14, .style = FIFO_RXTX, .maxpacket = 1024, },
+{ .hw_ep_num = 15, .style = FIFO_RXTX, .maxpacket = 1024, },
+};
+
 /*
  * configure a fifo; for non-shared endpoints, this may be called
  * once for a tx fifo and once for an rx fifo.
@@ -1323,7 +1346,12 @@ static int ep_config_from_table(struct musb *musb)
 		cfg = mode_5_cfg;
 		n = ARRAY_SIZE(mode_5_cfg);
 		break;
+	case 6:
+		cfg = mode_6_cfg;
+		n = ARRAY_SIZE(mode_6_cfg);
+		break;
 	}
+
 
 	pr_debug("%s: setup fifo_mode %d\n", musb_driver_name, fifo_mode);
 
