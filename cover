@@ -11,10 +11,16 @@ With this reconfiguration of bodies, we can adapt the configuration code to
 separate out constant hardware configuration and cache it for re-use.
 
 The patches provided in this series can be found at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v9
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v10
 
 Changelog:
 ----------
+v10:
+ - Rebase to latest linux-media/master
+ - Remove pipe->configured flag, as pipe->state is suitable for the
+   same purpose, as:
+    (!pipe->configured) == (pipe->state == VSP1_PIPELINE_STOPPED)
+
 v9:
  - Pass the DL through configure_partition() calls
  - Remove redundant reference to gc_bodies
