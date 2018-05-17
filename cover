@@ -262,3 +262,43 @@ Testing histogram HGT with hue areas 240,20,60,80,100,120,140,160,180,200,210,22
 - vsp-unit-test-0024.sh
 Test requires unavailable feature set `rpf.0 rpf.1 brs wpf.0': skipped
 168 tests: 147 passed, 0 failed, 3 skipped
+
+Kieran Bingham (8):
+  media: vsp1: Reword uses of 'fragment' as 'body'
+  media: vsp1: Protect bodies against overflow
+  media: vsp1: Provide a body pool
+  media: vsp1: Convert display lists to use new body pool
+  media: vsp1: Use reference counting for bodies
+  media: vsp1: Refactor display list configure operations
+  media: vsp1: Adapt entities to configure into a body
+  media: vsp1: Move video configuration to a cached dlb
+
+ drivers/media/platform/vsp1/vsp1_brx.c    |  32 +--
+ drivers/media/platform/vsp1/vsp1_clu.c    | 112 ++++---
+ drivers/media/platform/vsp1/vsp1_clu.h    |   1 +-
+ drivers/media/platform/vsp1/vsp1_dl.c     | 388 +++++++++++++----------
+ drivers/media/platform/vsp1/vsp1_dl.h     |  20 +-
+ drivers/media/platform/vsp1/vsp1_drm.c    |  18 +-
+ drivers/media/platform/vsp1/vsp1_entity.c |  34 +-
+ drivers/media/platform/vsp1/vsp1_entity.h |  45 +--
+ drivers/media/platform/vsp1/vsp1_hgo.c    |  26 +--
+ drivers/media/platform/vsp1/vsp1_hgt.c    |  28 +--
+ drivers/media/platform/vsp1/vsp1_hsit.c   |  20 +-
+ drivers/media/platform/vsp1/vsp1_lif.c    |  25 +-
+ drivers/media/platform/vsp1/vsp1_lut.c    |  80 +++--
+ drivers/media/platform/vsp1/vsp1_lut.h    |   1 +-
+ drivers/media/platform/vsp1/vsp1_pipe.c   |  13 +-
+ drivers/media/platform/vsp1/vsp1_pipe.h   |   8 +-
+ drivers/media/platform/vsp1/vsp1_rpf.c    | 188 +++++------
+ drivers/media/platform/vsp1/vsp1_sru.c    |  24 +-
+ drivers/media/platform/vsp1/vsp1_uds.c    |  73 ++--
+ drivers/media/platform/vsp1/vsp1_uds.h    |   2 +-
+ drivers/media/platform/vsp1/vsp1_uif.c    |  35 +--
+ drivers/media/platform/vsp1/vsp1_video.c  |  92 ++---
+ drivers/media/platform/vsp1/vsp1_video.h  |   2 +-
+ drivers/media/platform/vsp1/vsp1_wpf.c    | 327 ++++++++++---------
+ 24 files changed, 884 insertions(+), 710 deletions(-)
+
+base-commit: 22cf3c24e08f6ebff46c3e733991548a5dab25ed
+--
+git-series 0.9.1
