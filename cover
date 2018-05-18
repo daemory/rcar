@@ -11,10 +11,20 @@ With this reconfiguration of bodies, we can adapt the configuration code to
 separate out constant hardware configuration and cache it for re-use.
 
 The patches provided in this series can be found at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v10
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git  tags/vsp1/tlb-optimise/v11
 
 Changelog:
 ----------
+v11:
+ - Introduce two new patches as fixes to the VSP1.
+  * media: v4l: vsp1: Release buffers for each video node
+  * media: vsp1: Move video suspend resume handling to video object
+
+ - media: vsp1: Move video configuration to a cached dlb
+   - Now uses dlb's from the DLM pool
+   - clears the pipe->stream_config after it is released
+   - moves stream_config and configured flags to pipe objects.
+
 v10:
  - Rebase to latest linux-media/master
  - Remove pipe->configured flag, as pipe->state is suitable for the
