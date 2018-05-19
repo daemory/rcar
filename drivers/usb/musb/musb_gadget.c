@@ -479,11 +479,16 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 			&& (request->actual == request->length))
 				short_packet = true;
 
-		if ((musb_dma_inventra(musb) || musb_dma_ux500(musb)) &&
-			(is_dma && (!dma->desired_mode ||
-				(request->actual &
-					(musb_ep->packet_sz - 1)))))
-				short_packet = true;
+		if (is_dma && (musb_dma_inventra(musb) || musb_dma_ux500(musb))) {
+			if (!dma->desired_mode ||
+					request->actual % musb_ep->packet_sz) {
+				musb_dbg(musb, "%s Flushing (FIFO) EP : KPB\n",
+						musb_ep->end_point.name);
+				musb_writew(epio, MUSB_TXCSR,
+						csr | MUSB_TXCSR_FLUSHFIFO);
+				return;
+			}
+		}
 
 		if (short_packet) {
 			/*
@@ -493,8 +498,11 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 			if (csr & MUSB_TXCSR_TXPKTRDY)
 				return;
 
-			musb_writew(epio, MUSB_TXCSR, MUSB_TXCSR_MODE
-					| MUSB_TXCSR_TXPKTRDY);
+			musb_dbg(musb, "sending zero pkt (zero=%d, length=%d, actual=%d, "
+				"dma->desired_mode=%d)\n",
+				request->zero, request->length, request->actual,
+				dma->desired_mode);
+			musb_writew(epio, MUSB_TXCSR, csr | MUSB_TXCSR_TXPKTRDY);
 			request->zero = 0;
 		}
 
