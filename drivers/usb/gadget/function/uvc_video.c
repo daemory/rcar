@@ -30,8 +30,6 @@ uvc_video_encode_header(struct uvc_video *video, struct uvc_buffer *buf,
 	data[0] = 2;
 	data[1] = UVC_STREAM_EOH | video->fid;
 
-	printk(KERN_INFO "Encode Header for FID %d\n", video->fid);
-
 	if (buf->bytesused - video->queue.buf_used <= len - 2)
 		data[1] |= UVC_STREAM_EOF;
 
@@ -167,8 +165,6 @@ uvc_video_complete(struct usb_ep *ep, struct usb_request *req)
 	struct uvc_buffer *buf;
 	unsigned long flags;
 	int ret;
-
-	printk(KERN_INFO "uvc_video_complete 0x%p\n", req);
 
 	switch (req->status) {
 	case 0:

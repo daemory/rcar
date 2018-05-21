@@ -1067,9 +1067,6 @@ static void uvc_video_decode_data(struct uvc_streaming *stream,
 	memcpy(mem, data, nbytes);
 	buf->bytesused += nbytes;
 
-
-	uvc_printk(KERN_INFO, "decode_data: len: %d, maxlen %d\n", len, maxlen);
-
 	/* Complete the current frame if the buffer size was exceeded. */
 	if (len > maxlen) {
 		uvc_trace(UVC_TRACE_FRAME, "Frame complete (overflow).\n");
