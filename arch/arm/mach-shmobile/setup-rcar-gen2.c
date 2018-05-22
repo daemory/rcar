@@ -185,10 +185,8 @@ void __init rcar_gen2_reserve(void)
 }
 
 static const char * const rcar_gen2_boards_compat_dt[] __initconst = {
-	/*
-	 * R8A7790 and R8A7791 can't be handled here as long as they need SMP
-	 * initialization fallback.
-	 */
+	"renesas,r8a7790",
+	"renesas,r8a7791",
 	"renesas,r8a7792",
 	"renesas,r8a7793",
 	"renesas,r8a7794",
