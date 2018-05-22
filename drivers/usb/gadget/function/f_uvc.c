@@ -435,6 +435,7 @@ static int
 uvc_register_video(struct uvc_device *uvc)
 {
 	struct usb_composite_dev *cdev = uvc->func.config->cdev;
+	const struct config_item *figi = &uvc->func.fi->group.cg_item;
 	int ret;
 
 	/* TODO reference counting. */
@@ -444,7 +445,13 @@ uvc_register_video(struct uvc_device *uvc)
 	uvc->vdev.release = video_device_release_empty;
 	uvc->vdev.vfl_dir = VFL_DIR_TX;
 	uvc->vdev.lock = &uvc->video.mutex;
+
 	strlcpy(uvc->vdev.name, cdev->gadget->name, sizeof(uvc->vdev.name));
+
+	if (figi->ci_name && strlen(figi->ci_name)) {
+		strlcat(uvc->vdev.name, ":", sizeof(uvc->vdev.name));
+		strlcat(uvc->vdev.name, figi->ci_name, sizeof(uvc->vdev.name));
+	}
 
 	video_set_drvdata(&uvc->vdev, uvc);
 
