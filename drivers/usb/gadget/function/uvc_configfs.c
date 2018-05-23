@@ -544,6 +544,187 @@ out:
 	return ret;
 }
 
+/*
+https://paste.ubuntu.com/p/yDgDfSqmcB/
+
+[ 4880.445281] configfs-gadget musb-hdrc.0.auto: unregistering UDC driver [g1]
+[ 4880.452911] configfs-gadget gadget: reset config
+[ 4880.454864] configfs-gadget gadget: uvc_function_disable
+[ 4880.463409] configfs-gadget gadget: uvc_function_disable
+[ 4880.469177] configfs-gadget gadget: unbind function 'uvc'/7f36f181
+[ 4880.475738] configfs-gadget gadget: uvc_unbind
+[ 4880.481170] configfs-gadget gadget: unbind function 'uvc'/f4805245
+[ 4880.487884] configfs-gadget gadget: uvc_unbind
+[ 4880.627746] Unable to handle kernel NULL pointer dereference at virtual address 0000003c
+[ 4880.636810] pgd = e079628d
+[ 4880.639709] [0000003c] *pgd=00000000
+[ 4880.643615] Internal error: Oops: 5 [#1] SMP ARM
+[ 4880.643646] Modules linked in: omapdrm snd_soc_omap_hdmi_audio omapdss snd_soc_dmic snd_soc_omap_abe_twl6040 snd_soc_omap_mcbsp snd_soc_twl6040 snd_soc_omap_mcpdm snd_soc_omap snd_soc_core connector_hdmi cec connector_dvi encoder_tpd12s015 encoder_tfp410 omapdss_base snd_pcm_dmaengine snd_pcm clk_twl6040 snd_timer snd soundcore autofs4
+[ 4880.679870] CPU: 0 PID: 495 Comm: rm Tainted: G        W         4.17.0-rc4+ #42
+[ 4880.679931] Hardware name: Generic OMAP4 (Flattened Device Tree)
+[ 4880.694061] PC is at uvcg_control_class_drop_link+0x20/0xd8
+[ 4880.699859] LR is at configfs_unlink+0x114/0x1a4
+[ 4880.704803] pc : [<c079b908>]    lr : [<c0387668>]    psr: a0000113
+[ 4880.711395] sp : ed989eb0  ip : ed989ed8  fp : ed989ed4
+[ 4880.714904] r10: ffffff9c  r9 : ed32bb28  r8 : c0a59918
+[ 4880.719848] r7 : eddf7400  r6 : c179d9ec  r5 : edde0fc0  r4 : edd11bd0
+[ 4880.719848] r3 : 00000000  r2 : 00000001  r1 : eddf7400  r0 : c179d9ec
+[ 4880.729858] Flags: NzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+[ 4880.743652] Control: 10c5387d  Table: ada0804a  DAC: 00000051
+[ 4880.743652] Process rm (pid: 495, stack limit = 0x87540659)
+[ 4880.743652] Stack: (0xed989eb0 to 0xed98a000)
+[ 4880.759857] 9ea0:                                     edd11bd0 edde0fc0 c179d9ec ed32fac8
+[ 4880.760162] 9ec0: c0a59918 ed32bb28 ed989efc ed989ed8 c0387668 c079b8f4 ed32fac8 00000000
+[ 4880.777374] 9ee0: ed32cb30 ed32e4a0 ed32e548 ed989f44 ed989f2c ed989f00 c02fdc2c c0387560
+[ 4880.782348] 9f00: c02fcef0 c02fce5c edd2e000 00000000 ed32fac8 00000000 ed989f50 ed989f40
+[ 4880.789886] 9f20: ed989f8c ed989f30 c0303098 c02fdb0c ed989f50 ed989f40 00000002 ed32e4a0
+[ 4880.803222] 9f40: 00000000 00000000 eda39610 ed32bac8 5fb75e70 00000001 edd2e031 c01a88f0
+[ 4880.811828] 9f60: 00000000 ffffff9c 00000000 00498cb0 00000148 c01011c4 ed988000 00000000
+[ 4880.819854] 9f80: ed989fa4 ed989f90 c0303128 c0302e58 b6fde968 00000000 00000000 ed989fa8
+[ 4880.823211] 9fa0: c0101000 c03030f4 b6fde968 00000000 ffffff9c 00497ae8 00000000 a37a5800
+[ 4880.837677] 9fc0: b6fde968 00000000 00498cb0 00000148 bedba4bc bedba4bc 004847e4 00484728
+[ 4880.846282] 9fe0: 00495ea0 bedba3ac 0047dfc9 b6f4c298 60000130 ffffff9c 00000000 00000000
+[ 4880.854919] [<c079b908>] (uvcg_control_class_drop_link) from [<c0387668>] (configfs_unlink+0x114/0x1a4)
+[ 4880.864807] [<c0387668>] (configfs_unlink) from [<c02fdc2c>] (vfs_unlink+0x12c/0x1cc)
+[ 4880.864807] [<c02fdc2c>] (vfs_unlink) from [<c0303098>] (do_unlinkat+0x24c/0x29c)
+[ 4880.880950] [<c0303098>] (do_unlinkat) from [<c0303128>] (sys_unlinkat+0x40/0x54)
+[ 4880.880950] [<c0303128>] (sys_unlinkat) from [<c0101000>] (ret_fast_syscall+0x0/0x28)
+[ 4880.889862] Exception stack(0xed989fa8 to 0xed989ff0)
+[ 4880.889862] 9fa0:                   b6fde968 00000000 ffffff9c 00497ae8 00000000 a37a5800
+[ 4880.909851] 9fc0: b6fde968 00000000 00498cb0 00000148 bedba4bc bedba4bc 004847e4 00484728
+[ 4880.909851] 9fe0: 00495ea0 bedba3ac 0047dfc9 b6f4c298
+[ 4880.924957] Code: e8bd4000 e5903028 e1a06000 e1a07001 (e593403c)
+[ 4880.931488] ---[ end trace 26f317f45bb7c689 ]---
+[ 4880.970153] Unable to handle kernel NULL pointer dereference at virtual address 0000003c
+[ 4880.978698] pgd = 1c678380
+[ 4880.981750] [0000003c] *pgd=00000000
+[ 4880.985290] Internal error: Oops: 5 [#2] SMP ARM
+[ 4880.990509] Modules linked in: omapdrm snd_soc_omap_hdmi_audio omapdss snd_soc_dmic snd_soc_omap_abe_twl6040 snd_soc_omap_mcbsp snd_soc_twl6040 snd_soc_omap_mcpdm snd_soc_omap snd_soc_core connector_hdmi cec connector_dvi encoder_tpd12s015 encoder_tfp410 omapdss_base snd_pcm_dmaengine snd_pcm clk_twl6040 snd_timer snd soundcore autofs4
+[ 4881.022003] CPU: 1 PID: 512 Comm: rm Tainted: G      D W         4.17.0-rc4+ #42
+[ 4881.022003] Hardware name: Generic OMAP4 (Flattened Device Tree)
+[ 4881.029876] PC is at uvcg_streaming_class_drop_link+0x20/0x114
+[ 4881.039978] LR is at configfs_unlink+0x114/0x1a4
+[ 4881.039978] pc : [<c079bae4>]    lr : [<c0387668>]    psr: a0000113
+[ 4881.053771] sp : ee923eb0  ip : ee923ed8  fp : ee923ed4
+[ 4881.053771] r10: ffffff9c  r9 : ed32b4b0  r8 : c0a599b8
+[ 4881.059967] r7 : edf6c800  r6 : c179da8c  r5 : edde0180  r4 : edd11cb0
+[ 4881.069915] r3 : 00000000  r2 : 00000001  r1 : edf6c800  r0 : c179da8c
+[ 4881.069915] Flags: NzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+[ 4881.079956] Control: 10c5387d  Table: add4c04a  DAC: 00000051
+[ 4881.089874] Process rm (pid: 512, stack limit = 0xa42ecee3)
+[ 4881.089874] Stack: (0xee923eb0 to 0xee924000)
+[ 4881.102569] 3ea0:                                     edd11cb0 edde0180 c179da8c ed32b000
+[ 4881.109985] 3ec0: c0a599b8 ed32b4b0 ee923efc ee923ed8 c0387668 c079bad0 ed32b000 00000000
+[ 4881.119812] 3ee0: ed32d690 ed32e900 ed32e9a8 ee923f44 ee923f2c ee923f00 c02fdc2c c0387560
+[ 4881.119964] 3f00: c02fcef0 c02fce5c ede27000 00000000 ed32b000 00000000 ee923f50 ee923f40
+[ 4881.129913] 3f20: ee923f8c ee923f30 c0303098 c02fdb0c ee923f50 ee923f40 00000002 ed32e900
+[ 4881.145660] 3f40: 00000000 00000000 eda39610 ed32b450 c6c2ddb8 00000001 ede27033 c01a88f0
+[ 4881.149902] 3f60: 00000000 ffffff9c 00000000 004dacb0 00000148 c01011c4 ee922000 00000000
+[ 4881.159973] 3f80: ee923fa4 ee923f90 c0303128 c0302e58 b6f33968 00000000 00000000 ee923fa8
+[ 4881.169891] 3fa0: c0101000 c03030f4 b6f33968 00000000 ffffff9c 004d9ae8 00000000 13a13600
+[ 4881.180145] 3fc0: b6f33968 00000000 004dacb0 00000148 befdc4bc befdc4bc 004c67e4 004c6728
+[ 4881.180145] 3fe0: 004d7ea0 befdc3ac 004bffc9 b6ea1298 60000130 ffffff9c 00000000 00000000
+[ 4881.190704] [<c079bae4>] (uvcg_streaming_class_drop_link) from [<c0387668>] (configfs_unlink+0x114/0x1a4)
+[ 4881.207489] [<c0387668>] (configfs_unlink) from [<c02fdc2c>] (vfs_unlink+0x12c/0x1cc)
+[ 4881.215759] [<c02fdc2c>] (vfs_unlink) from [<c0303098>] (do_unlinkat+0x24c/0x29c)
+[ 4881.219940] [<c0303098>] (do_unlinkat) from [<c0303128>] (sys_unlinkat+0x40/0x54)
+[ 4881.231536] [<c0303128>] (sys_unlinkat) from [<c0101000>] (ret_fast_syscall+0x0/0x28)
+[ 4881.236083] Exception stack(0xee923fa8 to 0xee923ff0)
+[ 4881.245117] 3fa0:                   b6f33968 00000000 ffffff9c 004d9ae8 00000000 13a13600
+[ 4881.249877] 3fc0: b6f33968 00000000 004dacb0 00000148 befdc4bc befdc4bc 004c67e4 004c6728
+[ 4881.262359] 3fe0: 004d7ea0 befdc3ac 004bffc9 b6ea1298
+[ 4881.262359] Code: e8bd4000 e5903028 e1a06000 e1a07001 (e593403c)
+[ 4881.274200] ---[ end trace 26f317f45bb7c68a ]---
+[ 4881.291809] Unable to handle kernel NULL pointer dereference at virtual address 00000050
+[ 4881.300476] pgd = e079628d
+[ 4881.303222] [00000050] *pgd=00000000
+[ 4881.307159] Internal error: Oops: 5 [#3] SMP ARM
+[ 4881.311584] Modules linked in: omapdrm snd_soc_omap_hdmi_audio omapdss snd_soc_dmic snd_soc_omap_abe_twl6040 snd_soc_omap_mcbsp snd_soc_twl6040 snd_soc_omap_mcpdm snd_soc_omap snd_soc_core connector_hdmi cec connector_dvi encoder_tpd12s015 encoder_tfp410 omapdss_base snd_pcm_dmaengine snd_pcm clk_twl6040 snd_timer snd soundcore autofs4
+[ 4881.339813] CPU: 0 PID: 516 Comm: rm Tainted: G      D W         4.17.0-rc4+ #42
+[ 4881.349975] Hardware name: Generic OMAP4 (Flattened Device Tree)
+[ 4881.357574] PC is at __mutex_lock+0x58/0x960
+[ 4881.362060] LR is at   (null)
+[ 4881.365203] pc : [<c09dece0>]    lr : [<00000000>]    psr: 60000113
+[ 4881.371795] sp : eea45e30  ip : eea44000  fp : eea45e9c
+[ 4881.374511] r10: ffffff9c  r9 : ed336340  r8 : c16e5d90
+[ 4881.382568] r7 : edf6c800  r6 : edf6c800  r5 : 00000050  r4 : 00000050
+[ 4881.387908] r3 : edd44e40  r2 : 00000000  r1 : 00000000  r0 : 00000000
+[ 4881.389892] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+[ 4881.399902] Control: 10c5387d  Table: ada0804a  DAC: 00000051
+[ 4881.409881] Process rm (pid: 516, stack limit = 0xd31d81c2)
+[ 4881.409881] Stack: (0xeea45e30 to 0xeea46000)
+[ 4881.420562] 5e20:                                     00000001 00000000 c079bca0 c09e3760
+[ 4881.420562] 5e40: eea45e84 eea45e50 00000084 c01c3d60 c09e3760 00000002 ed3259b8 ed325958
+[ 4881.429870] 5e60: ed3259b8 c0f440b4 c030c404 c0fc65e8 c0bd25e0 eda91780 00000050 edf6c800
+[ 4881.439880] 5e80: edf6c800 c0a59850 ed336340 ffffff9c eea45eb4 eea45ea0 c09df614 c09dec94
+[ 4881.449890] 5ea0: c079bca0 edf6c800 eea45ed4 eea45eb8 c079bca0 c09df5f4 eeff37e0 edde0300
+[ 4881.459869] 5ec0: edf6c800 ed325958 eea45efc eea45ed8 c0387668 c079bc78 ed325958 00000000
+[ 4881.469879] 5ee0: ed32eb30 ed33bd20 ed33bdc8 eea45f44 eea45f2c eea45f00 c02fdc2c c0387560
+[ 4881.479888] 5f00: c02fcef0 c02fce5c ede65000 00000000 ed325958 00000000 eea45f50 eea45f40
+[ 4881.479888] 5f20: eea45f8c eea45f30 c0303098 c02fdb0c eea45f50 eea45f40 00000002 ed33bd20
+[ 4881.489868] 5f40: 00000000 00000000 eda39610 ed3362e0 9e37bec5 00000001 ede65033 c01a88f0
+[ 4881.499877] 5f60: 00000000 ffffff9c 00000000 0048bcb0 00000148 c01011c4 eea44000 00000000
+[ 4881.509887] 5f80: eea45fa4 eea45f90 c0303128 c0302e58 b6fab968 00000000 00000000 eea45fa8
+[ 4881.519897] 5fa0: c0101000 c03030f4 b6fab968 00000000 ffffff9c 0048aae8 00000000 23778900
+[ 4881.529876] 5fc0: b6fab968 00000000 0048bcb0 00000148 befb14dc befb14dc 004777e4 00477728
+[ 4881.541137] 5fe0: 00488ea0 befb13cc 00470fc9 b6f19298 60000130 ffffff9c 00000000 00000000
+[ 4881.547180] [<c09dece0>] (__mutex_lock) from [<c09df614>] (mutex_lock_nested+0x2c/0x34)
+[ 4881.555908] [<c09df614>] (mutex_lock_nested) from [<c079bca0>] (uvcg_streaming_header_drop_link+0x34/0xec)
+[ 4881.568359] [<c079bca0>] (uvcg_streaming_header_drop_link) from [<c0387668>] (configfs_unlink+0x114/0x1a4)
+[ 4881.571350] [<c0387668>] (configfs_unlink) from [<c02fdc2c>] (vfs_unlink+0x12c/0x1cc)
+[ 4881.586791] [<c02fdc2c>] (vfs_unlink) from [<c0303098>] (do_unlinkat+0x24c/0x29c)
+[ 4881.592926] [<c0303098>] (do_unlinkat) from [<c0303128>] (sys_unlinkat+0x40/0x54)
+[ 4881.599853] [<c0303128>] (sys_unlinkat) from [<c0101000>] (ret_fast_syscall+0x0/0x28)
+[ 4881.610809] Exception stack(0xeea45fa8 to 0xeea45ff0)
+[ 4881.610809] 5fa0:                   b6fab968 00000000 ffffff9c 0048aae8 00000000 23778900
+[ 4881.619873] 5fc0: b6fab968 00000000 0048bcb0 00000148 befb14dc befb14dc 004777e4 00477728
+[ 4881.629882] 5fe0: 00488ea0 befb13cc 00470fc9 b6f19298
+[ 4881.638671] Code: e1a0000c e1a02003 ebdf2f66 e59f88c4 (e5945000)
+[ 4881.645233] ---[ end trace 26f317f45bb7c68b ]---
+[ 4881.710968] Unable to handle kernel NULL pointer dereference at virtual address 00000024
+[ 4881.719512] pgd = e079628d
+[ 4881.722381] [00000024] *pgd=00000000
+[ 4881.726257] Internal error: Oops: 5 [#4] SMP ARM
+[ 4881.729980] Modules linked in: omapdrm snd_soc_omap_hdmi_audio omapdss snd_soc_dmic snd_soc_omap_abe_twl6040 snd_soc_omap_mcbsp snd_soc_twl6040 snd_soc_omap_mcpdm snd_soc_omap snd_soc_core connector_hdmi cec connector_dvi encoder_tpd12s015 encoder_tfp410 omapdss_base snd_pcm_dmaengine snd_pcm clk_twl6040 snd_timer snd soundcore autofs4
+[ 4881.759918] CPU: 1 PID: 539 Comm: rmdir Tainted: G      D W         4.17.0-rc4+ #42
+[ 4881.769866] Hardware name: Generic OMAP4 (Flattened Device Tree)
+[ 4881.769866] PC is at uvcg_frame_drop+0x28/0x58
+[ 4881.781646] LR is at client_drop_item+0x40/0x54
+[ 4881.781646] pc : [<c079bc00>]    lr : [<c0385da0>]    psr: a0070113
+[ 4881.789947] sp : edcb7ea8  ip : edcb7ec8  fp : edcb7ec4
+[ 4881.789947] r10: c0fa6b50  r9 : eda91780  r8 : c0f5cc1c
+[ 4881.804016] r7 : 00000000  r6 : eddf7124  r5 : eda91780  r4 : eddf7124
+[ 4881.809967] r3 : 00000000  r2 : eddf7124  r1 : 00000000  r0 : eda91780
+[ 4881.809967] Flags: NzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+[ 4881.819915] Control: 10c5387d  Table: ada0804a  DAC: 00000051
+[ 4881.829956] Process rmdir (pid: 539, stack limit = 0x119240c3)
+[ 4881.829956] Stack: (0xedcb7ea8 to 0xedcb8000)
+[ 4881.839874] 7ea0:                   eddf7124 00000000 00000000 00000000 edcb7ed4 edcb7ec8
+[ 4881.849853] 7ec0: c0385da0 c079bbe4 edcb7f14 edcb7ed8 c0385f60 c0385d6c edcb7f14 00000000
+[ 4881.852600] 7ee0: c030c3b8 c030a7d8 ed32b0b8 ed32b0b8 00000000 ed32d000 edcb7f4c be8877ed
+[ 4881.867889] 7f00: ffffff9c 00000000 edcb7f34 edcb7f18 c0301588 c0385dc0 edf32000 00000000
+[ 4881.869964] 7f20: edcb7f58 edcb7f4c edcb7f94 edcb7f38 c0302dd0 c03014b4 edcb7f58 edcb7f4c
+[ 4881.869964] 7f40: ed32b0b8 00000001 c02ebf14 00000000 eda39610 ed324ac8 82315556 00000004
+[ 4881.890045] 7f60: edf32039 ee82b300 b6f162b8 be8877ed be8876c4 00000002 00000028 c01011c4
+[ 4881.899871] 7f80: edcb6000 00000000 edcb7fa4 edcb7f98 c0302e48 c0302c60 00000000 edcb7fa8
+[ 4881.910949] 7fa0: c0101000 c0302e34 be8877ed be8876c4 be8877ed b6f7f358 00000000 00000001
+[ 4881.910949] 7fc0: be8877ed be8876c4 00000002 00000028 b6f7c2a8 00505d20 00506089 00506089
+[ 4881.910949] 7fe0: 00505ef4 be887524 004f1363 b6f162b8 60070130 be8877ed 00000000 00000000
+[ 4881.936798] [<c079bc00>] (uvcg_frame_drop) from [<c0385da0>] (client_drop_item+0x40/0x54)
+[ 4881.936798] [<c0385da0>] (client_drop_item) from [<c0385f60>] (configfs_rmdir+0x1ac/0x270)
+[ 4881.954132] [<c0385f60>] (configfs_rmdir) from [<c0301588>] (vfs_rmdir+0xe0/0x158)
+[ 4881.961761] [<c0301588>] (vfs_rmdir) from [<c0302dd0>] (do_rmdir+0x17c/0x1d4)
+[ 4881.961761] [<c0302dd0>] (do_rmdir) from [<c0302e48>] (sys_rmdir+0x20/0x24)
+[ 4881.976959] [<c0302e48>] (sys_rmdir) from [<c0101000>] (ret_fast_syscall+0x0/0x28)
+[ 4881.976959] Exception stack(0xedcb7fa8 to 0xedcb7ff0)
+[ 4881.990051] 7fa0:                   be8877ed be8876c4 be8877ed b6f7f358 00000000 00000001
+[ 4881.990051] 7fc0: be8877ed be8876c4 00000002 00000028 b6f7c2a8 00505d20 00506089 00506089
+[ 4881.990051] 7fe0: 00505ef4 be887524 004f1363 b6f162b8
+[ 4882.012359] Code: e1a05000 e1a06001 e5933024 e3a01000 (e5934024)
+[ 4882.019348] ---[ end trace 26f317f45bb7c68c ]---
+ *
+ */
+
 static void uvcg_control_class_drop_link(struct config_item *src,
 					struct config_item *target)
 {
