@@ -1,0 +1,31 @@
+* Global IMI RDACM20 GMSL Camera
+
+Required Properties:
+ - compatible: shall be "imi,rdacm20"
+ - reg: MAX9271 and OV10635 I2C addresses
+
+The camera node shall be connected to an I2C bus interface of
+the GMSL deserialiser device of which will receive image data.
+
+The device node shall contain one 'port' child node with an
+'endpoint' subnode for its digital output video port,
+in accordance with the video interface bindings defined in
+Documentation/devicetree/bindings/media/video-interfaces.txt.
+
+Example:
+
+i2c@0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg = <0>;
+		camera@51 {
+		compatible = MAXIM_CAMERA0;
+		reg = <0x51 0x61>;
+
+		port {
+			rdacm20_out0: endpoint {
+				remote-endpoint = <&max9286_in0>;
+			};
+		};
+	};
+};
