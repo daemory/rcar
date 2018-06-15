@@ -510,8 +510,27 @@ static void sci_port_enable(struct sci_port *sci_port)
 	for (i = 0; i < SCI_NUM_CLKS; i++) {
 		clk_prepare_enable(sci_port->clks[i]);
 		sci_port->clk_rates[i] = clk_get_rate(sci_port->clks[i]);
+
+		pr_err("sci_port->clk_rates[%u] = %lu\n", i , sci_port->clk_rates[i]);
 	}
-	sci_port->port.uartclk = sci_port->clk_rates[SCI_FCK];
+
+	/*
+[   62.482432] sh-sci e6e68000.serial: BRG: 9600+0 bps using DL 96 SR 32
+[   62.491553] sh-sci e6e68000.serial: Using clk scif for 9600+0 bps
+[   62.500304] sci_port->clk_rates[0] = 66560000
+[   62.507276] sci_port->clk_rates[1] = 0
+[   62.513596] sci_port->clk_rates[2] = 266240000
+[   62.520570] sci_port->clk_rates[3] = 14745600
+[   62.527720] sh-sci e6e68000.serial: BRG: 115200+0 bps using DL 8 SR 32
+[   62.536802] sh-sci e6e68000.serial: Using clk scif for 115200+0 bps
+[   62.545613] sci_port->clk_rates[0] = 66560000
+[   62.552463] sci_port->clk_rates[1] = 0
+[   62.558689] sci_port->clk_rates[2] = 266240000
+[   62.565594] sci_port->clk_rates[3] = 14745600
+	 */
+
+	// Temporary Hardcode
+	sci_port->port.uartclk = sci_port->clk_rates[SCI_FCK] = 66560000;
 }
 
 static void sci_port_disable(struct sci_port *sci_port)
@@ -2850,9 +2869,20 @@ static int sci_init_single(struct platform_device *dev,
 
 	if (!early) {
 		ret = sci_init_clocks(sci_port, &dev->dev);
-		if (ret < 0)
-			return ret;
-
+		if (ret < 0) {
+			/* For development of serial pass-through only.
+			 *
+			 * We do not yet have dynamic clock support in our Q-Emu
+			 * environment, so we must continue even though no
+			 * clocks are passed through. The clock values will be
+			 * hardcoded to a potentially viable value, but this
+			 * will need further refinement - and should be
+			 * supported through clock pass-through instead.
+			 */
+			dev_err(&dev->dev, "%s:%d No Clocks! Continuing...\n",
+					__func__, __LINE__);
+			// return ret;
+		}
 		port->dev = &dev->dev;
 
 		pm_runtime_enable(&dev->dev);
