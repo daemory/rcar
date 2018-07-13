@@ -21,9 +21,12 @@ This series is based upon my previous TLB optimise and body rework (v9), and is
 available from the following URL:
 
   git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
-  tags/vsp1/du/interlaced/v4
+  tags/vsp1/du/interlaced/v4.5
 
 ChangeLog:
+
+v4.5:
+ - Rebase to latest linux-media/master
 
 v4:
  - Move configure_partition() call changes into tlb-optimise-v9
