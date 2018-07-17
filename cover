@@ -17,13 +17,52 @@ opportunity for untested code paths to exist.
 Patches 8, 9 and 10 implement the relevant support in the VSP1 driver, before
 patch 11 finally enables the feature through the drm R-Car DU driver.
 
-This series is based upon my previous TLB optimise and body rework (v9), and is
+This series is based upon the linux-media tree (master branch), and is
 available from the following URL:
 
   git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
-  tags/vsp1/du/interlaced/v4.5
+  tags/vsp1/du/interlaced/v5
 
 ChangeLog:
+
+v5:
+ * media: vsp1: Use header display lists for all WPF outputs linked to the DU
+   - Fixed comments
+   - Re-aligned header_offset calculation
+ * media: vsp1: Add support for extended display list headers
+   - Rename vsp1_dl_ext_header field names
+   - Rename @extended -> @extension
+   - Remove unnecessary VI6_DL_SWAP changes
+   - Rename @cmd_opcode -> @opcode
+   - Drop unused @data_size field
+   - Move iteration of WPF's inside vsp1_dlm_setup
+   - Rename vsp1_dl_ext_cmd_header -> vsp1_pre_ext_dl_body
+   - Rename vsp1_pre_ext_dl_body->cmd to vsp1_pre_ext_dl_body->opcode
+   - Rename vsp1_dl_ext_header->reserved0 to vsp1_dl_ext_header->padding
+   - vsp1_pre_ext_dl_body: Rename 'data' to 'address_set'
+   - vsp1_pre_ext_dl_body: Add struct documentation
+   - Document ordering of 16bit accesses for flags in vsp1_dl_ext_header
+ * media: vsp1: Provide support for extended command pools
+   - Rename vsp1_dl_ext_cmd_header -> vsp1_pre_ext_dl_body
+   - fixup vsp1_cmd_pool structure documentation
+   - Rename dlm->autofld_cmds dlm->cmdpool
+   - Separate out the instatiation of vsp1_extended_commands
+   - Move initialisation of lock, and lists in vsp1_dl_cmd_pool_create to
+     immediately after allocation
+   - simplify vsp1_dlm_get_autofld_cmd
+   - Rename vsp1_dl_get_autofld_cmd() to vsp1_dl_get_pre_cmd() and moved
+     to "Display List Extended Command Management" section of vsp1_dl
+ * media: vsp1: Support Interlaced display pipelines
+   - Obtain autofld cmd in vsp1_rpf_configure_autofld()
+   - Move VSP1_DL_EXT_AUTOFLD_INT to vsp1_regs.h
+   - Rename VSP1_DL_EXT_AUTOFLD_INT -> VI6_DL_EXT_AUTOFLD_INT
+   - move interlaced configuration parameter to pipe object
+   - autofld: Set cmd->flags in one single expression.
+ * drm: rcar-du: Support interlaced video output through vsp1
+   - Fix commit title
+   - Document change to DSMR
+   - Configure through vsp1_du_setup_lif(), rather than
+     vsp1_du_atomic_update()
 
 v4.5:
  - Rebase to latest linux-media/master
