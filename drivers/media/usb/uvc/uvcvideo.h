@@ -166,7 +166,7 @@
  * Driver specific constants.
  */
 
-#define DRIVER_VERSION		"1.1.1"
+#define DRIVER_VERSION		"2.2.2"
 
 /* Number of isochronous URBs. */
 #define UVC_URBS		5
