@@ -5,3 +5,23 @@ ifeq ($(CONFIG_MEDIA_CONTROLLER),y)
 uvcvideo-objs  += uvc_entity.o
 endif
 obj-$(CONFIG_USB_VIDEO_CLASS) += uvcvideo.o
+
+
+LOCAL_KERNEL_RELEASE:=$(shell uname -r)
+
+uvcmod:
+	@echo "Build: $(LOCAL_KERNEL_RELEASE)"
+	make \
+		-C /lib/modules/$(LOCAL_KERNEL_RELEASE)/build \
+		M=$(PWD) \
+			modules
+
+load: uvcmod
+	sudo insmod ./uvcvideo.ko
+	dmesg | tail
+
+unload:
+	sudo rmmod uvcvideo
+	dmesg | tail
+
+run: unload load
