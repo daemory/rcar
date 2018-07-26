@@ -1413,7 +1413,6 @@ struct vsp1_video *vsp1_video_create(struct vsp1_device *vsp1,
 
 	video->vsp1 = vsp1;
 	video->rwpf = rwpf;
-
 	video->is_writeback = rwpf->has_writeback;
 
 	if (rwpf->entity.type == VSP1_ENTITY_RPF) {
@@ -1427,6 +1426,10 @@ struct vsp1_video *vsp1_video_create(struct vsp1_device *vsp1,
 		video->pad.flags = MEDIA_PAD_FL_SINK;
 		video->video.vfl_dir = VFL_DIR_RX;
 	}
+
+	/* Special case on the writeback outputs. */
+	if (video->is_writeback)
+		direction = "writeback";
 
 	mutex_init(&video->lock);
 	spin_lock_init(&video->irqlock);
