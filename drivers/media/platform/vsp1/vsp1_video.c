@@ -7,6 +7,8 @@
  * Contact: Laurent Pinchart (laurent.pinchart@ideasonboard.com)
  */
 
+#define DEBUG
+
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -76,8 +78,10 @@ static int vsp1_video_verify_format(struct vsp1_video *video)
 		return 0;
 
 	subdev = vsp1_video_remote_subdev(&video->pad, &fmt.pad);
-	if (subdev == NULL)
+	if (subdev == NULL) {
+		dev_err(video->vsp1->dev, "No subdev");
 		return -EINVAL;
+	}
 
 	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, &fmt);
@@ -724,11 +728,18 @@ vsp1_video_queue_setup(struct vb2_queue *vq,
 
 	if (*nplanes) {
 		if (*nplanes != format->num_planes)
+		{
+			dev_err(video->vsp1->dev, "nplanes (%d) != format->num_planes (%d)\n",
+					*nplanes, format->num_planes);
 			return -EINVAL;
+		}
 
 		for (i = 0; i < *nplanes; i++)
-			if (sizes[i] < format->plane_fmt[i].sizeimage)
+			if (sizes[i] < format->plane_fmt[i].sizeimage) {
+				dev_err(video->vsp1->dev, "sizes[%d] (%d) < sizeimage (%d)\n",
+					i, sizes[i], format->plane_fmt[i].sizeimage);
 				return -EINVAL;
+			}
 		return 0;
 	}
 
@@ -748,8 +759,11 @@ static int vsp1_video_buffer_prepare(struct vb2_buffer *vb)
 	const struct v4l2_pix_format_mplane *format = &video->rwpf->format;
 	unsigned int i;
 
-	if (vb->num_planes < format->num_planes)
+	if (vb->num_planes < format->num_planes) {
+		dev_err(video->vsp1->dev, "nplanes < format->num_planes (%d) < %d\n",
+				vb->num_planes, format->num_planes);
 		return -EINVAL;
+	}
 
 	for (i = 0; i < vb->num_planes; ++i) {
 		buf->mem.addr[i] = vb2_dma_contig_plane_dma_addr(vb, i);
@@ -1128,8 +1142,10 @@ vsp1_video_get_format(struct file *file, void *fh, struct v4l2_format *format)
 	struct v4l2_fh *vfh = file->private_data;
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);
 
-	if (format->type != video->queue.type)
+	if (format->type != video->queue.type) {
+		dev_err(video->vsp1->dev, "Format-type != queue.type\n");
 		return -EINVAL;
+	}
 
 	mutex_lock(&video->lock);
 	format->fmt.pix_mp = video->rwpf->format;
@@ -1218,8 +1234,10 @@ vsp1_video_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 	 * subdev.
 	 */
 	ret = vsp1_video_verify_format(video);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(video->vsp1->dev, "Failed to verify format\n");
 		goto err_stop;
+	}
 
 	/* Start the queue. */
 	ret = vb2_streamon(&video->queue, type);
@@ -1229,8 +1247,10 @@ vsp1_video_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 	return 0;
 
 err_stop:
+	dev_err(video->vsp1->dev, "Err stop\n");
 	media_pipeline_stop(&video->video.entity);
 err_pipe:
+	dev_err(video->vsp1->dev, "Err pipe\n");
 	vsp1_video_pipeline_put(pipe);
 	return ret;
 }

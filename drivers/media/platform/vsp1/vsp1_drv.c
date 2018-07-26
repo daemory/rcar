@@ -438,8 +438,13 @@ static int vsp1_create_entities(struct vsp1_device *vsp1)
 		if (vsp1->info->uapi || wpf->has_writeback) {
 			struct vsp1_video *video = vsp1_video_create(vsp1, wpf);
 
+			if (wpf->has_writeback) {
+				dev_err(vsp1->dev, " Createing a writeback device\n");
+			}
+
 			if (IS_ERR(video)) {
 				ret = PTR_ERR(video);
+				dev_err(vsp1->dev, " Failed to create video %d\n", ret);
 				goto done;
 			}
 

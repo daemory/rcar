@@ -253,6 +253,13 @@ static void wpf_configure_stream(struct vsp1_entity *entity,
 						   wpf->entity.config,
 						   RWPF_PAD_SOURCE);
 
+
+
+	if (writeback) {
+		dev_err(vsp1->dev, "wb: sink_format = %p source_format = %p\n",
+				sink_format, source_format);
+	}
+
 	/* Format */
 	if (!pipe->lif || writeback) {
 		const struct v4l2_pix_format_mplane *format = &wpf->format;
