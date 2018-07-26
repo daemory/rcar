@@ -68,6 +68,13 @@ static int vsp1_video_verify_format(struct vsp1_video *video)
 	struct v4l2_subdev *subdev;
 	int ret;
 
+	/*
+	 * Writeback nodes have no other subdev to verify against. The video
+	 * sink is the LIF, and this video node is the source output.
+	 */
+	if (video->is_writeback)
+		return 0;
+
 	subdev = vsp1_video_remote_subdev(&video->pad, &fmt.pad);
 	if (subdev == NULL)
 		return -EINVAL;
