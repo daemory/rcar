@@ -7,14 +7,14 @@ endif
 obj-$(CONFIG_USB_VIDEO_CLASS) += uvcvideo.o
 
 
+LOCAL_KERNEL_RELEASE:=$(shell uname -r)
+
 uvcmod:
+	@echo "Build: $(LOCAL_KERNEL_RELEASE)"
 	make \
-		-C /lib/modules/`uname -r`/build \
-		KCONFIG_CONFIG=/home/linuxembedded/iob/Q/targets/ubuntu-x86_64/kernel.config \
-		INSTALL_MOD_PATH=/home/linuxembedded/iob/Q/install/x86_64/linux-modules/   \
+		-C /lib/modules/$(LOCAL_KERNEL_RELEASE)/build \
 		M=$(PWD) \
 			modules
-
 
 load: uvcmod
 	sudo insmod ./uvcvideo.ko
