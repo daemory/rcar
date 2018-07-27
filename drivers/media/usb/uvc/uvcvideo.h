@@ -600,6 +600,7 @@ struct uvc_streaming {
 		struct uvc_stats_frame frame;
 		struct uvc_stats_stream stream;
 		struct uvc_stats_urb {
+			struct uvc_stats_time header;
 			struct uvc_stats_time latency;
 			struct uvc_stats_time decode;
 			struct uvc_stats_time urb;

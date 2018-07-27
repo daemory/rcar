@@ -974,6 +974,8 @@ size_t uvc_video_stats_dump(struct uvc_streaming *stream, char *buf,
 	count += uvc_video_dump_time_stats(buf + count, size - count,
 			   &stream->stats.urbstat.urb, "URB");
 	count += uvc_video_dump_time_stats(buf + count, size - count,
+			   &stream->stats.urbstat.header, "header");
+	count += uvc_video_dump_time_stats(buf + count, size - count,
 			   &stream->stats.urbstat.latency, "latency");
 	count += uvc_video_dump_time_stats(buf + count, size - count,
 			   &stream->stats.urbstat.decode, "decode");
@@ -1656,6 +1658,9 @@ static void uvc_video_complete(struct urb *urb)
 
 	INIT_WORK(&uvc_urb->work, uvc_video_copy_data_work);
 	queue_work(stream->async_wq, &uvc_urb->work);
+
+	uvc_stats_add(&uvc_urb->stream->stats.urbstat.header,
+		      uvc_urb->received, ktime_get());
 }
 
 /*
