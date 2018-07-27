@@ -535,8 +535,8 @@ struct uvc_urb {
 	struct uvc_copy_op copy_operations[UVC_MAX_PACKETS];
 	struct work_struct work;
 
-	struct timespec received;
-	struct timespec decode_start;
+	ktime_t received;
+	ktime_t decode_start;
 };
 
 struct uvc_streaming {

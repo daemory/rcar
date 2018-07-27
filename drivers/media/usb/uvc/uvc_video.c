@@ -1020,13 +1020,13 @@ static void uvc_video_stats_stop(struct uvc_streaming *stream)
 }
 
 static s64 uvc_stats_add(struct uvc_stats_time *s,
-			 const struct timespec *a, const struct timespec *b)
+			 const ktime_t a, const ktime_t b)
 {
-	struct timespec delta;
+	ktime_t delta;
 	u64 duration;
 
-	delta = timespec_sub(*b, *a);
-	duration = timespec_to_ns(&delta);
+	delta = ktime_sub(b, a);
+	duration = ktime_to_ns(delta);
 
 	s->qty++;
 	s->duration += duration;
@@ -1188,16 +1188,15 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
 static void uvc_video_copy_data_work(struct work_struct *work)
 {
 	struct uvc_urb *uvc_urb = container_of(work, struct uvc_urb, work);
-	struct timespec now;
+	ktime_t now;
 	unsigned int i;
 	int ret;
 
 	/* Measure decode performance */
-	ktime_get_ts(&uvc_urb->decode_start);
+	uvc_urb->decode_start = ktime_get();
 	/* Measure scheduling latency */
 	uvc_stats_add(&uvc_urb->stream->stats.urbstat.latency,
-		      &uvc_urb->received,
-		      &uvc_urb->decode_start);
+		      uvc_urb->received, uvc_urb->decode_start);
 
 	for (i = 0; i < uvc_urb->async_operations; i++) {
 		struct uvc_copy_op *op = &uvc_urb->copy_operations[i];
@@ -1209,13 +1208,13 @@ static void uvc_video_copy_data_work(struct work_struct *work)
 		uvc_queue_buffer_release(op->buf);
 	}
 
-	ktime_get_ts(&now);
+	now = ktime_get();
 	/* measure 'memcpy time' */
 	uvc_stats_add(&uvc_urb->stream->stats.urbstat.decode,
-		      &uvc_urb->decode_start, &now);
+		      uvc_urb->decode_start, now);
 	/* measure 'full urb processing time' */
 	uvc_stats_add(&uvc_urb->stream->stats.urbstat.urb,
-		      &uvc_urb->received, &now);
+		      uvc_urb->received, now);
 
 	ret = usb_submit_urb(uvc_urb->urb, GFP_ATOMIC);
 	if (ret < 0)
@@ -1604,7 +1603,7 @@ static void uvc_video_complete(struct urb *urb)
 	int ret;
 
 	/* Track URB processing performance */
-	ktime_get_ts(&uvc_urb->received);
+	uvc_urb->received = ktime_get();
 
 	switch (urb->status) {
 	case 0:
