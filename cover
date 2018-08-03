@@ -21,9 +21,25 @@ This series is based upon the linux-media tree (master branch), and is
 available from the following URL:
 
   git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git
-  tags/vsp1/du/interlaced/v5
+  tags/vsp1/du/interlaced/v6
 
 ChangeLog:
+
+v6:
+ * media: vsp1: use kernel __packed for structures
+   - Reintroduced __packed on relevant structures
+
+ * media: vsp1: Add support for extended display list headers
+   - Fix minor review comments
+   - Update newly added hardware VSP1 structures with __packed attribute
+
+ * media: vsp1: Provide support for extended command pools
+   - Extraneous blank line removed
+
+ * media: vsp1: Support Interlaced display pipelines
+   - Remove feature check on extended display lists
+     (validating interlaced support should be handled in the DU)
+   - Add __packed to struct vsp1_extcmd_auto_fld_body
 
 v5:
  * media: vsp1: Use header display lists for all WPF outputs linked to the DU
