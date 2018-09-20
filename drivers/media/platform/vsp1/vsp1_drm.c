@@ -471,6 +471,26 @@ static int vsp1_du_pipeline_setup_inputs(struct vsp1_device *vsp1,
 	return 0;
 }
 
+static void vsp1_du_calculate_partition(struct vsp1_pipeline *pipe)
+{
+	const struct v4l2_mbus_framefmt *format;
+	struct vsp1_partition_window window;
+
+	/*
+	 * Partitions are computed on the size before rotation, use the format
+	 * at the WPF sink.
+	 */
+	format = vsp1_entity_get_pad_format(&pipe->output->entity,
+					    pipe->output->entity.config,
+					    RWPF_PAD_SINK);
+
+	/* A single partition simply processes the output size in full. */
+	window.left = 0;
+	window.width = format->width;
+
+	vsp1_pipeline_propagate_partition(pipe, pipe->partition, 0, &window);
+}
+
 /* Setup the output side of the pipeline (WPF and LIF). */
 static int vsp1_du_pipeline_setup_output(struct vsp1_device *vsp1,
 					 struct vsp1_pipeline *pipe)
@@ -526,6 +546,8 @@ static int vsp1_du_pipeline_setup_output(struct vsp1_device *vsp1,
 			pipe->lif->index);
 		return -EPIPE;
 	}
+
+	vsp1_du_calculate_partition(pipe);
 
 	return 0;
 }
@@ -905,6 +927,19 @@ int vsp1_drm_init(struct vsp1_device *vsp1)
 		init_waitqueue_head(&drm_pipe->wait_queue);
 
 		vsp1_pipeline_init(pipe);
+
+		/*
+		 * Partition algorithm is not used on DRM pipelines, however
+		 * the entities use a partition to store parameters. Allocate
+		 * a single partition table entry for use by writeback video
+		 * nodes.
+		 */
+		pipe->partitions = 1;
+		pipe->partition = devm_kzalloc(vsp1->dev,
+					       sizeof(*pipe->part_table),
+					       GFP_KERNEL);
+		if (!pipe->partition)
+			return -ENOMEM;
 
 		pipe->frame_end = vsp1_du_pipeline_frame_end;
 
