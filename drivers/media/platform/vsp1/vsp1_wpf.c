@@ -400,6 +400,8 @@ static void wpf_configure_partition(struct vsp1_entity *entity,
 		       (0 << VI6_WPF_SZCLIP_OFST_SHIFT) |
 		       (height << VI6_WPF_SZCLIP_SIZE_SHIFT));
 
+	BUG_ON(!pipe);
+
 	if (pipe->lif && !writeback)
 		return;
 
@@ -420,6 +422,8 @@ static void wpf_configure_partition(struct vsp1_entity *entity,
 	 * is applied horizontally or vertically accordingly.
 	 */
 	flip = wpf->flip.active;
+
+	BUG_ON(!pipe->partition);
 
 	if (flip & BIT(WPF_CTRL_HFLIP) && !wpf->flip.rotate)
 		offset = format->width - pipe->partition->wpf.left

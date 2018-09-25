@@ -875,6 +875,8 @@ void vsp1_du_atomic_flush(struct device *dev, unsigned int pipe_index,
 	if (pipe->output->video && pipe->output->video->frame_end)
 		pipe->output->video->frame_end(pipe);
 
+	BUG_ON(!pipe);
+
 	mutex_lock(&vsp1->drm->lock);
 	vsp1_du_pipeline_setup_inputs(vsp1, pipe);
 	vsp1_du_pipeline_configure(pipe);
