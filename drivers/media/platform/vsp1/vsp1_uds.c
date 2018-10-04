@@ -424,6 +424,12 @@ static unsigned int uds_max_width(struct vsp1_entity *entity,
 		return 1024;
 	else
 		return 2048;
+
+	/* This is wrong ... or indicates a fault.
+	 * This shows that the partition sizes might be dependent upon the pipeline of course ?
+	 * So actually - if the partitions are calculated at the output WPF size - then the
+	 * restrictions here are .. irrelevant ?
+	 */
 }
 
 /* -----------------------------------------------------------------------------
