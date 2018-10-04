@@ -434,7 +434,8 @@ static void uds_partition(struct vsp1_entity *entity,
 			  struct vsp1_pipeline *pipe,
 			  struct vsp1_partition *partition,
 			  unsigned int partition_idx,
-			  struct vsp1_partition_window *window)
+			  struct vsp1_partition_window *window,
+			  bool forwards)
 {
 	struct vsp1_uds *uds = to_uds(&entity->subdev);
 	const struct v4l2_mbus_framefmt *output;
@@ -445,6 +446,12 @@ static void uds_partition(struct vsp1_entity *entity,
 	unsigned int margin;
 	unsigned int left;
 	unsigned int right;
+
+	/* For forwards propagation - simply pass on our output. */
+	if (forwards) {
+		*window = partition->uds_source;
+		return;
+	}
 
 	/* Initialise the partition state. */
 	partition->uds_sink = *window;
@@ -497,10 +504,12 @@ static void uds_partition(struct vsp1_entity *entity,
 
 	partition->end_phase = 0;
 
-	/* Pixels to clip from the left edge need to be clipped by the wpf -
-	  so algorithm needs to propagate uds_source margin forwards? (or just
-	  set it from here ? */
-	partition->wpf.offset = window->left - left;
+	/*
+	 * Store the output 'offset' which will need to be clipped.
+	 * The UDS can not clip the left pixels so this value will be
+	 * propagated forwards until it reaches the WPF.
+	 */
+	partition->uds_source.offset = window->left - left;
 
 	/* Pass a copy of our sink down to the previous entity. */
 	*window = partition->uds_sink;

@@ -387,9 +387,20 @@ bool vsp1_pipeline_partitioned(struct vsp1_pipeline *pipe)
  *	____ = Disposable pixels
  *
  * WPF			    |DDDD|	WPF determines it's required partition
+ * SRU			    |====|	Interconnected entities pass through
  * UDS(source)		   |<====>|	UDS Source requests overlap
  * UDS(sink)		|<-|======|->|	UDS Sink calculates input size
  * RPF			|__SSSSSSSS__|	RPF provides extra pixels
+ *
+ * Then work forwards through the pipe allowing entities to communicate any
+ * clipping required based on any overlap and expansions they may have
+ * generated.
+ *
+ * RPF			|__SSSSSSSS__|	Partition window is propagated forwards
+ * UDS(sink)		|============|
+ * UDS(source)		   |<====>|	UDS Source reports overlap
+ * SRU			   |======|	Interconnected entities are updated
+ * WPF			   |_DDDD_|	WPF handles clipping
  */
 void vsp1_pipeline_propagate_partition(struct vsp1_pipeline *pipe,
 				       struct vsp1_partition *partition,
@@ -398,10 +409,18 @@ void vsp1_pipeline_propagate_partition(struct vsp1_pipeline *pipe,
 {
 	struct vsp1_entity *entity;
 
+	/* Move backwards through the pipeline to propagate any expansion. */
 	list_for_each_entry_reverse(entity, &pipe->entities, list_pipe) {
 		if (entity->ops->partition)
 			entity->ops->partition(entity, pipe, partition, index,
-					       window);
+					       window, false);
+	}
+
+	/* Move forwards through the pipeline and propagate any updates. */
+	list_for_each_entry(entity, &pipe->entities, list_pipe) {
+		if (entity->ops->partition)
+			entity->ops->partition(entity, pipe, partition, index,
+					       window, true);
 	}
 }
 
