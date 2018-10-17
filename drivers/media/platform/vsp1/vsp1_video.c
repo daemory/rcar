@@ -198,7 +198,7 @@ static void vsp1_video_calculate_partition(struct vsp1_pipeline *pipe,
 					   unsigned int index)
 {
 	const struct v4l2_mbus_framefmt *format;
-	struct vsp1_partition_window window;
+	struct vsp1_partition_window window = { 0, };
 	unsigned int modulus;
 
 	/*
