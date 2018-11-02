@@ -28,8 +28,9 @@ corresponding to the GMSL link that the camera is attached to.
 Required Properties:
 
 - compatible: Shall be "imi,rdacm20".
-- reg: Pair of I2C device addresses, the first to be assigned to the serializer
-  the second to be assigned to the camera sensor.
+- reg: I2C device addresses, the first to be assigned to the serializer
+  the second to be assigned to the camera sensor. An optional third address can
+  be provided to specify the MCU address if present.
 
 Connection to the remote GMSL endpoint are modelled using the OF graph bindings
 in accordance with the video interface bindings defined in
@@ -53,7 +54,7 @@ Example:
 
 		camera@51 {
 			compatible = "imi,rdacm20";
-			reg = <0x51 0x61>;
+			reg = <0x31 0x41 0x51>;
 
 			port {
 				rdacm20_out0: endpoint {
