@@ -46,3 +46,22 @@ v4:
    use usb_poison_urb() to halt all URBs, then flush the work queue
    before freeing.
  - Rebase to latest linux-media/master
+
+v5:
+ - Provide lockdep validation
+ - rename uvc_queue_requeue -> uvc_queue_buffer_requeue()
+ - Fix comments and periods throughout
+ - Rebase to media/v4.20-2
+ - Use GFP_KERNEL allocation in uvc_video_copy_data_work()
+ - Fix function documentation for uvc_video_copy_data_work()
+ - Add periods to the end of sentences
+ - Rename 'decode' variable to 'op' in uvc_video_decode_data()
+ - Move uvc_urb->async_operations initialisation to before use
+ - Move async workqueue to match uvc_streaming lifetime instead of
+   streamon/streamoff
+ - bracket the for_each_uvc_urb() macro
+
+ - New patches added to series:
+    media: uvcvideo: Split uvc_video_enable into two
+    media: uvcvideo: Rename uvc_{un,}init_video()
+    media: uvcvideo: Utilise for_each_uvc_urb iterator
