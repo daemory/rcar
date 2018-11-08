@@ -35,3 +35,6 @@ clean transitions from one partition to the next.
 
 v2:
  - Rebased to v4.12-rc1
+
+v??
+ - Rebased and adapted for v4.20
