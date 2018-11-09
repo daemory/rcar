@@ -32,6 +32,12 @@ least not until they are tested of course :D )
 Tested-by: Randy Dunlap <rdunlap@infradead.org>
 Tested-by: Philipp Zabel <philipp.zabel@gmail.com>
 
+This series is based upon Laurent Pinchart's uvc/next available at:
+  git://linuxtv.org/pinchartl/media.git uvc/next
+
+and the series itself is available at my kernel.org repo:
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git uvc/async
+
 v2:
  - Fix race reported by Guennadi
 
@@ -65,3 +71,14 @@ v5:
     media: uvcvideo: Split uvc_video_enable into two
     media: uvcvideo: Rename uvc_{un,}init_video()
     media: uvcvideo: Utilise for_each_uvc_urb iterator
+
+v6:
+ - New patch added to series
+    media: uvcvideo: Abstract streaming object lifetime
+
+ - Utilise the new streaming object lifetime functions to perform
+   allocation and destruction of the async workqueue.
+ - Append _transfer to {_stop,_start} in uvc_video_{stop,start}_transfer
+ - rename lone 'j' iterator to 'i'
+ - Remove conversion which doesn't make sense due to needing the
+   iterator value.
