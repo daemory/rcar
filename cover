@@ -36,7 +36,7 @@ This series is based upon Laurent Pinchart's uvc/next available at:
   git://linuxtv.org/pinchartl/media.git uvc/next
 
 and the series itself is available at my kernel.org repo:
-  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/rcar.git uvc/async
+  git://git.kernel.org/pub/scm/linux/kernel/git/kbingham/linux.git uvc/async
 
 v2:
  - Fix race reported by Guennadi
