@@ -511,14 +511,8 @@ static int rcar_du_crtc_enable(struct rcar_du_crtc *rcrtc)
 	if (ret < 0)
 		goto error_clock;
 
-	ret = rcar_du_group_get(rcrtc->group);
-	if (ret < 0)
-		goto error_group;
-
 	return 0;
 
-error_group:
-	clk_disable_unprepare(rcrtc->extclock);
 error_clock:
 	clk_disable_unprepare(rcrtc->clock);
 	return ret;
@@ -526,8 +520,6 @@ error_clock:
 
 static void rcar_du_crtc_disable(struct rcar_du_crtc *rcrtc)
 {
-	rcar_du_group_put(rcrtc->group);
-
 	clk_disable_unprepare(rcrtc->extclock);
 	clk_disable_unprepare(rcrtc->clock);
 }
