@@ -340,6 +340,8 @@ static void rcar_du_crtc_update_planes(struct rcar_du_crtc *rcrtc)
 	unsigned int i;
 	u32 dspr = 0;
 
+	pr_err("UpdatePlanes - calculating");
+
 	for (i = 0; i < rcrtc->group->num_planes; ++i) {
 		struct rcar_du_plane *plane = &rcrtc->group->planes[i];
 		unsigned int j;
@@ -480,6 +482,8 @@ static void rcar_du_crtc_wait_page_flip(struct rcar_du_crtc *rcrtc)
 
 static void rcar_du_crtc_setup(struct rcar_du_crtc *rcrtc)
 {
+	pr_err("**** CRTC_SETUP %d\n", rcrtc->vblank_count);
+
 	/* Set display off and background to black */
 	rcar_du_crtc_write(rcrtc, DOOR, DOOR_RGB(0, 0, 0));
 	rcar_du_crtc_write(rcrtc, BPOR, BPOR_RGB(0, 0, 0));
@@ -778,6 +782,8 @@ static void rcar_du_crtc_atomic_flush(struct drm_crtc *crtc,
 		crtc->state->event = NULL;
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 	}
+
+	pr_err("rcar_du_vsp_atomic_flush\n");
 
 	if (rcar_du_has(rcrtc->dev, RCAR_DU_FEATURE_VSP1_SOURCE))
 		rcar_du_vsp_atomic_flush(rcrtc);
