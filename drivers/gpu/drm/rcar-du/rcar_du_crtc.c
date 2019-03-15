@@ -486,7 +486,6 @@ static void rcar_du_crtc_setup(struct rcar_du_crtc *rcrtc)
 
 	/* Configure display timings and output routing */
 	rcar_du_crtc_set_display_timing(rcrtc);
-	rcar_du_group_set_routing(rcrtc->group);
 
 	/* Start with all planes disabled. */
 	rcar_du_group_write(rcrtc->group, rcrtc->index % 2 ? DS2PR : DS1PR, 0);
