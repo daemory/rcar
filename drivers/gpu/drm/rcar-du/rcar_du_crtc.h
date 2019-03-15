@@ -105,6 +105,11 @@ int rcar_du_crtc_atomic_exit_standby(struct drm_device *dev,
 int rcar_du_crtc_atomic_enter_standby(struct drm_device *dev,
 				      struct drm_atomic_state *state);
 
+int rcar_du_crtc_atomic_pre_commit(struct drm_device *dev,
+				   struct drm_atomic_state *state);
+int rcar_du_crtc_atomic_post_commit(struct drm_device *dev,
+				    struct drm_atomic_state *state);
+
 void rcar_du_crtc_dsysr_clr_set(struct rcar_du_crtc *rcrtc, u32 clr, u32 set);
 
 #endif /* __RCAR_DU_CRTC_H__ */

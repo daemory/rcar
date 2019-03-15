@@ -515,8 +515,6 @@ static int rcar_du_crtc_enable(struct rcar_du_crtc *rcrtc)
 	if (ret < 0)
 		goto error_group;
 
-	rcar_du_crtc_setup(rcrtc);
-
 	return 0;
 
 error_group:
@@ -680,6 +678,29 @@ int rcar_du_crtc_atomic_enter_standby(struct drm_device *dev,
 			rcar_du_crtc_disable(rcrtc);
 	}
 
+	return 0;
+}
+
+int rcar_du_crtc_atomic_pre_commit(struct drm_device *dev,
+				   struct drm_atomic_state *state)
+{
+	struct drm_crtc *crtc;
+	struct drm_crtc_state *crtc_state;
+	unsigned int i;
+
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
+		struct rcar_du_crtc *rcrtc = to_rcar_crtc(crtc);
+
+		if (crtc_state->active_changed && crtc_state->active)
+			rcar_du_crtc_setup(rcrtc);
+	}
+
+	return 0;
+}
+
+int rcar_du_crtc_atomic_post_commit(struct drm_device *dev,
+				    struct drm_atomic_state *state)
+{
 	return 0;
 }
 
